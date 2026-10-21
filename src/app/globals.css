@@ -1,26 +1,351 @@
 @import "tailwindcss";
 
+/*
+ * Tidlucka design tokens.
+ * Warm paper + cobalt ink, a civic-editorial base with an instrument-panel layer
+ * (mono numerals, tick meters) for the data. Three signal colours only, each
+ * always paired with a text label so meaning never rides on colour alone.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+  --paper: #f4f2ec;
+  --surface: #ffffff;
+  --surface-2: #faf9f5;
+  --sunken: #eceae3;
+  --ink: #14161b;
+  --ink-2: #3b4049;
+  --muted: #636a75;
+  --line: #e0ddd4;
+  --line-2: #ebe8e1;
+  --line-strong: #cbc7bc;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --accent: #1f45b5;
+  --accent-ink: #163389;
+  --accent-soft: #e7ecfa;
+  --accent-line: #bfccf0;
+  --on-accent: #ffffff;
+
+  --clear: #0b6b4c;
+  --clear-bg: #e2f1ea;
+  --clear-line: #b6dccb;
+  --busy: #8a5800;
+  --busy-bg: #faefd9;
+  --busy-line: #ecd3a0;
+  --hot: #a3261b;
+  --hot-bg: #fbe8e5;
+  --hot-line: #f0c2bb;
+
+  --tick-off: #d8d4ca;
+  --shadow-sm: 0 1px 0 rgb(20 22 27 / 0.04), 0 1px 2px rgb(20 22 27 / 0.05);
+  --shadow-md: 0 1px 2px rgb(20 22 27 / 0.05), 0 8px 24px -6px rgb(20 22 27 / 0.1);
+  --shadow-lg: 0 2px 4px rgb(20 22 27 / 0.05), 0 24px 48px -12px rgb(20 22 27 / 0.18);
+  --focus: 0 0 0 2px var(--paper), 0 0 0 4px var(--accent);
+  color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --paper: #0e1014;
+    --surface: #15181e;
+    --surface-2: #191c23;
+    --sunken: #0b0d10;
+    --ink: #eceef1;
+    --ink-2: #c3c7ce;
+    --muted: #959ba6;
+    --line: #262a33;
+    --line-2: #1f232b;
+    --line-strong: #353a45;
+
+    --accent: #8aa6ff;
+    --accent-ink: #b3c4ff;
+    --accent-soft: rgb(138 166 255 / 0.12);
+    --accent-line: rgb(138 166 255 / 0.32);
+    --on-accent: #0b1430;
+
+    --clear: #5fd0a2;
+    --clear-bg: rgb(95 208 162 / 0.1);
+    --clear-line: rgb(95 208 162 / 0.3);
+    --busy: #f0b54d;
+    --busy-bg: rgb(240 181 77 / 0.1);
+    --busy-line: rgb(240 181 77 / 0.3);
+    --hot: #ff8a7d;
+    --hot-bg: rgb(255 138 125 / 0.1);
+    --hot-line: rgb(255 138 125 / 0.3);
+
+    --tick-off: #2c313b;
+    --shadow-sm: 0 1px 0 rgb(0 0 0 / 0.3);
+    --shadow-md: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px -6px rgb(0 0 0 / 0.5);
+    --shadow-lg: 0 2px 4px rgb(0 0 0 / 0.4), 0 24px 48px -12px rgb(0 0 0 / 0.6);
+    color-scheme: dark;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@theme inline {
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-sunken: var(--sunken);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-line-2: var(--line-2);
+  --color-line-strong: var(--line-strong);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-line: var(--accent-line);
+  --color-on-accent: var(--on-accent);
+  --color-clear: var(--clear);
+  --color-clear-bg: var(--clear-bg);
+  --color-clear-line: var(--clear-line);
+  --color-busy: var(--busy);
+  --color-busy-bg: var(--busy-bg);
+  --color-busy-line: var(--busy-line);
+  --color-hot: var(--hot);
+  --color-hot-bg: var(--hot-bg);
+  --color-hot-line: var(--hot-line);
+
+  --font-sans: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --font-display: var(--font-newsreader), "Iowan Old Style", Georgia, serif;
+
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-padding-top: 5rem;
+  }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: 1rem;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection {
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+  }
+  :focus-visible {
+    outline: none;
+    box-shadow: var(--focus);
+    border-radius: 6px;
+  }
+  button,
+  [role="button"],
+  summary,
+  label[for],
+  select {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
+  button,
+  a {
+    touch-action: manipulation;
+  }
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
+  }
+}
+
+@layer components {
+  /* Mono micro-label used for eyebrows and table heads. */
+  .label-mono {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+  .field {
+    width: 100%;
+    min-height: 2.75rem;
+    border-radius: 0.625rem;
+    border: 1px solid var(--line);
+    background: var(--surface-2);
+    color: var(--ink);
+    padding: 0.5rem 0.75rem;
+    font-size: 1rem;
+    transition:
+      border-color 150ms,
+      box-shadow 150ms,
+      background-color 150ms;
+  }
+  .field:hover {
+    border-color: var(--line-strong);
+  }
+  .field:focus {
+    outline: none;
+    border-color: var(--accent);
+    background: var(--surface);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  .field[aria-invalid="true"] {
+    border-color: var(--hot);
+    box-shadow: 0 0 0 3px var(--hot-bg);
+  }
+  .field::-webkit-calendar-picker-indicator {
+    opacity: 0.6;
+    cursor: pointer;
+  }
+  @media (prefers-color-scheme: dark) {
+    .field::-webkit-calendar-picker-indicator {
+      filter: invert(1);
+    }
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 2.75rem;
+    padding: 0 1.125rem;
+    border-radius: 0.625rem;
+    font-weight: 600;
+    font-size: 0.9375rem;
+    white-space: nowrap;
+    transition:
+      background-color 150ms,
+      border-color 150ms,
+      color 150ms,
+      transform 120ms var(--ease-out-quart);
+  }
+  .btn:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+  .btn:disabled {
+    opacity: 0.45;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: var(--on-accent);
+  }
+  .btn-primary:hover:not(:disabled) {
+    background: var(--accent-ink);
+  }
+  @media (prefers-color-scheme: dark) {
+    .btn-primary:hover:not(:disabled) {
+      background: var(--accent-ink);
+    }
+  }
+  .btn-ink {
+    background: var(--ink);
+    color: var(--paper);
+  }
+  .btn-ink:hover:not(:disabled) {
+    background: var(--ink-2);
+  }
+  .btn-ghost {
+    background: var(--surface);
+    color: var(--ink);
+    border: 1px solid var(--line);
+  }
+  .btn-ghost:hover:not(:disabled) {
+    border-color: var(--line-strong);
+    background: var(--surface-2);
+  }
+  .btn-danger {
+    background: var(--surface);
+    color: var(--hot);
+    border: 1px solid var(--hot-line);
+  }
+  .btn-danger:hover:not(:disabled) {
+    background: var(--hot-bg);
+  }
+
+  .prose-civic h2 {
+    font-family: var(--font-display);
+    font-size: 1.75rem;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    font-weight: 500;
+  }
+  .prose-civic p {
+    color: var(--ink-2);
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+@keyframes shimmer {
+  from {
+    background-position: -200% 0;
+  }
+  to {
+    background-position: 200% 0;
+  }
+}
+@keyframes typing {
+  0%,
+  60%,
+  100% {
+    opacity: 0.25;
+  }
+  30% {
+    opacity: 1;
+  }
+}
+
+.animate-rise {
+  animation: rise 260ms var(--ease-out-quart) both;
+}
+.animate-pulse-dot {
+  animation: pulse-dot 1.6s ease-in-out infinite;
+}
+.skeleton {
+  background: linear-gradient(90deg, var(--line-2) 25%, var(--sunken) 50%, var(--line-2) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+  border-radius: 0.5rem;
+}
+.typing-dot {
+  animation: typing 1.2s infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

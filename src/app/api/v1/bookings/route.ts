@@ -1,0 +1,16 @@
+import { isSystemId } from "@/lib/types";
+import { createBooking } from "@/server/mock-backend";
+import { SLOT_RE, clientIdOf, errorJson, handle, json } from "@/server/http";
+
+/** Confirming a request puts the caller in the queue immediately — before the booking succeeds. */
+export async function POST(request: Request) {
+  return handle(async () => {
+    const clientId = clientIdOf(request);
+    const body = (await request.json()) as { system?: unknown; slot?: unknown };
+    if (!isSystemId(body.system)) return errorJson(422, "invalid_system", "`system` must be passport or coordination.");
+    if (typeof body.slot !== "string" || !SLOT_RE.test(body.slot)) {
+      return errorJson(422, "invalid_slot", "`slot` must look like 2026-10-23T09:30.");
+    }
+    return json(createBooking(body.system, body.slot, clientId), 201);
+  });
+}
