@@ -17,7 +17,7 @@ const principles = [
   {
     n: "01",
     title: "A window you can attend",
-    body: "Pick the days and the hours that work. The bot books inside them and nowhere else — and tells you, in one plain sentence, exactly what it understood.",
+    body: "Pick the days and the hours that work. The bot books inside them and nowhere else, and tells you in one plain sentence exactly what it understood.",
   },
   {
     n: "02",
@@ -27,14 +27,14 @@ const principles = [
   {
     n: "03",
     title: "One rule set, both systems",
-    body: "Passports and national ID cards, or coordination numbers — the same window, the same matching, the same queue rules, on London time.",
+    body: "Passports and national ID cards, or coordination numbers: the same window, the same matching, the same queue rules, on London time.",
   },
 ];
 
 const lifecycle = [
   { label: "Nobody has claimed it", count: 0, note: "Uncontested" },
   { label: "You confirm", count: 1, note: "Counted immediately" },
-  { label: "Booking succeeds", count: 1, note: "Stays counted — slot taken" },
+  { label: "Booking succeeds", count: 1, note: "Stays counted, slot taken" },
   { label: "Or it fails / is cancelled", count: 0, note: "Released, nothing stuck" },
 ];
 
@@ -42,7 +42,7 @@ const chat = [
   { me: true, text: "/status" },
   {
     me: false,
-    text: "Passport / National ID — booking only Tue 27 Oct – Fri 6 Nov, 09:00–12:00, 14:00–EOD\n\n• Tue 27 Oct 09:00 — 0 queued\n• Tue 27 Oct 11:45 — 2 queued\n• Thu 29 Oct 09:30 — 4 queued",
+    text: "Passport / National ID: booking only Tue 27 Oct – Fri 6 Nov, 09:00–12:00, 14:00–EOD\n\n• Tue 27 Oct 09:00 · 0 queued\n• Tue 27 Oct 11:45 · 2 queued\n• Thu 29 Oct 09:30 · 4 queued",
   },
   { me: true, text: "/book 2026-10-27T09:00" },
   { me: false, text: "Queued: Tuesday 27 October at 09:00.\nYou are #1 in the queue for this slot." },
@@ -82,7 +82,7 @@ export default function Home() {
           <div>
             <p className="label-mono">Swedish embassy appointments · London</p>
             <h1 className="mt-5 font-display text-[2.75rem] leading-[1.02] font-medium tracking-[-0.02em] text-ink sm:text-6xl lg:text-[4.25rem]">
-              Book a slot you can <em className="text-accent">actually attend</em> — and see how busy it is.
+              Book a slot you can <em className="text-accent">actually attend</em>, and see how busy it is.
             </h1>
             <p className="mt-6 max-w-[34rem] text-lg leading-relaxed text-ink-2">
               Tell the bot which days and hours work for you. It watches the passport, ID card and coordination
@@ -107,7 +107,7 @@ export default function Home() {
             </ul>
           </div>
 
-          {/* Product preview — real markup, not a screenshot */}
+          {/* Product preview: real markup, not a screenshot */}
           <div className="relative lg:pt-4" aria-label="Preview of the booking console with sample data">
             <div className="rounded-2xl border border-line bg-surface shadow-lg">
               <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
@@ -191,7 +191,7 @@ export default function Home() {
           <div className="max-w-md">
             <p className="label-mono">The queue count</p>
             <h2 id="how-h" className="mt-3 font-display text-4xl leading-[1.08] font-medium tracking-[-0.01em] text-ink">
-              A number that moves when people commit — and only then.
+              A number that moves when people commit, and only then.
             </h2>
             <p className="mt-4 text-ink-2">
               One count per exact slot, per system. A passport slot and a coordination number slot at the same minute
@@ -241,7 +241,7 @@ export default function Home() {
             </h2>
             <p className="mt-4 text-ink-2">
               The slot list, your window and every queue count arrive in the same conversation. Book from the chat
-              and the count on the console updates at once — they read from the same place.
+              and the count on the console updates at once because they read from the same place.
             </p>
             <Link href="/console" className="mt-6 inline-flex min-h-11 items-center gap-1.5 font-semibold text-accent hover:text-accent-ink">
               Try it in the console <ArrowRight className="size-4" aria-hidden="true" />
@@ -259,7 +259,7 @@ export default function Home() {
               The start of a range is in. The end is out.
             </h2>
             <p className="mt-4 text-ink-2">
-              Ask for 09:00 to 12:00 and you can get 09:00 or 11:45 — never 12:00. Dates are different: both the first
+              Ask for 09:00 to 12:00 and you can get 09:00 or 11:45, never 12:00. Dates are different: both the first
               and the last day of your range count.
             </p>
             <Link href="/rules" className="mt-6 inline-flex min-h-11 items-center gap-1.5 font-semibold text-accent hover:text-accent-ink">

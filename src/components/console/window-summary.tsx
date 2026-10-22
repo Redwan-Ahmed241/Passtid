@@ -23,7 +23,7 @@ export function WindowSummary({ value, save }: { value: BookingWindow; save: Sav
         ) : (
           <div className="mt-2 flex flex-wrap gap-1.5">
             <Chip strong>
-              {value.from ? formatDayShort(value.from) : "—"}
+              {value.from ? formatDayShort(value.from) : "No start date"}
               {value.to ? ` → ${formatDayShort(value.to)}` : " onwards"}
             </Chip>
             {ranges.length ? (
@@ -42,7 +42,7 @@ export function WindowSummary({ value, save }: { value: BookingWindow; save: Sav
       </div>
 
       <p className="mt-3 text-[0.8125rem] leading-relaxed text-muted">
-        The bot tells you exactly this — <q className="text-ink-2">{describeWindow(value)}</q> — and the same
+        The bot tells you exactly this, <q className="text-ink-2">{describeWindow(value)}</q>, and the same
         sentence goes in the logs, so nobody has to guess which times it may book.
       </p>
     </section>

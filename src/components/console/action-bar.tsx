@@ -43,7 +43,7 @@ export function ActionBar({ slot, otherActive, emergency, windowValid, working, 
   if (!slot) {
     title = "No slot selected";
     detail = emergency
-      ? "Emergency mode is on — the bot takes the first slot that appears."
+      ? "Emergency mode is on. The bot takes the first slot that appears."
       : "Pick a slot above, or let the bot take the earliest one in your window.";
     actions = (
       <span className="hidden items-center gap-1.5 text-sm text-muted sm:inline-flex">
@@ -57,7 +57,7 @@ export function ActionBar({ slot, otherActive, emergency, windowValid, working, 
     if (mine?.status === "booked") {
       title = (
         <span className="inline-flex items-center gap-1.5 text-clear">
-          <Check className="size-4" aria-hidden="true" /> Booked — {when}
+          <Check className="size-4" aria-hidden="true" /> Booked: {when}
         </span>
       );
       detail = "Confirmation and booking number sent. The slot stays counted as taken.";
@@ -74,7 +74,7 @@ export function ActionBar({ slot, otherActive, emergency, windowValid, working, 
     } else if (mine?.status === "pending") {
       title = (
         <span className="inline-flex items-center gap-2">
-          <span className="size-2 rounded-full bg-accent animate-pulse-dot" aria-hidden="true" /> Booking in progress — {when}
+          <span className="size-2 rounded-full bg-accent animate-pulse-dot" aria-hidden="true" /> Booking in progress: {when}
         </span>
       );
       detail = `You are #${slot.queued} in the queue for this slot. ${

@@ -20,7 +20,7 @@ const LEVEL_FILL: Record<QueueLevel, string> = {
 const TICKS = 6;
 
 /**
- * Queue depth as a row of ascending ticks — a ticket-counter readout.
+ * Queue depth as a row of ascending ticks, like a ticket-counter readout.
  * The number is always printed next to the ticks, so colour is never the only signal.
  */
 export function QueueMeter({ count, size = "md" }: { count: number; size?: "sm" | "md" }) {

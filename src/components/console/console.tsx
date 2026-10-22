@@ -191,16 +191,16 @@ export function Console() {
             if (b.status === "booked") {
               reply(
                 `Booked: ${formatDayLong(b.slot)} at ${clockOf(b.slot)}.\nBooking number ${b.reference}. ` +
-                  `The slot now shows ${depth} queued — yours stays counted because the slot is taken.`,
+                  `The slot now shows ${depth} queued. Yours stays counted because the slot is taken.`,
               );
               notify(`Booked ${slotLabel(b.slot)} · ref ${b.reference}`);
             } else if (b.reason !== "cancelled") {
               const why = b.reason === "timed_out" ? "it made no progress for 15 minutes" : "the slot was gone by the time it was clicked";
               reply(
-                `That booking failed — ${why}. Your queue entry was released, so ${slotLabel(b.slot)} is back to ${depth} queued. ` +
+                `That booking failed: ${why}. Your queue entry was released, so ${slotLabel(b.slot)} is back to ${depth} queued. ` +
                   `Nothing is stuck; pick another slot or let me take the next one.`,
               );
-              notify(`Booking failed — slot released, back to ${depth} queued`, "warn");
+              notify(`Booking failed. Slot released, back to ${depth} queued`, "warn");
             }
           })
           .catch(() => {
@@ -286,9 +286,9 @@ export function Console() {
       setSelection({ system, slot: b.slot });
       reply(
         `Queued: ${formatDayLong(b.slot)} at ${clockOf(b.slot)}.\nYou are #${depth} in the queue for this slot. ` +
-          `The count went up the moment you confirmed — not when the booking succeeds.`,
+          `The count went up the moment you confirmed, not when the booking succeeds.`,
       );
-      notify(`Queued — ${slotLabel(b.slot)} now shows ${depth} queued`);
+      notify(`Queued: ${slotLabel(b.slot)} now shows ${depth} queued`);
     } catch (err) {
       const message = err instanceof ApiRequestError ? err.message : "The booking could not be started.";
       reply(`I couldn't queue that: ${message}`);
@@ -307,8 +307,8 @@ export function Console() {
       const fresh = await loadSlots(b.system);
       const depth = fresh?.slots.find((s) => s.slot === b.slot)?.queued ?? 0;
       say("me", `/cancel ${b.slot}`);
-      reply(`Cancelled. ${slotLabel(b.slot)} is back to ${depth} queued — no phantom entry left behind.`);
-      notify(`Cancelled — ${slotLabel(b.slot)} back to ${depth} queued`);
+      reply(`Cancelled. ${slotLabel(b.slot)} is back to ${depth} queued. No phantom entry left behind.`);
+      notify(`Cancelled: ${slotLabel(b.slot)} back to ${depth} queued`);
     } catch (err) {
       announced.current.delete(bookingId);
       notify(err instanceof ApiRequestError ? err.message : "Couldn't cancel. Try again.", "warn");
@@ -343,7 +343,7 @@ export function Console() {
           : [...inWin].sort((a, b) => a.slot.localeCompare(b.slot)).find((s) => !s.mine);
       if (otherActive || selectedSlot?.mine) {
         say("me", "/book");
-        reply("You already have a booking running or confirmed on this system. Cancel it first — one per system.");
+        reply("You already have a booking running or confirmed on this system. Cancel it first, since only one is allowed per system.");
         return;
       }
       if (!target) {
@@ -362,7 +362,7 @@ export function Console() {
       const q = [...inWin].sort((a, b) => a.queued - b.queued || a.slot.localeCompare(b.slot)).slice(0, 3);
       reply(
         q.length
-          ? `Quietest inside your window:\n${q.map((s) => `• ${slotLabel(s.slot)} — ${s.queued} queued`).join("\n")}`
+          ? `Quietest inside your window:\n${q.map((s) => `• ${slotLabel(s.slot)} · ${s.queued} queued`).join("\n")}`
           : "Nothing inside your window right now.",
       );
     }
@@ -385,7 +385,7 @@ export function Console() {
           <p className="mt-3 min-h-6 text-[0.9375rem] text-ink-2">
             {effective ? (
               effective.emergency ? (
-                <span className="font-medium text-hot">Emergency mode — the first slot that appears gets booked.</span>
+                <span className="font-medium text-hot">Emergency mode: the first slot that appears gets booked.</span>
               ) : (
                 <>
                   Booking only <span className="font-medium text-ink">{describeWindow(effective)}</span>
@@ -522,7 +522,7 @@ export function Console() {
           )}
           {loadError && data && (
             <p className="mt-3 text-[0.8125rem] text-hot" role="status">
-              Couldn&rsquo;t refresh — showing the slots from {updated}.
+              Couldn&rsquo;t refresh. Showing the slots from {updated}.
             </p>
           )}
 
@@ -555,7 +555,7 @@ export function Console() {
                     <div className="mt-5 rounded-xl border border-dashed border-line-strong p-5 text-center">
                       <p className="font-medium text-ink">Every slot in your window already has someone queued.</p>
                       <p className="mt-1 text-sm text-muted">
-                        A busy slot never blocks a booking — the count is information, not a lock.
+                        A busy slot never blocks a booking. The count is information, not a lock.
                       </p>
                       <button type="button" className="btn btn-ghost mt-3 h-9 min-h-9 text-sm" onClick={() => setFilter("window")}>
                         Show all {inWin.length} in my window
@@ -569,7 +569,7 @@ export function Console() {
                     <summary className="flex min-h-11 list-none items-center gap-1.5 rounded-md text-sm text-muted hover:text-ink [&::-webkit-details-marker]:hidden">
                       <ChevronRight className="size-4 transition-transform group-open:rotate-90" aria-hidden="true" />
                       {outsideSorted.length} open slot{outsideSorted.length > 1 ? "s" : ""} outside your window
-                      <span className="text-xs">— listed, never booked</span>
+                      <span className="text-xs">(listed, never booked)</span>
                     </summary>
                     <div className="mt-1">
                       <SlotList
@@ -631,7 +631,7 @@ export function Console() {
 }
 
 function statusMessage(system: SystemId, view: ViewSlot[], w: BookingWindow): string {
-  const head = `${SYSTEM_INFO[system].name} — booking only ${describeWindow(w)}`;
+  const head = `${SYSTEM_INFO[system].name}: booking only ${describeWindow(w)}`;
   const inside = view.filter((s) => s.inWindow).slice(0, 5);
   if (!inside.length) {
     const near = view.slice(0, 3);
@@ -641,18 +641,18 @@ function statusMessage(system: SystemId, view: ViewSlot[], w: BookingWindow): st
     );
   }
   return (
-    `${head}\n\n${inside.map((s) => `• ${slotLabel(s.slot)} — ${s.queued} queued`).join("\n")}\n\n` +
+    `${head}\n\n${inside.map((s) => `• ${slotLabel(s.slot)} · ${s.queued} queued`).join("\n")}\n\n` +
     `Send /book to take the one you picked, or I'll take the earliest.`
   );
 }
 
 function CountRules() {
   const rows = [
-    ["Nobody has claimed the slot", "0 queued — uncontested"],
+    ["Nobody has claimed the slot", "0 queued, uncontested"],
     ["Someone confirms a booking", "Count rises immediately, before it succeeds"],
-    ["That booking fails or is cancelled", "Count drops back — no phantom entry"],
+    ["That booking fails or is cancelled", "Count drops back, no phantom entry"],
     ["A booking hangs for 15 minutes", "Entry stops counting; slot released"],
-    ["Someone else views the slot", "They see a number only — never who"],
+    ["Someone else views the slot", "They see a number only, never who"],
   ];
   return (
     <section aria-labelledby="count-h" className="rounded-2xl border border-line bg-surface p-5 shadow-sm">
@@ -666,7 +666,7 @@ function CountRules() {
         ))}
       </dl>
       <p className="mt-3 rounded-lg border-l-2 border-accent bg-accent-soft px-3 py-2.5 text-[0.8125rem] text-ink-2">
-        <strong className="text-ink">Information, not a lock.</strong> A busy slot never blocks your booking — it just
+        <strong className="text-ink">Information, not a lock.</strong> A busy slot never blocks your booking. It just
         helps you pick a quieter one.
       </p>
     </section>

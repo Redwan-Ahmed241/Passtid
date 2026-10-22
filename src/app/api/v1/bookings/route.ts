@@ -2,7 +2,7 @@ import { isSystemId } from "@/lib/types";
 import { createBooking } from "@/server/mock-backend";
 import { SLOT_RE, clientIdOf, errorJson, handle, json } from "@/server/http";
 
-/** Confirming a request puts the caller in the queue immediately — before the booking succeeds. */
+/** Confirming a request puts the caller in the queue immediately, before the booking succeeds. */
 export async function POST(request: Request) {
   return handle(async () => {
     const clientId = clientIdOf(request);

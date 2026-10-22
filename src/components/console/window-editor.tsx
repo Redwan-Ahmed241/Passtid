@@ -93,7 +93,7 @@ export function WindowEditor({ value, today, horizon, onChange }: Props) {
 
       <fieldset className="mt-5" disabled={value.emergency}>
         <legend className="mb-1.5 text-sm font-medium text-ink-2">
-          Times of day <span className="font-normal text-muted">— empty means any time</span>
+          Times of day <span className="font-normal text-muted">(empty means any time)</span>
         </legend>
 
         <ul className="space-y-2">
@@ -160,7 +160,7 @@ export function WindowEditor({ value, today, horizon, onChange }: Props) {
         )}
 
         <p id={`${uid}-times-hint`} className="mt-2 text-xs text-muted">
-          24-hour clock. The start is bookable, the end is not — “09:00 to 12:00” takes 11:45 but not 12:00.
+          24-hour clock. The start is bookable, the end is not: “09:00 to 12:00” takes 11:45 but not 12:00.
           Type <span className="font-mono">EOD</span> for end of day.
         </p>
 

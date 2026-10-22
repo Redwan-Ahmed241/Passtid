@@ -5,7 +5,7 @@ export const faq = [
   },
   {
     q: "What does “3 queued” mean?",
-    a: "Three people have confirmed a booking request for that exact slot, or already hold it. The number rises the moment someone confirms — not when the booking succeeds — and drops back when an attempt fails, is cancelled or stalls for 15 minutes.",
+    a: "Three people have confirmed a booking request for that exact slot, or already hold it. The number rises the moment someone confirms, not when the booking succeeds, and drops back when an attempt fails, is cancelled or stalls for 15 minutes.",
   },
   {
     q: "Can I see who else is queued?",
@@ -13,7 +13,7 @@ export const faq = [
   },
   {
     q: "Does a busy slot stop me from booking it?",
-    a: "No. The queue count is information, not a lock. The bot still goes for the slot you picked — or the earliest matching one if you didn't pick — it just lets you choose a quieter time.",
+    a: "No. The queue count is information, not a lock. The bot still goes for the slot you picked, or the earliest matching one if you didn't pick. It just lets you choose a quieter time.",
   },
   {
     q: "Which clock are the times in?",
@@ -25,6 +25,6 @@ export const faq = [
   },
   {
     q: "What happens if there is nothing inside my window?",
-    a: "Nothing is booked. You get a clear message and the nearest slots outside your window, so you can decide whether to widen it — or switch on emergency mode to take the first slot that appears.",
+    a: "Nothing is booked. You get a clear message and the nearest slots outside your window, so you can decide whether to widen it or switch on emergency mode to take the first slot that appears.",
   },
 ] as const;

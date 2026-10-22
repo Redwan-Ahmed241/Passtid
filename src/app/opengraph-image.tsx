@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 import { site } from "@/lib/site";
 
-export const alt = `${site.name} — ${site.tagline}`;
+export const alt = `${site.name}: ${site.tagline}`;
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -28,7 +28,7 @@ export default function OpengraphImage() {
         <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", width: 640 }}>
           <div style={{ display: "flex", fontSize: 30, color: "#14161b", letterSpacing: -0.5 }}>{site.name}</div>
           <div style={{ display: "flex", fontSize: 68, lineHeight: 1.05, color: "#14161b", letterSpacing: -2 }}>
-            Book a slot you can actually attend — and see how busy it is.
+            Book a slot you can actually attend, and see how busy it is.
           </div>
           <div style={{ display: "flex", fontSize: 24, color: "#636a75", fontFamily: "monospace" }}>
             Swedish embassy appointments · London time

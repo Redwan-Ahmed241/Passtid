@@ -6,29 +6,29 @@ import { WindowTimeline } from "@/components/window-timeline";
 import { site } from "@/lib/site";
 
 export const metadata: Metadata = {
-  title: "Booking rules — windows, queue counts and edge cases",
+  title: "Booking rules: windows, queue counts and edge cases",
   description:
-    "Exactly how Tidlucka matches Swedish embassy slots to your booking window, what counts as being in the queue, and what happens when a booking fails — the same rules for passports, ID cards and coordination numbers.",
+    "Exactly how Tidlucka matches Swedish embassy slots to your booking window, what counts as being in the queue, and what happens when a booking fails, with the same rules for passports, ID cards and coordination numbers.",
   alternates: { canonical: "/rules" },
   openGraph: { url: "/rules" },
 };
 
 const matching: { rule: string; result: string; yes?: boolean; no?: boolean }[] = [
   { rule: "Start of a time range", result: "09:00 is bookable", yes: true },
-  { rule: "End of a time range", result: "12:00 is not bookable — 11:45 is", no: true },
-  { rule: "First and last day of the date range", result: "Both count — 21 Oct and 31 Oct are in", yes: true },
+  { rule: "End of a time range", result: "12:00 is not bookable, 11:45 is", no: true },
+  { rule: "First and last day of the date range", result: "Both count: 21 Oct and 31 Oct are in", yes: true },
   { rule: "No time ranges given", result: "Any time of day on those dates" },
   { rule: "No end date given", result: "Any date from the start date onwards" },
   { rule: "Several time ranges", result: "A slot is bookable if it matches any of them" },
   { rule: "Which clock", result: "The embassy's local time (London) on both systems, whatever the server's timezone" },
-  { rule: "How far it looks", result: "12 weeks for passports and ID cards, 8 for coordination numbers — and it says when it stops" },
+  { rule: "How far it looks", result: "12 weeks for passports and ID cards, 8 for coordination numbers, and it says when it stops" },
 ];
 
 const states = [
   { name: "Pending", dot: "bg-accent", text: "Someone confirmed a booking request and it is running.", counts: true },
   { name: "Booked", dot: "bg-clear", text: "The appointment is confirmed. It still holds the slot.", counts: true },
   { name: "Stale", dot: "bg-busy", text: "No progress for 15 minutes, so the slot is released.", counts: false },
-  { name: "Released", dot: "bg-hot", text: "Failed, cancelled or timed out — the entry is deleted.", counts: false },
+  { name: "Released", dot: "bg-hot", text: "Failed, cancelled or timed out. The entry is deleted.", counts: false },
 ];
 
 const counted = [
@@ -38,7 +38,7 @@ const counted = [
 ];
 const notCounted = [
   "Failed, cancelled or timed-out attempts",
-  "The website's own “3 free” label — shown separately, never merged",
+  "The website's own “3 free” label, shown separately and never merged",
   "Your own attempt is labelled as yours, never hidden in the crowd",
   "People queued for a different slot, even on the same day",
 ];
@@ -46,10 +46,10 @@ const notCounted = [
 const edges = [
   ["No free slot inside the window", "A clear message plus the nearest slots outside the window, so it can be widened. Nothing is booked."],
   ["Free slots exist, but all outside the window", "They are listed once, marked “outside your window”, and never booked."],
-  ["The window itself is invalid", "The bot refuses it with a message naming the broken range — and keeps the last valid window. Never a silent fallback to booking anything."],
+  ["The window itself is invalid", "The bot refuses it with a message naming the broken range, and keeps the last valid window. Never a silent fallback to booking anything."],
   ["The website changes its layout", "The booking stops, the browser stays on the right page, and you are told to finish it by hand. Never a half-finished booking."],
   ["The slot is gone by the time it is clicked", "The queue entry is released, the count goes back down, and the bot keeps looking."],
-  ["The booking succeeds", "You get the confirmation and booking number, and the slot's count stays one higher — the slot is taken."],
+  ["The booking succeeds", "You get the confirmation and booking number, and the slot's count stays one higher because the slot is taken."],
 ];
 
 function SectionHead({ id, n, title, children }: { id: string; n: string; title: string; children: React.ReactNode }) {
@@ -129,8 +129,8 @@ export default function RulesPage() {
                     <tr key={m.rule} className="align-top">
                       <th scope="row" className="w-[42%] px-5 py-3.5 font-medium text-ink">{m.rule}</th>
                       <td className="px-5 py-3.5 text-ink-2">
-                        {m.yes && <span className="mr-1.5 font-semibold text-clear">Included —</span>}
-                        {m.no && <span className="mr-1.5 font-semibold text-hot">Excluded —</span>}
+                        {m.yes && <span className="mr-1.5 font-semibold text-clear">Included:</span>}
+                        {m.no && <span className="mr-1.5 font-semibold text-hot">Excluded:</span>}
                         {m.result}
                       </td>
                     </tr>

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { site } from "@/lib/site";
 
-/** Mark: a ticket stub with a notch — one slot, punched out of the day. */
+/** Mark: a ticket stub with a notch: one slot, punched out of the day. */
 export function LogoMark({ className = "size-7" }: { className?: string }) {
   return (
     <svg viewBox="0 0 32 32" className={className} aria-hidden="true" focusable="false">

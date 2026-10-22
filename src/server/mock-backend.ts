@@ -46,7 +46,7 @@ const store: Store = (globalForStore.__slotStore ??= {
 const key = (system: SystemId, slot: string) => `${system}|${slot}`;
 
 /* ------------------------------------------------------------------ */
-/* Deterministic sample data — stable per day, so a refresh looks live */
+/* Deterministic sample data, stable per day so a refresh looks live */
 /* ------------------------------------------------------------------ */
 
 function hash(str: string): number {
