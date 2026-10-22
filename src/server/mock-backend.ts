@@ -189,7 +189,7 @@ export function listSlots(system: SystemId, clientId: string): SlotsResponse {
       if (e.system !== system || e.slot !== s.slot || !counts(e, now)) continue;
       queued += 1;
       if (e.clientId === clientId && e.status !== "released") {
-        mine = { bookingId: e.id, status: e.status };
+        mine = { bookingId: e.id, status: e.status, reference: e.reference };
       }
     }
     const free = s.free === null ? null : Math.max(0, s.free - (store.taken.get(k) ?? 0));

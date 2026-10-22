@@ -75,7 +75,12 @@ export function ActionBar({
           <Check className="size-4" aria-hidden="true" /> Booked: {when}
         </span>
       );
-      detail = "Confirmation and booking number sent. The slot stays counted as taken.";
+      detail = (
+        <>
+          Booking number <span className="font-mono font-semibold text-ink">{mine.reference ?? "pending"}</span>. The
+          slot stays counted as taken.
+        </>
+      );
       actions = confirming ? (
         <>
           <button type="button" className="btn btn-ghost" onClick={() => setConfirming(false)}>Keep it</button>

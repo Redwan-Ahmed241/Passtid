@@ -141,7 +141,7 @@ export interface Slot {
   /** Counted queue entries on this exact slot (pending + booked, fresh < 15 min). */
   queued: number;
   /** The caller's own active entry on this slot, if any. */
-  mine: { bookingId: string; status: Exclude<BookingStatus, "released"> } | null;
+  mine: { bookingId: string; status: Exclude<BookingStatus, "released">; reference: string | null } | null;
 }
 
 export interface SlotsResponse {
