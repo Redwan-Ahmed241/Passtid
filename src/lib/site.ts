@@ -1,9 +1,21 @@
+/**
+ * Canonical origin used by the sitemap, robots.txt, canonical links and share images.
+ * Set NEXT_PUBLIC_SITE_URL for a custom domain; on Vercel it falls back to the
+ * project's production URL so the sitemap never lists localhost.
+ */
+function baseUrl(): string {
+  const explicit = process.env.NEXT_PUBLIC_SITE_URL;
+  const vercel = process.env.VERCEL_PROJECT_PRODUCTION_URL;
+  const raw = explicit || (vercel ? `https://${vercel}` : "http://localhost:3000");
+  return raw.replace(/\/$/, "");
+}
+
 export const site = {
   name: "Tidlucka",
   tagline: "Book a slot you can actually attend",
   description:
     "Tidlucka watches Swedish embassy appointment slots in London for passports, national ID cards and coordination numbers. Set the days and hours you can attend, see how many people are already queued for each slot, and book the quiet one.",
-  url: (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(/\/$/, ""),
+  url: baseUrl(),
   locale: "en_GB",
   disclaimer:
     "Tidlucka is an independent booking assistant. It is not affiliated with, endorsed by or operated by the Embassy of Sweden or the Swedish Migration Agency.",
