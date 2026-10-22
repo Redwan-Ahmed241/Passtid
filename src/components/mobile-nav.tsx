@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Menu, X } from "lucide-react";
+import { signOut, useMe } from "./auth/use-me";
 
 const links = [
   { href: "/console", label: "Console" },
@@ -13,6 +14,8 @@ const links = [
 
 export function MobileNav() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user } = useMe();
   // Remembering the path the menu was opened on closes it automatically on navigation.
   const [openPath, setOpenPath] = useState<string | null>(null);
   const open = openPath === pathname;
@@ -23,6 +26,9 @@ export function MobileNav() {
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [open]);
+
+  const close = () => setOpenPath(null);
+  const row = "flex min-h-14 w-full items-center text-left text-lg text-ink";
 
   return (
     <div className="md:hidden">
@@ -45,17 +51,36 @@ export function MobileNav() {
         >
           <ul className="flex flex-col">
             {links.map((l) => (
-              <li key={l.href} className="border-b border-line-2 last:border-0">
+              <li key={l.href} className="border-b border-line-2">
                 <Link
                   href={l.href}
-                  onClick={() => setOpenPath(null)}
+                  onClick={close}
                   aria-current={l.href === pathname ? "page" : undefined}
-                  className="flex min-h-14 items-center text-lg text-ink"
+                  className={row}
                 >
                   {l.label}
                 </Link>
               </li>
             ))}
+            <li>
+              {user ? (
+                <button
+                  type="button"
+                  className={row}
+                  onClick={() => {
+                    close();
+                    void signOut().then(() => router.push("/"));
+                  }}
+                >
+                  Sign out
+                  <span className="ml-auto max-w-[10rem] truncate text-sm text-muted">{user.name}</span>
+                </button>
+              ) : (
+                <Link href="/login" onClick={close} className={row}>
+                  Sign in
+                </Link>
+              )}
+            </li>
           </ul>
         </nav>
       )}

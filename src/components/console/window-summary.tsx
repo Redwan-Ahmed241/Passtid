@@ -1,13 +1,12 @@
 import { AlertTriangle, Check, CloudOff, Loader2 } from "lucide-react";
 import type { BookingWindow } from "@/lib/types";
-import { describeWindow, formatRange, validateWindow, windowRanges } from "@/lib/window";
-import { formatDayShort } from "@/lib/time";
+import { describeDates, describeWindow, formatRange, timeRanges, validateWindow } from "@/lib/window";
 
 export type SaveState = "idle" | "saving" | "saved" | "invalid" | "error";
 
 export function WindowSummary({ value, save }: { value: BookingWindow; save: SaveState }) {
   const issues = validateWindow(value);
-  const ranges = windowRanges(value.times);
+  const ranges = value.ranges.filter((r) => r.from || r.to);
 
   return (
     <section aria-labelledby="summary-h" className="rounded-2xl border border-line bg-surface p-5 shadow-sm">
@@ -20,18 +19,24 @@ export function WindowSummary({ value, save }: { value: BookingWindow; save: Sav
         <p className="text-[0.8125rem] text-muted">Booking only</p>
         {value.emergency ? (
           <p className="mt-1 font-display text-xl leading-snug text-hot">Any slot, whenever it appears</p>
+        ) : ranges.length === 0 ? (
+          <p className="mt-1 text-sm text-muted">Nothing yet. Add a date range.</p>
         ) : (
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            <Chip strong>
-              {value.from ? formatDayShort(value.from) : "No start date"}
-              {value.to ? ` → ${formatDayShort(value.to)}` : " onwards"}
-            </Chip>
-            {ranges.length ? (
-              ranges.map((r) => <Chip key={`${r.start}-${r.end}`}>{formatRange(r)}</Chip>)
-            ) : (
-              <Chip>any time of day</Chip>
-            )}
-          </div>
+          <ul className="mt-2 space-y-2">
+            {ranges.map((r) => {
+              const times = timeRanges(r.times);
+              return (
+                <li key={r.id} className="flex flex-wrap gap-1.5">
+                  <Chip strong>{describeDates(r)}</Chip>
+                  {times.length ? (
+                    times.map((t) => <Chip key={`${t.start}-${t.end}`}>{formatRange(t)}</Chip>)
+                  ) : (
+                    <Chip>any time of day</Chip>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
         )}
         {issues.length > 0 && (
           <p className="mt-3 flex items-start gap-1.5 text-[0.8125rem] text-hot">

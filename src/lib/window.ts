@@ -1,19 +1,21 @@
-import type { BookingWindow, TimeRange } from "./types";
+import type { BookingWindow, DateRange, TimeRange } from "./types";
 import { clockOf, dayOf, formatDayShort, minutesToClock } from "./time";
 
 /**
- * The booking-window rules from the user story, in one place, used by both the
- * UI and the mock API so they can never disagree:
+ * The booking-window rules, in one place, used by both the UI and the mock API
+ * so they can never disagree:
+ *  - a window is a list of date ranges; a slot matches if it is inside ANY of them
+ *  - each date range has its own optional time ranges (none = any time of day)
  *  - start of a time range is included, the end is excluded
- *  - both dates of the date range are included
- *  - no time ranges = any time of day; no end date = open-ended
- *  - several ranges = a slot matches if it is inside ANY of them
+ *  - both dates of a date range are included; either date may be left open
  */
 
 const CLOCK_RE = /^([01]\d|2[0-3]):([0-5]\d)$/;
 export const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 export const DAY_END = 24 * 60;
+export const MAX_DATE_RANGES = 5;
+export const MAX_TIME_RANGES = 6;
 
 /** Parse a clock boundary into minutes since midnight, or null if invalid. */
 export function parseClock(value: string, edge: "start" | "end"): number | null {
@@ -52,40 +54,57 @@ export interface RangeMinutes {
 }
 
 export interface WindowIssue {
-  field: "from" | "to" | `times.${number}`;
+  /** e.g. "ranges", "ranges.0.from", "ranges.0.to", "ranges.0.times.1" */
+  field: string;
   message: string;
 }
 
-export function validateWindow(w: BookingWindow): WindowIssue[] {
+export function emptyRange(id: string, from: string | null = null, to: string | null = null): DateRange {
+  return { id, from, to, times: [] };
+}
+
+function validateRange(r: DateRange, i: number): WindowIssue[] {
   const issues: WindowIssue[] = [];
-  if (!w.from || !DAY_RE.test(w.from)) {
-    issues.push({ field: "from", message: "Pick a start date." });
+  const hasFrom = !!r.from;
+  const hasTo = !!r.to;
+  if (hasFrom && !DAY_RE.test(r.from as string)) {
+    issues.push({ field: `ranges.${i}.from`, message: "The start date is not a valid date." });
   }
-  if (w.to !== null) {
-    if (!DAY_RE.test(w.to)) {
-      issues.push({ field: "to", message: "The end date is not a valid date." });
-    } else if (w.from && w.to < w.from) {
-      issues.push({ field: "to", message: "The end date is before the start date." });
-    }
+  if (hasTo && !DAY_RE.test(r.to as string)) {
+    issues.push({ field: `ranges.${i}.to`, message: "The end date is not a valid date." });
   }
-  w.times.forEach((t, i) => {
+  if (!hasFrom && !hasTo) {
+    issues.push({ field: `ranges.${i}.from`, message: "Add a start date, an end date, or both." });
+  } else if (hasFrom && hasTo && (r.to as string) < (r.from as string)) {
+    issues.push({ field: `ranges.${i}.to`, message: "The end date is before the start date." });
+  }
+  r.times.forEach((t, j) => {
     const s = parseClock(t.start, "start");
     const e = parseClock(t.end, "end");
-    const label = `“${t.start || "?"} – ${t.end || "?"}”`;
+    const label = `“${t.start || "?"} to ${t.end || "?"}”`;
     if (s === null || e === null) {
       issues.push({
-        field: `times.${i}`,
-        message: `${label} is not a valid time range. Use 24-hour HH:MM, or EOD for end of day.`,
+        field: `ranges.${i}.times.${j}`,
+        message: `${label} is not a valid time range. Use 24-hour HH:MM, or SOD / EOD for start / end of day.`,
       });
     } else if (e <= s) {
-      issues.push({ field: `times.${i}`, message: `${label} ends before it starts.` });
+      issues.push({ field: `ranges.${i}.times.${j}`, message: `${label} ends before it starts.` });
     }
   });
   return issues;
 }
 
-/** Valid ranges only, in minutes. Invalid rows are ignored (and reported by validateWindow). */
-export function windowRanges(times: TimeRange[]): RangeMinutes[] {
+/** Emergency mode ignores the window entirely, so there is nothing to validate. */
+export function validateWindow(w: BookingWindow): WindowIssue[] {
+  if (w.emergency) return [];
+  if (w.ranges.length === 0) {
+    return [{ field: "ranges", message: "Add at least one date range." }];
+  }
+  return w.ranges.flatMap(validateRange);
+}
+
+/** Valid time ranges only, in minutes. Invalid rows are ignored (and reported by validateWindow). */
+export function timeRanges(times: TimeRange[]): RangeMinutes[] {
   const out: RangeMinutes[] = [];
   for (const t of times) {
     const s = parseClock(t.start, "start");
@@ -95,33 +114,48 @@ export function windowRanges(times: TimeRange[]): RangeMinutes[] {
   return out;
 }
 
-export function matchesWindow(slotIso: string, w: BookingWindow): boolean {
-  if (w.emergency) return true;
-  if (!w.from) return false;
+function matchesRange(slotIso: string, r: DateRange): boolean {
+  if (!r.from && !r.to) return false;
   const day = dayOf(slotIso);
-  if (day < w.from) return false;
-  if (w.to && day > w.to) return false;
-  const ranges = windowRanges(w.times);
+  if (r.from && day < r.from) return false;
+  if (r.to && day > r.to) return false;
+  const ranges = timeRanges(r.times);
   if (ranges.length === 0) return true;
   const m = parseClock(clockOf(slotIso), "start");
   if (m === null) return false;
-  return ranges.some((r) => m >= r.start && m < r.end);
+  return ranges.some((t) => m >= t.start && m < t.end);
+}
+
+export function matchesWindow(slotIso: string, w: BookingWindow): boolean {
+  if (w.emergency) return true;
+  return w.ranges.some((r) => matchesRange(slotIso, r));
 }
 
 export function formatRange(r: RangeMinutes): string {
   return `${minutesToClock(r.start)}–${r.end >= DAY_END ? "EOD" : minutesToClock(r.end)}`;
 }
 
+/** "Thu 22 Oct – Wed 4 Nov", "from Thu 22 Oct onwards", "until Wed 4 Nov", "Thu 22 Oct only". */
+export function describeDates(r: DateRange): string {
+  if (r.from && r.to) {
+    return r.from === r.to ? `${formatDayShort(r.from)} only` : `${formatDayShort(r.from)} – ${formatDayShort(r.to)}`;
+  }
+  if (r.from) return `from ${formatDayShort(r.from)} onwards`;
+  if (r.to) return `until ${formatDayShort(r.to)}`;
+  return "no dates yet";
+}
+
+export function describeTimes(r: DateRange): string {
+  const ranges = timeRanges(r.times);
+  return ranges.length ? ranges.map(formatRange).join(", ") : "any time of day";
+}
+
 /** The exact sentence the user is told in the chat and that appears in the logs. */
 export function describeWindow(w: BookingWindow): string {
   if (w.emergency) return "any slot, whenever it appears";
-  if (!w.from) return "no valid window yet";
-  const days = w.to
-    ? `${formatDayShort(w.from)} – ${formatDayShort(w.to)}`
-    : `from ${formatDayShort(w.from)} onwards`;
-  const ranges = windowRanges(w.times);
-  const clocks = ranges.length ? ranges.map(formatRange).join(", ") : "any time of day";
-  return `${days}, ${clocks}`;
+  const valid = w.ranges.filter((r) => r.from || r.to);
+  if (valid.length === 0) return "no date range yet";
+  return valid.map((r) => `${describeDates(r)}, ${describeTimes(r)}`).join("; ");
 }
 
 export function sameWindow(a: BookingWindow, b: BookingWindow): boolean {

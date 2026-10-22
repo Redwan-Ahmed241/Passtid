@@ -1,23 +1,17 @@
 import Link from "next/link";
-import { ArrowRight, Check } from "lucide-react";
+import { ArrowRight } from "lucide-react";
+import { BottomCta, HeroActions } from "@/components/home-cta";
 import { JsonLd } from "@/components/json-ld";
 import { QueueMeter } from "@/components/queue-meter";
 import { WindowTimeline } from "@/components/window-timeline";
 import { faq } from "@/lib/faq";
 import { site } from "@/lib/site";
 
-const previewSlots = [
-  { day: "Tue", time: "09:00", queued: 0, inWindow: true },
-  { day: "Tue", time: "11:45", queued: 2, inWindow: true, selected: true },
-  { day: "Thu", time: "09:30", queued: 4, inWindow: true },
-  { day: "Thu", time: "12:15", queued: 1, inWindow: false },
-];
-
 const principles = [
   {
     n: "01",
     title: "A window you can attend",
-    body: "Pick the days and the hours that work. The bot books inside them and nowhere else, and tells you in one plain sentence exactly what it understood.",
+    body: "Add one or more date ranges, each with its own hours. The bot books inside them and nowhere else, and tells you in one plain sentence exactly what it understood.",
   },
   {
     n: "02",
@@ -26,8 +20,8 @@ const principles = [
   },
   {
     n: "03",
-    title: "One rule set, both systems",
-    body: "Passports and national ID cards, or coordination numbers: the same window, the same matching, the same queue rules, on London time.",
+    title: "One rule set, both services",
+    body: "Passports and ID cards, or migration (coordination numbers): the same windows, the same matching, the same queue rules, on London time.",
   },
 ];
 
@@ -78,91 +72,30 @@ export default function Home() {
 
       {/* Hero */}
       <section className="relative overflow-hidden border-b border-line">
-        <div className="mx-auto grid max-w-7xl gap-12 px-4 pt-14 pb-16 sm:px-6 md:pt-20 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:gap-16 lg:px-8 lg:pb-24">
-          <div>
-            <p className="label-mono">Swedish embassy appointments · London</p>
-            <h1 className="mt-5 font-display text-[2.75rem] leading-[1.02] font-medium tracking-[-0.02em] text-ink sm:text-6xl lg:text-[4.25rem]">
-              Book a slot you can <em className="text-accent">actually attend</em>, and see how busy it is.
-            </h1>
-            <p className="mt-6 max-w-[34rem] text-lg leading-relaxed text-ink-2">
-              Tell the bot which days and hours work for you. It watches the passport, ID card and coordination
-              number calendars, shows how many people are already queued for every slot, and books only inside your
-              window.
-            </p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Link href="/console" className="btn btn-primary group h-12 px-5 text-base">
-                Open the console
-                <ArrowRight className="size-4 transition-transform duration-150 group-hover:translate-x-0.5" aria-hidden="true" />
-              </Link>
-              <Link href="/rules" className="btn btn-ghost h-12 px-5 text-base">
-                How matching works
-              </Link>
-            </div>
-            <ul className="mt-10 flex flex-wrap gap-x-6 gap-y-2 font-mono text-xs text-muted">
-              {["Embassy local time", "12-week scan", "Names never shown"].map((t) => (
-                <li key={t} className="inline-flex items-center gap-1.5">
-                  <Check className="size-3.5 text-clear" aria-hidden="true" /> {t}
-                </li>
-              ))}
-            </ul>
-          </div>
+        <div className="mx-auto max-w-7xl px-4 pt-14 pb-16 sm:px-6 md:pt-24 lg:px-8 lg:pb-24">
+          <p className="label-mono">Swedish embassy appointments · London</p>
+          <h1 className="mt-5 max-w-4xl font-display text-[2.75rem] leading-[1.02] font-medium tracking-[-0.02em] text-ink sm:text-6xl lg:text-[4.75rem]">
+            Book a slot you can <em className="text-accent">actually attend</em>, and see how busy it is.
+          </h1>
+          <p className="mt-6 max-w-[38rem] text-lg leading-relaxed text-ink-2">
+            Tell the bot which days and hours work for you. It watches the passport, ID card and migration
+            calendars, shows how many people are already queued for every slot, and books only inside your
+            windows. Sign in to see the live calendar.
+          </p>
+          <HeroActions />
 
-          {/* Product preview: real markup, not a screenshot */}
-          <div className="relative lg:pt-4" aria-label="Preview of the booking console with sample data">
-            <div className="rounded-2xl border border-line bg-surface shadow-lg">
-              <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
-                <span className="label-mono">Passport / ID</span>
-                <span className="rounded-md bg-sunken px-2 py-0.5 font-mono text-[0.6875rem] text-muted">sample data</span>
+          <dl className="mt-14 grid gap-px overflow-hidden rounded-2xl border border-line bg-line sm:grid-cols-3">
+            {[
+              ["Two services", "Passports and ID cards, and migration, under one account."],
+              ["London time", "Every slot on the embassy's clock, whatever your timezone."],
+              ["Numbers, not names", "You see how busy a slot is. Never who is in the queue."],
+            ].map(([term, text]) => (
+              <div key={term} className="bg-surface p-5">
+                <dt className="font-display text-xl font-medium text-ink">{term}</dt>
+                <dd className="mt-1.5 text-[0.9375rem] text-ink-2">{text}</dd>
               </div>
-              <div className="border-b border-line-2 px-5 py-4">
-                <p className="text-[0.8125rem] text-muted">Booking only</p>
-                <div className="mt-2 flex flex-wrap gap-1.5 font-mono text-[0.8125rem] tabular">
-                  <span className="rounded-lg border border-line px-2.5 py-1 font-semibold text-ink">Tue 27 Oct → Fri 6 Nov</span>
-                  <span className="rounded-lg border border-line px-2.5 py-1 text-ink-2">09:00–12:00</span>
-                  <span className="rounded-lg border border-line px-2.5 py-1 text-ink-2">14:00–EOD</span>
-                </div>
-              </div>
-              <ul className="flex flex-col gap-2 p-4" aria-hidden="true">
-                {previewSlots.map((s) => (
-                  <li
-                    key={s.day + s.time}
-                    className={`relative flex items-center gap-4 rounded-xl border px-4 py-3 ${
-                      s.selected
-                        ? "border-accent bg-accent-soft"
-                        : s.inWindow
-                          ? "border-line bg-surface"
-                          : "border-line bg-surface opacity-55"
-                    }`}
-                  >
-                    {s.selected && <span className="absolute top-2.5 bottom-2.5 -left-px w-[3px] rounded-r-full bg-accent" />}
-                    <span className="w-14">
-                      <span className="block font-mono text-lg leading-tight font-semibold text-ink tabular">{s.time}</span>
-                      <span className="block text-xs text-muted">{s.day}</span>
-                    </span>
-                    <span className="flex-1">
-                      <span
-                        className={`rounded-md px-2 py-0.5 text-xs font-medium ${
-                          s.inWindow ? "bg-accent-soft text-accent-ink" : "border border-line bg-surface-2 text-ink-2"
-                        }`}
-                      >
-                        {s.inWindow ? "In window" : "Outside window"}
-                      </span>
-                    </span>
-                    <span className="border-l border-line-2 pl-4">
-                      <QueueMeter count={s.queued} size="sm" />
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              <div className="flex items-center gap-3 border-t border-line px-5 py-3.5">
-                <div className="min-w-0 flex-1">
-                  <p className="font-mono text-sm font-semibold text-ink">Tue 27 Oct · 11:45</p>
-                  <p className="text-xs text-muted">2 already queued</p>
-                </div>
-                <span className="btn btn-primary pointer-events-none h-9 min-h-9 px-3.5 text-sm">Book this slot</span>
-              </div>
-            </div>
-          </div>
+            ))}
+          </dl>
         </div>
       </section>
 
@@ -194,7 +127,7 @@ export default function Home() {
               A number that moves when people commit, and only then.
             </h2>
             <p className="mt-4 text-ink-2">
-              One count per exact slot, per system. A passport slot and a coordination number slot at the same minute
+              One count per exact slot, per service. A passport slot and a migration slot at the same minute
               never mix. Your own attempts are labelled as yours, never hidden in the crowd.
             </p>
           </div>
@@ -303,9 +236,7 @@ export default function Home() {
             <h2 className="font-display text-3xl leading-tight font-medium sm:text-4xl">Set your window once.</h2>
             <p className="mt-2 max-w-md opacity-75">The bot keeps looking, books only what you can attend, and tells you how busy it was.</p>
           </div>
-          <Link href="/console" className="btn h-12 bg-paper px-5 text-base text-ink hover:opacity-90">
-            Open the console <ArrowRight className="size-4" aria-hidden="true" />
-          </Link>
+          <BottomCta />
         </div>
       </section>
     </>

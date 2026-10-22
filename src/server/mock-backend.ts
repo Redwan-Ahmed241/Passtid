@@ -10,13 +10,14 @@ import { randomUUID } from "node:crypto";
 import {
   SYSTEM_INFO,
   type Booking,
-  type BookingWindow,
+  type BookingRequest,
   type ReleaseReason,
+  type RequestResponse,
   type Slot,
   type SlotsResponse,
   type SystemId,
-  type WindowResponse,
 } from "@/lib/types";
+import { emptyPerson, isComplete } from "@/lib/applicants";
 import { EMBASSY_TZ, addDays, embassyClock, embassyToday, minutesToClock, weekday } from "@/lib/time";
 
 /** A pending entry with no progress for this long stops counting and is released. */
@@ -31,15 +32,16 @@ interface Entry extends Booking {
 
 interface Store {
   entries: Map<string, Entry>;
-  windows: Map<string, WindowResponse>;
-  /** Seats taken on the coordination site by successful bookings, per slot key. */
+  /** Booking request per user and service: people, email and window. */
+  requests: Map<string, { request: BookingRequest; updatedAt: string }>;
+  /** Seats taken on the migration site by successful bookings, per slot key. */
   taken: Map<string, number>;
 }
 
 const globalForStore = globalThis as unknown as { __slotStore?: Store };
 const store: Store = (globalForStore.__slotStore ??= {
   entries: new Map(),
-  windows: new Map(),
+  requests: new Map(),
   taken: new Map(),
 });
 
@@ -210,6 +212,14 @@ export function createBooking(system: SystemId, slot: string, clientId: string):
   const now = nowDate.getTime();
   advance(now);
 
+  const saved = store.requests.get(requestKey(clientId, system));
+  if (!saved || !isComplete(system, saved.request)) {
+    throw new ApiError(
+      422,
+      "incomplete_details",
+      "Complete the people and email details for this service before booking.",
+    );
+  }
   const exists = seedSlots(system, embassyToday(nowDate), embassyClock(nowDate)).some(
     (s) => s.slot === slot,
   );
@@ -277,24 +287,42 @@ export function cancelBooking(id: string, clientId: string): Booking {
   return toBooking(e);
 }
 
-export function defaultWindow(today: string): BookingWindow {
+const requestKey = (userId: string, system: SystemId) => `${userId}|${system}`;
+
+/** A fresh request: one empty person, the account email, and the next two weeks, mornings and afternoons. */
+export function defaultRequest(today: string, email: string): BookingRequest {
   return {
-    from: today,
-    to: addDays(today, 13),
-    times: [
-      { start: "09:00", end: "12:00" },
-      { start: "14:00", end: "EOD" },
-    ],
-    emergency: false,
+    persons: [emptyPerson()],
+    email,
+    window: {
+      emergency: false,
+      ranges: [
+        {
+          id: "r1",
+          from: today,
+          to: addDays(today, 13),
+          times: [
+            { start: "09:00", end: "12:00" },
+            { start: "14:00", end: "EOD" },
+          ],
+        },
+      ],
+    },
   };
 }
 
-export function getWindow(clientId: string): WindowResponse {
-  return store.windows.get(clientId) ?? { window: defaultWindow(embassyToday()), updatedAt: null };
+function toResponse(system: SystemId, request: BookingRequest, updatedAt: string | null): RequestResponse {
+  return { request, updatedAt, complete: isComplete(system, request) };
 }
 
-export function saveWindow(clientId: string, window: BookingWindow): WindowResponse {
-  const res = { window, updatedAt: new Date().toISOString() };
-  store.windows.set(clientId, res);
-  return res;
+export function getRequest(userId: string, system: SystemId, email: string): RequestResponse {
+  const saved = store.requests.get(requestKey(userId, system));
+  if (saved) return toResponse(system, saved.request, saved.updatedAt);
+  return toResponse(system, defaultRequest(embassyToday(), email), null);
+}
+
+export function saveRequest(userId: string, system: SystemId, request: BookingRequest): RequestResponse {
+  const updatedAt = new Date().toISOString();
+  store.requests.set(requestKey(userId, system), { request, updatedAt });
+  return toResponse(system, request, updatedAt);
 }

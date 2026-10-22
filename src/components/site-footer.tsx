@@ -14,7 +14,7 @@ export function SiteFooter() {
           <p className="label-mono">Product</p>
           <ul className="mt-3 text-sm sm:space-y-2">
             <li><Link className="inline-flex min-h-11 items-center text-ink-2 hover:text-ink sm:min-h-0" href="/console">Booking console</Link></li>
-            <li><Link className="inline-flex min-h-11 items-center text-ink-2 hover:text-ink sm:min-h-0" href="/console?system=coordination">Coordination numbers</Link></li>
+            <li><Link className="inline-flex min-h-11 items-center text-ink-2 hover:text-ink sm:min-h-0" href="/console?system=migration">Migration</Link></li>
             <li><Link className="inline-flex min-h-11 items-center text-ink-2 hover:text-ink sm:min-h-0" href="/#chat">Chat bot</Link></li>
           </ul>
         </div>

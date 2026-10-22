@@ -11,14 +11,29 @@ interface Props {
   otherActive: ViewSlot | null;
   emergency: boolean;
   windowValid: boolean;
+  /** People and contact email are complete, so a booking can start. */
+  detailsReady: boolean;
   working: boolean;
   onBook: () => void;
   onCancel: (bookingId: string) => void;
   onInclude: () => void;
   onJump: (slot: string) => void;
+  onFixDetails: () => void;
 }
 
-export function ActionBar({ slot, otherActive, emergency, windowValid, working, onBook, onCancel, onInclude, onJump }: Props) {
+export function ActionBar({
+  slot,
+  otherActive,
+  emergency,
+  windowValid,
+  detailsReady,
+  working,
+  onBook,
+  onCancel,
+  onInclude,
+  onJump,
+  onFixDetails,
+}: Props) {
   const [confirming, setConfirming] = useState(false);
   const mine = slot?.mine ?? null;
 
@@ -106,6 +121,15 @@ export function ActionBar({ slot, otherActive, emergency, windowValid, working, 
       );
       actions = (
         <button type="button" className="btn btn-primary" disabled>Book this slot</button>
+      );
+    } else if (!detailsReady) {
+      title = when;
+      detail = "Add the people and a contact email for this service before you can book.";
+      actions = (
+        <button type="button" className="btn btn-primary" onClick={onFixDetails}>
+          Add details
+          <ArrowRight className="size-4" aria-hidden="true" />
+        </button>
       );
     } else {
       title = when;

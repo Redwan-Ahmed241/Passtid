@@ -14,7 +14,7 @@ export const site = {
   name: "Tidlucka",
   tagline: "Book a slot you can actually attend",
   description:
-    "Tidlucka watches Swedish embassy appointment slots in London for passports, national ID cards and coordination numbers. Set the days and hours you can attend, see how many people are already queued for each slot, and book the quiet one.",
+    "Tidlucka watches Swedish embassy appointment slots in London for passports, national ID cards and migration (coordination numbers). Set the days and hours you can attend, see how many people are already queued for each slot on a month calendar, and book the quiet one.",
   url: baseUrl(),
   locale: "en_GB",
   disclaimer:

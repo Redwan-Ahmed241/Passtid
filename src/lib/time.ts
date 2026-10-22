@@ -83,6 +83,37 @@ export function relativeDay(day: string, today: string): string | null {
   return null;
 }
 
+/* ------------------------------ months ------------------------------ */
+
+/** "2026-10-23" -> "2026-10" */
+export const monthOf = (dayOrIso: string) => dayOrIso.slice(0, 7);
+
+export function addMonths(month: string, n: number): string {
+  const [y, m] = month.split("-").map(Number);
+  const total = y * 12 + (m - 1) + n;
+  return `${Math.floor(total / 12)}-${pad((total % 12) + 1)}`;
+}
+
+export function daysInMonth(month: string): number {
+  const [y, m] = month.split("-").map(Number);
+  return new Date(Date.UTC(y, m, 0)).getUTCDate();
+}
+
+/** Position of the 1st of the month in a Monday-first week: 0 = Monday … 6 = Sunday. */
+export function firstWeekdayIndex(month: string): number {
+  return (weekday(`${month}-01`) + 6) % 7;
+}
+
+/** "October 2026" */
+export function formatMonth(month: string): string {
+  const [y, m] = month.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, 1, 12)).toLocaleDateString("en-GB", {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+
 export function minutesToClock(mins: number): string {
   return `${pad(Math.floor(mins / 60))}:${pad(mins % 60)}`;
 }

@@ -8,7 +8,7 @@ import { site } from "@/lib/site";
 export const metadata: Metadata = {
   title: "Booking rules: windows, queue counts and edge cases",
   description:
-    "Exactly how Tidlucka matches Swedish embassy slots to your booking window, what counts as being in the queue, and what happens when a booking fails, with the same rules for passports, ID cards and coordination numbers.",
+    "Exactly how Tidlucka matches Swedish embassy slots to your booking window, what counts as being in the queue, and what happens when a booking fails, with the same rules for passports, ID cards and migration (coordination numbers).",
   alternates: { canonical: "/rules" },
   openGraph: { url: "/rules" },
 };
@@ -17,11 +17,14 @@ const matching: { rule: string; result: string; yes?: boolean; no?: boolean }[] 
   { rule: "Start of a time range", result: "09:00 is bookable", yes: true },
   { rule: "End of a time range", result: "12:00 is not bookable, 11:45 is", no: true },
   { rule: "First and last day of the date range", result: "Both count: 21 Oct and 31 Oct are in", yes: true },
-  { rule: "No time ranges given", result: "Any time of day on those dates" },
-  { rule: "No end date given", result: "Any date from the start date onwards" },
-  { rule: "Several time ranges", result: "A slot is bookable if it matches any of them" },
+  { rule: "Only a start date", result: "That date onwards, with no end" },
+  { rule: "Only an end date", result: "From now until that date" },
+  { rule: "Start and end are the same day", result: "That single day only" },
+  { rule: "No time ranges on a date range", result: "Any time of day on those dates" },
+  { rule: "Several time ranges", result: "A slot is bookable if it is inside any of them" },
+  { rule: "Several date ranges", result: "A slot is bookable if it matches any date range, using that range's own times" },
   { rule: "Which clock", result: "The embassy's local time (London) on both systems, whatever the server's timezone" },
-  { rule: "How far it looks", result: "12 weeks for passports and ID cards, 8 for coordination numbers, and it says when it stops" },
+  { rule: "How far it looks", result: "12 weeks for passports and ID cards, 8 for migration, and it says when it stops" },
 ];
 
 const states = [
@@ -92,7 +95,7 @@ export default function RulesPage() {
           </h1>
           <p className="mt-5 max-w-2xl text-lg text-ink-2">
             How a slot is matched to your window, what counts as being in the queue, and what you see when something
-            goes wrong. Identical on the passport / national ID system and the coordination number system.
+            goes wrong. Identical for the passport / national ID service and the migration service.
           </p>
           <nav aria-label="On this page" className="mt-8 flex flex-wrap gap-2">
             {[
@@ -143,7 +146,7 @@ export default function RulesPage() {
 
         <section id="queue" aria-labelledby="queue-h" className="grid gap-10 lg:grid-cols-[minmax(0,0.75fr)_minmax(0,1.25fr)] lg:gap-16">
           <SectionHead id="queue-h" n="02" title="What counts as “in the queue”">
-            One number per exact slot, per system. A passport slot and a coordination number slot never mix, even at the
+            One number per exact slot, per service. A passport slot and a migration slot never mix, even at the
             same minute.
           </SectionHead>
           <div className="space-y-6">
@@ -187,7 +190,7 @@ export default function RulesPage() {
 
         <section id="edge-cases" aria-labelledby="edge-h" className="grid gap-10 lg:grid-cols-[minmax(0,0.75fr)_minmax(0,1.25fr)] lg:gap-16">
           <SectionHead id="edge-h" n="03" title="When things go wrong">
-            Every one of these behaves identically in the passport flow and the coordination number flow.
+            Every one of these behaves identically in the passport flow and the migration flow.
           </SectionHead>
           <dl className="divide-y divide-line border-y border-line">
             {edges.map(([situation, outcome]) => (
