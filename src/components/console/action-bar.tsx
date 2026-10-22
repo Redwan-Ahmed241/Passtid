@@ -126,7 +126,7 @@ export function ActionBar({ slot, otherActive, emergency, windowValid, working, 
 
   return (
     <div
-      className="sticky bottom-3 z-20 mt-5 flex flex-col gap-3 rounded-2xl border border-line bg-surface/95 p-3.5 pl-4 shadow-lg backdrop-blur sm:flex-row sm:items-center sm:gap-4"
+      className={`${slot ? "flex" : "hidden sm:flex"} sticky bottom-3 z-20 mt-5 flex-col gap-3 rounded-2xl border border-line bg-surface/95 p-3.5 pl-4 shadow-lg backdrop-blur sm:flex-row sm:items-center sm:gap-4`}
       role="region"
       aria-label="Selected slot"
     >

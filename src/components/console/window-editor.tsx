@@ -183,7 +183,7 @@ export function WindowEditor({ value, today, horizon, onChange }: Props) {
               type="button"
               disabled={value.emergency}
               onClick={p.apply}
-              className="min-h-9 rounded-full border border-line bg-surface-2 px-3.5 text-sm text-ink-2 transition-colors hover:border-accent-line hover:bg-accent-soft hover:text-accent-ink disabled:opacity-50"
+              className="min-h-11 rounded-full border sm:min-h-9 border-line bg-surface-2 px-3.5 text-sm text-ink-2 transition-colors hover:border-accent-line hover:bg-accent-soft hover:text-accent-ink disabled:opacity-50"
             >
               {p.label}
             </button>

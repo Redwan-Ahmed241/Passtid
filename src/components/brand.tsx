@@ -18,7 +18,7 @@ export function LogoMark({ className = "size-7" }: { className?: string }) {
 
 export function Wordmark() {
   return (
-    <Link href="/" className="group inline-flex items-center gap-2.5 rounded-md" aria-label={`${site.name} home`}>
+    <Link href="/" className="group inline-flex min-h-11 items-center gap-2.5 rounded-md" aria-label={`${site.name} home`}>
       <LogoMark />
       <span className="font-display text-[1.375rem] leading-none font-medium tracking-[-0.01em] text-ink">
         {site.name}

@@ -12,18 +12,18 @@ export function SiteFooter() {
         </div>
         <div>
           <p className="label-mono">Product</p>
-          <ul className="mt-3 space-y-2 text-sm">
-            <li><Link className="text-ink-2 hover:text-ink" href="/console">Booking console</Link></li>
-            <li><Link className="text-ink-2 hover:text-ink" href="/console?system=coordination">Coordination numbers</Link></li>
-            <li><Link className="text-ink-2 hover:text-ink" href="/#chat">Chat bot</Link></li>
+          <ul className="mt-3 text-sm sm:space-y-2">
+            <li><Link className="inline-flex min-h-11 items-center text-ink-2 hover:text-ink sm:min-h-0" href="/console">Booking console</Link></li>
+            <li><Link className="inline-flex min-h-11 items-center text-ink-2 hover:text-ink sm:min-h-0" href="/console?system=coordination">Coordination numbers</Link></li>
+            <li><Link className="inline-flex min-h-11 items-center text-ink-2 hover:text-ink sm:min-h-0" href="/#chat">Chat bot</Link></li>
           </ul>
         </div>
         <div>
           <p className="label-mono">Reference</p>
-          <ul className="mt-3 space-y-2 text-sm">
-            <li><Link className="text-ink-2 hover:text-ink" href="/rules">Matching rules</Link></li>
-            <li><Link className="text-ink-2 hover:text-ink" href="/rules#queue">Queue rules</Link></li>
-            <li><Link className="text-ink-2 hover:text-ink" href="/rules#edge-cases">When things go wrong</Link></li>
+          <ul className="mt-3 text-sm sm:space-y-2">
+            <li><Link className="inline-flex min-h-11 items-center text-ink-2 hover:text-ink sm:min-h-0" href="/rules">Matching rules</Link></li>
+            <li><Link className="inline-flex min-h-11 items-center text-ink-2 hover:text-ink sm:min-h-0" href="/rules#queue">Queue rules</Link></li>
+            <li><Link className="inline-flex min-h-11 items-center text-ink-2 hover:text-ink sm:min-h-0" href="/rules#edge-cases">When things go wrong</Link></li>
           </ul>
         </div>
       </div>

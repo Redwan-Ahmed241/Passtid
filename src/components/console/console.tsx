@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { AlertTriangle, ChevronRight, RefreshCw, ScanLine } from "lucide-react";
+import { AlertTriangle, ChevronDown, ChevronRight, RefreshCw, ScanLine, SlidersHorizontal } from "lucide-react";
 import { api, ApiRequestError } from "@/lib/api";
 import {
   SYSTEM_INFO,
@@ -60,6 +60,7 @@ export function Console() {
   const [filter, setFilter] = useState<Filter>("window");
   const [sort, setSort] = useState<Sort>("soonest");
   const [working, setWorking] = useState(false);
+  const [editorOpen, setEditorOpen] = useState(false);
   const [chat, setChat] = useState<ChatMessage[]>([]);
   const [typing, setTyping] = useState(false);
   const [toast, setToast] = useState<{ id: number; text: string; tone: "ok" | "warn" } | null>(null);
@@ -404,7 +405,7 @@ export function Console() {
               type="button"
               aria-pressed={system === id}
               onClick={() => switchSystem(id)}
-              className={`min-h-10 rounded-lg px-4 text-sm font-semibold whitespace-nowrap transition-colors ${
+              className={`min-h-11 rounded-lg px-4 text-sm font-semibold whitespace-nowrap transition-colors ${
                 system === id ? "bg-surface text-ink shadow-sm" : "text-muted hover:text-ink"
               }`}
             >
@@ -414,16 +415,40 @@ export function Console() {
         </div>
       </div>
 
-      <div className="mt-6 grid items-start gap-6 lg:grid-cols-[22rem_minmax(0,1fr)] 2xl:grid-cols-[21rem_minmax(0,1fr)_23rem]">
+      <div className="mt-6 grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[22rem_minmax(0,1fr)] 2xl:grid-cols-[21rem_minmax(0,1fr)_23rem]">
         {/* Sidebar */}
         <aside className="flex flex-col gap-4 lg:sticky lg:top-20" aria-label="Booking window">
           {draft && data ? (
             <>
-              <WindowEditor value={draft} today={data.today} horizon={data.scannedUntil} onChange={setDraft} />
-              <WindowSummary value={draft} save={draftValid ? saveState : "invalid"} />
+              {/* On phones the editor collapses so the slots are the first thing you see. */}
+              <button
+                type="button"
+                aria-expanded={editorOpen}
+                aria-controls="window-panel"
+                onClick={() => setEditorOpen((o) => !o)}
+                className="flex min-h-14 w-full items-center gap-3 rounded-2xl border border-line bg-surface px-4 py-3 text-left shadow-sm lg:hidden"
+              >
+                <SlidersHorizontal className="size-4 flex-none text-accent" aria-hidden="true" />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-semibold text-ink">
+                    {editorOpen ? "Hide booking window" : "Edit booking window"}
+                  </span>
+                  {!editorOpen && effective && (
+                    <span className="block truncate font-mono text-xs text-muted">{describeWindow(effective)}</span>
+                  )}
+                </span>
+                <ChevronDown
+                  className={`size-4 flex-none text-muted transition-transform ${editorOpen ? "rotate-180" : ""}`}
+                  aria-hidden="true"
+                />
+              </button>
+              <div id="window-panel" className={`${editorOpen ? "flex" : "hidden"} flex-col gap-4 lg:flex`}>
+                <WindowEditor value={draft} today={data.today} horizon={data.scannedUntil} onChange={setDraft} />
+                <WindowSummary value={draft} save={draftValid ? saveState : "invalid"} />
+              </div>
             </>
           ) : (
-            <div className="h-[34rem] rounded-2xl border border-line bg-surface p-5" aria-hidden="true">
+            <div className="h-14 rounded-2xl border border-line bg-surface p-5 lg:h-[34rem]" aria-hidden="true">
               <div className="skeleton h-3 w-32" />
               <div className="mt-6 grid grid-cols-2 gap-3">
                 <div className="skeleton h-11" />
@@ -464,7 +489,7 @@ export function Console() {
             <button
               type="button"
               onClick={() => void loadSlots(system)}
-              className="btn btn-ghost h-9 min-h-9 px-3 text-sm"
+              className="btn btn-ghost h-11 min-h-11 sm:h-9 sm:min-h-9 px-3 text-sm"
               aria-label="Refresh slots now"
             >
               <RefreshCw className="size-3.5" aria-hidden="true" /> Refresh
@@ -485,7 +510,7 @@ export function Console() {
                   type="button"
                   aria-pressed={filter === id}
                   onClick={() => setFilter(id)}
-                  className={`inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3.5 text-[0.8125rem] font-medium transition-colors ${
+                  className={`inline-flex min-h-11 items-center gap-1.5 rounded-full sm:min-h-9 border px-3.5 text-[0.8125rem] font-medium transition-colors ${
                     filter === id
                       ? "border-accent-line bg-accent-soft text-accent-ink"
                       : "border-line bg-surface text-ink-2 hover:border-line-strong"
@@ -501,7 +526,7 @@ export function Console() {
               <select
                 value={sort}
                 onChange={(e) => setSort(e.target.value as Sort)}
-                className="field min-h-9 w-auto py-1 pr-8 text-[0.8125rem]"
+                className="field min-h-11 w-auto py-1 pr-8 text-[0.8125rem] sm:min-h-9"
               >
                 <option value="soonest">Soonest first</option>
                 <option value="quietest">Least busy first</option>
@@ -515,7 +540,7 @@ export function Console() {
                 <AlertTriangle className="size-4" aria-hidden="true" /> Can&rsquo;t reach the booking service
               </p>
               <p className="mt-1 text-sm text-ink-2">{loadError}</p>
-              <button type="button" className="btn btn-ghost mt-3 h-9 min-h-9 text-sm" onClick={() => void loadSlots(system)}>
+              <button type="button" className="btn btn-ghost mt-3 h-11 min-h-11 sm:h-9 sm:min-h-9 text-sm" onClick={() => void loadSlots(system)}>
                 Try again
               </button>
             </div>
@@ -557,7 +582,7 @@ export function Console() {
                       <p className="mt-1 text-sm text-muted">
                         A busy slot never blocks a booking. The count is information, not a lock.
                       </p>
-                      <button type="button" className="btn btn-ghost mt-3 h-9 min-h-9 text-sm" onClick={() => setFilter("window")}>
+                      <button type="button" className="btn btn-ghost mt-3 h-11 min-h-11 sm:h-9 sm:min-h-9 text-sm" onClick={() => setFilter("window")}>
                         Show all {inWin.length} in my window
                       </button>
                     </div>
@@ -681,8 +706,8 @@ export function ConsoleFallback() {
         <div className="mt-3 skeleton h-10 w-full max-w-xl" />
         <div className="mt-3 skeleton h-4 w-72" />
       </div>
-      <div className="mt-6 grid gap-6 lg:grid-cols-[22rem_minmax(0,1fr)]">
-        <div className="h-[34rem] rounded-2xl border border-line bg-surface" />
+      <div className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[22rem_minmax(0,1fr)]">
+        <div className="h-14 rounded-2xl border border-line bg-surface lg:h-[34rem]" />
         <div className="rounded-2xl border border-line bg-surface p-5">
           <SlotListSkeleton />
         </div>

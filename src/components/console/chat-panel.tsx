@@ -86,7 +86,7 @@ export function ChatPanel({ messages, typing, commands, onCommand }: Props) {
               type="button"
               title={c.hint}
               onClick={() => onCommand(c.cmd)}
-              className="min-h-9 rounded-lg border border-line bg-surface-2 px-3 font-mono text-[0.8125rem] text-ink-2 transition-colors hover:border-accent-line hover:bg-accent-soft hover:text-accent-ink"
+              className="min-h-11 rounded-lg border sm:min-h-9 border-line bg-surface-2 px-3 font-mono text-[0.8125rem] text-ink-2 transition-colors hover:border-accent-line hover:bg-accent-soft hover:text-accent-ink"
             >
               {c.cmd}
             </button>

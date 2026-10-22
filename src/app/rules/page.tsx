@@ -82,7 +82,7 @@ export default function RulesPage() {
         <div className="mx-auto max-w-7xl px-4 pt-14 pb-12 sm:px-6 md:pt-20 lg:px-8">
           <nav aria-label="Breadcrumb" className="font-mono text-xs text-muted">
             <ol className="flex gap-2">
-              <li><Link href="/" className="hover:text-ink">Home</Link></li>
+              <li><Link href="/" className="inline-flex min-h-11 items-center hover:text-ink">Home</Link></li>
               <li aria-hidden="true">/</li>
               <li aria-current="page" className="text-ink-2">Booking rules</li>
             </ol>
@@ -100,7 +100,7 @@ export default function RulesPage() {
               ["#queue", "Queue"],
               ["#edge-cases", "Edge cases"],
             ].map(([href, label]) => (
-              <a key={href} href={href} className="inline-flex min-h-10 items-center rounded-full border border-line bg-surface px-4 text-sm text-ink-2 hover:border-line-strong hover:text-ink">
+              <a key={href} href={href} className="inline-flex min-h-11 items-center rounded-full border border-line bg-surface px-4 text-sm text-ink-2 hover:border-line-strong hover:text-ink">
                 {label}
               </a>
             ))}
