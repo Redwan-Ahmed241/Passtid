@@ -4,16 +4,18 @@ import { useId, useState } from "react";
 import { Plus, Trash2, X, Zap } from "lucide-react";
 import { makeId } from "@/lib/api";
 import type { BookingWindow, DateRange, TimeRange } from "@/lib/types";
+import { SaveBadge, type SaveState } from "./save-badge";
 import { describeDates, describeTimes, emptyRange, MAX_DATE_RANGES, MAX_TIME_RANGES, normaliseClock, validateWindow } from "@/lib/window";
 
 interface Props {
   value: BookingWindow;
   today: string;
   horizon: string;
+  save: SaveState;
   onChange: (next: BookingWindow) => void;
 }
 
-export function WindowEditor({ value, today, horizon, onChange }: Props) {
+export function WindowEditor({ value, today, horizon, save, onChange }: Props) {
   const uid = useId();
   const [touched, setTouched] = useState<Set<string>>(new Set());
   const issues = validateWindow(value);
@@ -28,10 +30,18 @@ export function WindowEditor({ value, today, horizon, onChange }: Props) {
 
   return (
     <section aria-labelledby={`${uid}-h`} className="rounded-2xl border border-line bg-surface p-5 shadow-sm">
-      <h2 id={`${uid}-h`} className="label-mono">Booking window</h2>
+      <div className="flex items-center justify-between gap-3">
+        <h2 id={`${uid}-h`} className="label-mono">Booking window</h2>
+        <SaveBadge state={issues.length > 0 ? "invalid" : save} />
+      </div>
       <p className="mt-2 text-[0.8125rem] text-muted">
         Add one or more date ranges. Each can have its own times; leave times empty for any time of day.
       </p>
+      {issues.length > 0 && (
+        <p className="mt-2 text-[0.8125rem] text-hot">
+          Fix the highlighted fields. The bot keeps using your last saved window until then.
+        </p>
+      )}
 
       <fieldset className="mt-4 space-y-4" disabled={value.emergency}>
         <legend className="sr-only">Date ranges</legend>

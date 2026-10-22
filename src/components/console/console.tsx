@@ -14,34 +14,18 @@ import {
   type SlotsResponse,
   type SystemId,
 } from "@/lib/types";
-import {
-  EMBASSY_TZ,
-  clockOf,
-  dayOf,
-  embassyClock,
-  formatDayLong,
-  formatDayShort,
-  monthOf,
-} from "@/lib/time";
+import { EMBASSY_TZ, clockOf, dayOf, formatDayLong, formatDayShort, monthOf } from "@/lib/time";
 import { describeWindow, MAX_DATE_RANGES, matchesWindow, parseClock, validateWindow } from "@/lib/window";
 import { announceAuthChange, useMe } from "../auth/use-me";
 import { ActionBar } from "./action-bar";
 import { ApplicantsEditor } from "./applicants-editor";
-import { ChatPanel, type ChatMessage } from "./chat-panel";
 import { MonthCalendar, type DayInfo } from "./month-calendar";
+import type { SaveState } from "./save-badge";
 import { SlotList, SlotListSkeleton, type ViewSlot } from "./slot-list";
 import { WindowEditor } from "./window-editor";
-import { WindowSummary, type SaveState } from "./window-summary";
 
 const POLL_SLOTS_MS = 15_000;
 const POLL_BOOKING_MS = 1_500;
-
-const COMMANDS = [
-  { cmd: "/status", hint: "List the slots inside your window with their queue counts" },
-  { cmd: "/quietest", hint: "The least busy slots inside your window" },
-  { cmd: "/window", hint: "Repeat the window the bot is using" },
-  { cmd: "/book", hint: "Book the selected slot, or the earliest one in your window" },
-];
 
 const slotLabel = (iso: string) => `${formatDayShort(iso)} ${clockOf(iso)}`;
 const sameRequest = (a: BookingRequest, b: BookingRequest) => JSON.stringify(a) === JSON.stringify(b);
@@ -74,34 +58,12 @@ export function Console() {
   const [working, setWorking] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [showDetailErrors, setShowDetailErrors] = useState(false);
-  const [chat, setChat] = useState<ChatMessage[]>([]);
-  const [typing, setTyping] = useState(false);
   const [toast, setToast] = useState<{ id: number; text: string; tone: "ok" | "warn" } | null>(null);
 
-  const msgId = useRef(0);
   const announced = useRef(new Set<string>());
-  const greeted = useRef(false);
   const requestedFor = useRef(new Set<SystemId>());
 
   /* ----------------------------- helpers ----------------------------- */
-
-  const say = useCallback((from: ChatMessage["from"], text: string) => {
-    msgId.current += 1;
-    const id = msgId.current;
-    setChat((c) => [...c.slice(-60), { id, from, text, at: embassyClock() }]);
-  }, []);
-
-  /** Bot replies arrive after a short typing indicator, like the real chat. */
-  const reply = useCallback(
-    (text: string) => {
-      setTyping(true);
-      setTimeout(() => {
-        setTyping(false);
-        say("bot", text);
-      }, 550);
-    },
-    [say],
-  );
 
   const notify = useCallback((text: string, tone: "ok" | "warn" = "ok") => {
     setToast({ id: Date.now(), text, tone });
@@ -142,7 +104,7 @@ export function Console() {
     router.replace(`/login?next=${encodeURIComponent(search ? `${pathname}?${search}` : pathname)}`);
   }, [authLoading, user, router, pathname, params]);
 
-  // The people, email and window live on the backend per service, so the bot and this page agree.
+  // The people, email and window live on the backend per service.
   useEffect(() => {
     if (!user || requestedFor.current.has(system)) return;
     requestedFor.current.add(system);
@@ -225,18 +187,10 @@ export function Console() {
             const fresh = await loadSlots(b.system);
             const depth = fresh?.slots.find((s) => s.slot === b.slot)?.queued ?? 0;
             if (b.status === "booked") {
-              reply(
-                `Booked: ${formatDayLong(b.slot)} at ${clockOf(b.slot)}.\nBooking number ${b.reference}. ` +
-                  `The slot now shows ${depth} queued. Yours stays counted because the slot is taken.`,
-              );
-              notify(`Booked ${slotLabel(b.slot)} · ref ${b.reference}`);
+              notify(`Booked ${slotLabel(b.slot)}. Booking number ${b.reference}.`);
             } else if (b.reason !== "cancelled") {
               const why = b.reason === "timed_out" ? "it made no progress for 15 minutes" : "the slot was gone by the time it was clicked";
-              reply(
-                `That booking failed: ${why}. Your queue entry was released, so ${slotLabel(b.slot)} is back to ${depth} queued. ` +
-                  `Nothing is stuck; pick another slot or let me take the next one.`,
-              );
-              notify(`Booking failed. Slot released, back to ${depth} queued`, "warn");
+              notify(`Booking failed: ${why}. ${slotLabel(b.slot)} is released and back to ${depth} queued.`, "warn");
             }
           })
           .catch(() => {
@@ -247,11 +201,11 @@ export function Console() {
     return () => clearInterval(timer);
     // pendingKey captures the identity of `pending` without re-arming on every poll.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingKey, loadSlots, reply, notify]);
+  }, [pendingKey, loadSlots, notify]);
 
   useEffect(() => {
     if (!toast) return;
-    const t = setTimeout(() => setToast(null), 4200);
+    const t = setTimeout(() => setToast(null), 5500);
     return () => clearTimeout(t);
   }, [toast]);
 
@@ -295,17 +249,6 @@ export function Console() {
   const otherActive = view.find((s) => s.mine && s.slot !== selectedSlot?.slot) ?? null;
   const nextInWindow = inWin.find((s) => !s.mine) ?? null;
   const uncontested = inWin.filter((s) => s.queued === 0).length;
-
-  // Greet once, with the same status message the chat bot sends.
-  useEffect(() => {
-    if (greeted.current || !data || !effectiveWindow) return;
-    greeted.current = true;
-    const t = setTimeout(() => {
-      say("me", "/status");
-      reply(statusMessage(system, view, effectiveWindow));
-    }, 300);
-    return () => clearTimeout(t);
-  }, [data, effectiveWindow, system, view, say, reply]);
 
   /* ----------------------------- actions ----------------------------- */
 
@@ -366,7 +309,6 @@ export function Console() {
       return;
     }
     setWorking(true);
-    say("me", `/book ${slot.slot}`);
     try {
       // Make sure the backend has the latest people and email before it books.
       if (!savedReq || !sameRequest(draft, savedReq)) {
@@ -377,16 +319,11 @@ export function Console() {
       const fresh = await loadSlots(system);
       const depth = fresh?.slots.find((s) => s.slot === b.slot)?.queued ?? slot.queued + 1;
       setSelection({ system, slot: b.slot });
-      reply(
-        `Queued: ${formatDayLong(b.slot)} at ${clockOf(b.slot)} for ${draft.persons.length} ${
-          draft.persons.length === 1 ? "person" : "people"
-        }.\nYou are #${depth} in the queue for this slot. The count went up the moment you confirmed, not when the booking succeeds.`,
-      );
-      notify(`Queued: ${slotLabel(b.slot)} now shows ${depth} queued`);
+      const n = draft.persons.length;
+      notify(`Queued ${slotLabel(b.slot)} for ${n} ${n === 1 ? "person" : "people"}. You are #${depth} in the queue.`);
     } catch (err) {
       if (handleAuthLoss(err)) return;
       const message = err instanceof ApiRequestError ? err.message : "The booking could not be started.";
-      reply(`I couldn't queue that: ${message}`);
       notify(message, "warn");
       if (err instanceof ApiRequestError && err.status === 404) void loadSlots(system);
       if (err instanceof ApiRequestError && err.code === "incomplete_details") fixDetails();
@@ -402,9 +339,7 @@ export function Console() {
       const b = await api.cancel(bookingId);
       const fresh = await loadSlots(b.system);
       const depth = fresh?.slots.find((s) => s.slot === b.slot)?.queued ?? 0;
-      say("me", `/cancel ${b.slot}`);
-      reply(`Cancelled. ${slotLabel(b.slot)} is back to ${depth} queued. No phantom entry left behind.`);
-      notify(`Cancelled: ${slotLabel(b.slot)} back to ${depth} queued`);
+      notify(`Cancelled. ${slotLabel(b.slot)} is back to ${depth} queued.`);
     } catch (err) {
       announced.current.delete(bookingId);
       if (!handleAuthLoss(err)) notify(err instanceof ApiRequestError ? err.message : "Couldn't cancel. Try again.", "warn");
@@ -435,44 +370,6 @@ export function Console() {
       },
     }));
     notify(`Window widened to include ${slotLabel(slot.slot)}`);
-  };
-
-  const runCommand = (cmd: string) => {
-    if (!effectiveWindow) return;
-    if (cmd === "/book") {
-      const target =
-        selectedSlot && selectedSlot.inWindow && !selectedSlot.mine
-          ? selectedSlot
-          : [...inWin].sort((a, b) => a.slot.localeCompare(b.slot)).find((s) => !s.mine);
-      say("me", "/book");
-      if (!detailsReady) {
-        reply("I need the people and a contact email for this service first. Fill them in and send /book again.");
-        fixDetails();
-        return;
-      }
-      if (otherActive || selectedSlot?.mine) {
-        reply("You already have a booking running or confirmed on this service. Cancel it first, since only one is allowed per service.");
-        return;
-      }
-      if (!target) {
-        reply(`There is no free slot inside your window (${describeWindow(effectiveWindow)}). Nothing was booked.`);
-        return;
-      }
-      void book(target);
-      return;
-    }
-    say("me", cmd);
-    if (cmd === "/status") reply(statusMessage(system, view, effectiveWindow));
-    else if (cmd === "/window")
-      reply(`Booking only ${describeWindow(effectiveWindow)}.\nTimes are the embassy's local time (London). The start of a range is bookable, the end is not.`);
-    else if (cmd === "/quietest") {
-      const q = [...inWin].sort((a, b) => a.queued - b.queued || a.slot.localeCompare(b.slot)).slice(0, 3);
-      reply(
-        q.length
-          ? `Quietest inside your window:\n${q.map((s) => `• ${slotLabel(s.slot)} · ${s.queued} queued`).join("\n")}`
-          : "Nothing inside your window right now.",
-      );
-    }
   };
 
   /* ----------------------------- render ----------------------------- */
@@ -524,7 +421,7 @@ export function Console() {
         </div>
       </div>
 
-      <div className="mt-6 grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[22rem_minmax(0,1fr)] 2xl:grid-cols-[21rem_minmax(0,1fr)_23rem]">
+      <div className="mt-6 grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[22rem_minmax(0,1fr)]">
         {/* Sidebar: window and people */}
         <aside className="flex flex-col gap-4" aria-label="Booking request">
           {draft && data ? (
@@ -561,9 +458,9 @@ export function Console() {
                   value={draft.window}
                   today={data.today}
                   horizon={data.scannedUntil}
+                  save={saveState}
                   onChange={(window) => setDraft((r) => ({ ...r, window }))}
                 />
-                <WindowSummary value={draft.window} save={windowValid ? saveState : "invalid"} />
                 <div id="people-section" className="scroll-mt-24">
                   <ApplicantsEditor
                     key={system}
@@ -590,7 +487,7 @@ export function Console() {
         </aside>
 
         {/* Calendar and the day's slots */}
-        <section aria-labelledby="results-h" className="min-w-0 rounded-2xl border border-line bg-surface p-4 shadow-sm sm:p-5">
+        <section aria-labelledby="results-h" className="min-w-0 rounded-2xl border border-line bg-surface p-4 shadow-sm sm:p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 id="results-h" className="text-base font-semibold text-ink">
@@ -657,52 +554,57 @@ export function Console() {
                   </div>
                 )}
 
-                <MonthCalendar
-                  month={month}
-                  today={data.today}
-                  scannedUntil={data.scannedUntil}
-                  days={daysMap}
-                  selectedDay={selectedDay}
-                  onSelectDay={pickDay}
-                  onMonthChange={changeMonth}
-                />
+                {/* Calendar beside the day's slots on wide screens, stacked below that. */}
+                <div className="xl:grid xl:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] xl:gap-8">
+                  <div>
+                    <MonthCalendar
+                      month={month}
+                      today={data.today}
+                      scannedUntil={data.scannedUntil}
+                      days={daysMap}
+                      selectedDay={selectedDay}
+                      onSelectDay={pickDay}
+                      onMonthChange={changeMonth}
+                    />
 
-                {nextInWindow && dayOf(nextInWindow.slot) !== selectedDay && (
-                  <button
-                    type="button"
-                    onClick={() => jumpTo(nextInWindow.slot)}
-                    className="mt-4 inline-flex min-h-11 items-center gap-1.5 rounded-md text-sm font-semibold text-accent hover:text-accent-ink"
-                  >
-                    Next slot in your window: {slotLabel(nextInWindow.slot)}
-                    <ChevronRight className="size-4" aria-hidden="true" />
-                  </button>
-                )}
+                    {nextInWindow && dayOf(nextInWindow.slot) !== selectedDay && (
+                      <button
+                        type="button"
+                        onClick={() => jumpTo(nextInWindow.slot)}
+                        className="mt-4 inline-flex min-h-11 items-center gap-1.5 rounded-md text-sm font-semibold text-accent hover:text-accent-ink"
+                      >
+                        Next slot in your window: {slotLabel(nextInWindow.slot)}
+                        <ChevronRight className="size-4" aria-hidden="true" />
+                      </button>
+                    )}
+                  </div>
 
-                <div className="mt-6 border-t border-line-2 pt-5">
-                  {selectedDay ? (
-                    <>
-                      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                        <h3 className="text-base font-semibold text-ink">{formatDayLong(selectedDay)}</h3>
-                        <span className="font-mono text-xs text-muted tabular">
-                          {daySlots.length} slot{daySlots.length === 1 ? "" : "s"}
-                        </span>
+                  <div className="mt-6 border-t border-line-2 pt-5 xl:mt-0 xl:border-t-0 xl:border-l xl:pt-0 xl:pl-8">
+                    {selectedDay ? (
+                      <>
+                        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                          <h3 className="text-base font-semibold text-ink">{formatDayLong(selectedDay)}</h3>
+                          <span className="font-mono text-xs text-muted tabular">
+                            {daySlots.length} slot{daySlots.length === 1 ? "" : "s"}
+                          </span>
+                        </div>
+                        <div className="mt-3">
+                          <SlotList
+                            slots={daySlots}
+                            today={data.today}
+                            grouped={false}
+                            selected={selectedSlot?.slot ?? null}
+                            onSelect={selectSlot}
+                          />
+                        </div>
+                      </>
+                    ) : (
+                      <div className="rounded-xl border border-dashed border-line-strong p-5 text-center">
+                        <p className="font-medium text-ink">No open slots right now</p>
+                        <p className="mt-1 text-sm text-muted">The site has nothing free in the next {data.scanWeeks} weeks. This page checks again every 15 seconds.</p>
                       </div>
-                      <div className="mt-3">
-                        <SlotList
-                          slots={daySlots}
-                          today={data.today}
-                          grouped={false}
-                          selected={selectedSlot?.slot ?? null}
-                          onSelect={selectSlot}
-                        />
-                      </div>
-                    </>
-                  ) : (
-                    <div className="rounded-xl border border-dashed border-line-strong p-5 text-center">
-                      <p className="font-medium text-ink">No open slots right now</p>
-                      <p className="mt-1 text-sm text-muted">The site has nothing free in the next {data.scanWeeks} weeks. This page checks again every 15 seconds.</p>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
 
                 <p className="mt-6 flex items-center gap-2 font-mono text-xs text-muted">
@@ -727,14 +629,6 @@ export function Console() {
             onFixDetails={fixDetails}
           />
         </section>
-
-        {/* Chat */}
-        <div className="lg:col-span-2 2xl:sticky 2xl:top-20 2xl:col-span-1">
-          <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] 2xl:grid-cols-1">
-            <ChatPanel messages={chat} typing={typing} commands={COMMANDS} onCommand={runCommand} />
-            <CountRules />
-          </div>
-        </div>
       </div>
 
       <div aria-live="polite" className="pointer-events-none fixed inset-x-0 bottom-6 z-50 flex justify-center px-4">
@@ -750,49 +644,6 @@ export function Console() {
         )}
       </div>
     </div>
-  );
-}
-
-function statusMessage(system: SystemId, view: ViewSlot[], w: BookingWindow): string {
-  const head = `${SYSTEM_INFO[system].name}: booking only ${describeWindow(w)}`;
-  const inside = view.filter((s) => s.inWindow).slice(0, 5);
-  if (!inside.length) {
-    const near = view.slice(0, 3);
-    return (
-      `${head}\n\nNo free slot inside your window, so nothing will be booked.` +
-      (near.length ? `\nNearest outside it:\n${near.map((s) => `• ${slotLabel(s.slot)}`).join("\n")}` : "")
-    );
-  }
-  return (
-    `${head}\n\n${inside.map((s) => `• ${slotLabel(s.slot)} · ${s.queued} queued`).join("\n")}\n\n` +
-    `Send /book to take the one you picked, or I'll take the earliest.`
-  );
-}
-
-function CountRules() {
-  const rows = [
-    ["Nobody has claimed the slot", "0 queued, uncontested"],
-    ["Someone confirms a booking", "Count rises immediately, before it succeeds"],
-    ["That booking fails or is cancelled", "Count drops back, no phantom entry"],
-    ["A booking hangs for 15 minutes", "Entry stops counting; slot released"],
-    ["Someone else views the slot", "They see a number only, never who"],
-  ];
-  return (
-    <section aria-labelledby="count-h" className="rounded-2xl border border-line bg-surface p-5 shadow-sm">
-      <h2 id="count-h" className="label-mono">When the count changes</h2>
-      <dl className="mt-3 divide-y divide-line-2">
-        {rows.map(([event, effect]) => (
-          <div key={event} className="py-2.5">
-            <dt className="text-[0.8125rem] text-muted">{event}</dt>
-            <dd className="mt-0.5 text-sm font-medium text-ink">{effect}</dd>
-          </div>
-        ))}
-      </dl>
-      <p className="mt-3 rounded-lg border-l-2 border-accent bg-accent-soft px-3 py-2.5 text-[0.8125rem] text-ink-2">
-        <strong className="text-ink">Information, not a lock.</strong> A busy slot never blocks your booking. It just
-        helps you pick a quieter one.
-      </p>
-    </section>
   );
 }
 
