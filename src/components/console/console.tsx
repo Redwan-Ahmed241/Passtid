@@ -409,7 +409,7 @@ export function Console() {
   const summary = effectiveWindow ? describeWindow(effectiveWindow) : "";
 
   return (
-    <div className="mx-auto max-w-[76rem] px-4 pt-8 pb-16 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-7xl px-4 pt-8 pb-16 sm:px-6 lg:px-8">
       {/* Page head */}
       <div className="flex flex-col gap-5 border-b border-line pb-6 lg:flex-row lg:items-end lg:justify-between">
         <div className="max-w-2xl">
@@ -728,7 +728,7 @@ export function Console() {
 
 export function ConsoleFallback() {
   return (
-    <div className="mx-auto max-w-[76rem] px-4 pt-8 pb-16 sm:px-6 lg:px-8" aria-busy="true">
+    <div className="mx-auto max-w-7xl px-4 pt-8 pb-16 sm:px-6 lg:px-8" aria-busy="true">
       <div className="border-b border-line pb-6">
         <p className="label-mono">Booking console</p>
         <div className="mt-3 skeleton h-10 w-full max-w-xl" />

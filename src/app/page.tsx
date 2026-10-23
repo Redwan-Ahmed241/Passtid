@@ -72,12 +72,12 @@ export default function Home() {
 
       {/* Hero */}
       <section className="relative overflow-hidden border-b border-line">
-        <div className="mx-auto max-w-7xl px-4 pt-14 pb-16 sm:px-6 md:pt-24 lg:px-8 lg:pb-24">
-          <p className="label-mono">Swedish embassy appointments · London</p>
-          <h1 className="mt-5 max-w-4xl font-display text-[2.75rem] leading-[1.02] font-medium tracking-[-0.02em] text-ink sm:text-6xl lg:text-[4.75rem]">
+        <div className="mx-auto max-w-7xl px-4 pt-14 pb-16 sm:px-6 md:pt-24 lg:px-8 lg:pb-24 xl:pt-28 xl:pb-28">
+          <p className="label-mono lg:text-center">Swedish embassy appointments · London</p>
+          <h1 className="mt-5 max-w-5xl font-display lg:mx-auto lg:text-center text-[2.75rem] leading-[1.02] font-medium tracking-[-0.02em] text-ink sm:text-6xl lg:text-7xl xl:text-[5.5rem]">
             Book a slot you can <em className="text-accent">actually attend</em>, and see how busy it is.
           </h1>
-          <p className="mt-6 max-w-[38rem] text-lg leading-relaxed text-ink-2">
+          <p className="mt-6 max-w-2xl text-lg leading-relaxed text-ink-2 lg:mx-auto lg:text-center lg:text-xl">
             Tell the bot which days and hours work for you. It watches the passport, ID card and migration
             calendars, shows how many people are already queued for every slot, and books only inside your
             windows. Sign in to see the live calendar.

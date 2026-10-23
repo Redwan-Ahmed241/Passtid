@@ -23,7 +23,7 @@ export function SlotList({ slots, today, grouped, selected, onSelect, dimmed }: 
     return (
       <ul className="flex flex-col gap-2" role="list">
         {slots.map((s) => (
-          <li key={s.slot}>
+          <li key={s.slot} className="@container">
             <SlotRow slot={s} today={today} showDay selected={selected === s.slot} onSelect={onSelect} dimmed={dimmed} />
           </li>
         ))}
@@ -59,7 +59,7 @@ export function SlotList({ slots, today, grouped, selected, onSelect, dimmed }: 
             </div>
             <ul className="flex flex-col gap-2" role="list">
               {items.map((s) => (
-                <li key={s.slot}>
+                <li key={s.slot} className="@container">
                   <SlotRow slot={s} today={today} selected={selected === s.slot} onSelect={onSelect} dimmed={dimmed} />
                 </li>
               ))}
@@ -98,7 +98,7 @@ function SlotRow({
       aria-pressed={selected}
       aria-label={label}
       onClick={() => onSelect(s.slot)}
-      className={`group relative flex w-full items-center gap-4 rounded-xl border px-4 py-3 text-left transition-[border-color,background-color,box-shadow,opacity] duration-150 sm:gap-5 ${
+      className={`group relative flex w-full flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border px-4 py-3 text-left transition-[border-color,background-color,box-shadow,opacity] duration-150 ${
         selected
           ? "border-accent bg-accent-soft shadow-[0_0_0_3px_var(--accent-soft)]"
           : "border-line bg-surface hover:border-line-strong hover:shadow-sm"
@@ -108,14 +108,15 @@ function SlotRow({
         <span aria-hidden="true" className="absolute top-2.5 bottom-2.5 -left-px w-[3px] rounded-r-full bg-accent" />
       )}
 
-      <span className="w-[4.5rem] flex-none">
+      {/* Narrow: time and queue on the first line, tags on the second. Wide: one line. */}
+      <span className="order-1 w-[4.5rem] flex-none">
         <span className="block font-mono text-lg leading-tight font-semibold tracking-tight text-ink tabular">
           {clockOf(s.slot)}
         </span>
         <span className="block text-xs text-muted">{showDay ? (rel ?? formatDayShort(day)) : formatDayShort(day)}</span>
       </span>
 
-      <span className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+      <span className="order-3 flex min-w-0 basis-full flex-wrap items-center gap-1.5 @[30rem]:order-2 @[30rem]:flex-1 @[30rem]:basis-0">
         {s.inWindow ? (
           <Tag tone="accent">In window</Tag>
         ) : (
@@ -138,7 +139,7 @@ function SlotRow({
         )}
       </span>
 
-      <span className="flex-none border-l border-line-2 pl-4 sm:min-w-[9.5rem] sm:pl-5">
+      <span className="order-2 ml-auto flex-none @[30rem]:order-3 @[30rem]:ml-0 @[30rem]:min-w-[9.5rem] @[30rem]:border-l @[30rem]:border-line-2 @[30rem]:pl-5">
         <QueueMeter count={s.queued} />
       </span>
     </button>

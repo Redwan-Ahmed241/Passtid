@@ -20,7 +20,7 @@ export function HeaderActions() {
         <Link href="/login" className="btn btn-ghost hidden h-10 min-h-10 px-4 text-sm md:inline-flex">
           Sign in
         </Link>
-        <Link href="/register" className="btn btn-ink h-11 min-h-11 px-4 text-sm md:h-10 md:min-h-10">
+        <Link href="/register" className="btn btn-ink h-11 min-h-11 px-3 text-sm sm:px-4 md:h-10 md:min-h-10">
           <span className="md:hidden">Sign in</span>
           <span className="hidden md:inline">Create account</span>
         </Link>
@@ -41,7 +41,7 @@ export function HeaderActions() {
         <LogOut className="size-4" aria-hidden="true" /> Sign out
       </button>
       {/* The nav already links to the console from tablet width up. */}
-      <Link href="/console" className="btn btn-ink h-11 min-h-11 px-4 text-sm md:hidden">
+      <Link href="/console" className="btn btn-ink h-11 min-h-11 px-3 text-sm sm:px-4 md:hidden">
         Console
         <ArrowUpRight className="size-4" aria-hidden="true" />
       </Link>

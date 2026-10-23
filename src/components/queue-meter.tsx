@@ -33,12 +33,12 @@ export function QueueMeter({ count, size = "md" }: { count: number; size?: "sm" 
       role="img"
       aria-label={count === 0 ? "Nobody queued" : `${count} ${count === 1 ? "person" : "people"} queued`}
     >
-      <span className="flex items-end gap-[3px]" aria-hidden="true">
+      <span className="flex items-end gap-[0.1875rem]" aria-hidden="true">
         {h.map((height, i) => (
           <span
             key={i}
-            style={{ height }}
-            className={`w-[4px] rounded-[1.5px] transition-colors duration-300 ${
+            style={{ height: `${height / 16}rem` }}
+            className={`w-1 rounded-[0.09rem] transition-colors duration-300 ${
               i < lit ? LEVEL_FILL[level] : "bg-[var(--tick-off)]"
             }`}
           />

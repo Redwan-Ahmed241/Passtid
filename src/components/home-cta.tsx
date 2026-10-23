@@ -8,7 +8,7 @@ import { useMe } from "./auth/use-me";
 export function HeroActions() {
   const { loading, user } = useMe();
   return (
-    <div className="mt-8 flex flex-wrap gap-3">
+    <div className="mt-8 flex flex-wrap gap-3 lg:justify-center">
       {user ? (
         <Link href="/console" className="btn btn-primary group h-12 px-5 text-base">
           Open the console
