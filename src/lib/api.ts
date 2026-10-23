@@ -1,6 +1,10 @@
 import type {
   ApiErrorBody,
   Booking,
+  CheckoutResponse,
+  ConfirmResponse,
+  PlanId,
+  PlansResponse,
   BookingRequest,
   RequestResponse,
   SlotsResponse,
@@ -79,6 +83,11 @@ export const api = {
 
   book: (system: SystemId, slot: string) =>
     request<Booking>(`/bookings`, { method: "POST", body: JSON.stringify({ system, slot }) }),
+  plans: () => request<PlansResponse>(`/plans`),
+  checkout: (system: SystemId, plan: PlanId, slot: string | null) =>
+    request<CheckoutResponse>(`/checkout`, { method: "POST", body: JSON.stringify({ system, plan, slot }) }),
+  confirmCheckout: (sessionId: string) =>
+    request<ConfirmResponse>(`/checkout/confirm`, { method: "POST", body: JSON.stringify({ sessionId }) }),
   booking: (id: string) => request<Booking>(`/bookings/${encodeURIComponent(id)}`),
   cancel: (id: string) => request<Booking>(`/bookings/${encodeURIComponent(id)}`, { method: "DELETE" }),
 };

@@ -9,7 +9,10 @@
 import { randomUUID } from "node:crypto";
 import {
   SYSTEM_INFO,
+  type AlertSubscription,
   type Booking,
+  type ConfirmResponse,
+  type PlanId,
   type BookingRequest,
   type ReleaseReason,
   type RequestResponse,
@@ -18,6 +21,7 @@ import {
   type SystemId,
 } from "@/lib/types";
 import { emptyPerson, isComplete } from "@/lib/applicants";
+import { matchesWindow } from "@/lib/window";
 import { EMBASSY_TZ, addDays, embassyClock, embassyToday, minutesToClock, weekday } from "@/lib/time";
 
 /** A pending entry with no progress for this long stops counting and is released. */
@@ -36,6 +40,8 @@ interface Store {
   requests: Map<string, { request: BookingRequest; updatedAt: string }>;
   /** Seats taken on the migration site by successful bookings, per slot key. */
   taken: Map<string, number>;
+  /** What each paid checkout session produced, so a page reload never fulfils it twice. */
+  fulfilled: Map<string, ConfirmResponse>;
 }
 
 const globalForStore = globalThis as unknown as { __slotStore?: Store };
@@ -43,6 +49,7 @@ const store: Store = (globalForStore.__slotStore ??= {
   entries: new Map(),
   requests: new Map(),
   taken: new Map(),
+  fulfilled: new Map(),
 });
 
 const key = (system: SystemId, slot: string) => `${system}|${slot}`;
@@ -325,4 +332,57 @@ export function saveRequest(userId: string, system: SystemId, request: BookingRe
   const updatedAt = new Date().toISOString();
   store.requests.set(requestKey(userId, system), { request, updatedAt });
   return toResponse(system, request, updatedAt);
+}
+
+/* ------------------------------------------------------------------ */
+/* Paid plans                                                          */
+/* ------------------------------------------------------------------ */
+
+/** Earliest open slot inside the saved booking window ("As soon as possible" accepts any). */
+function earliestMatch(system: SystemId, clientId: string): string | null {
+  const nowDate = new Date();
+  const saved = store.requests.get(requestKey(clientId, system));
+  const window = saved?.request.window;
+  if (!window) return null;
+  const open = seedSlots(system, embassyToday(nowDate), embassyClock(nowDate));
+  return open.find((s) => matchesWindow(s.slot, window))?.slot ?? null;
+}
+
+/**
+ * Turn a verified payment into what was bought. Idempotent per checkout session.
+ *  - notify   : Telegram alerts for this service
+ *  - autobook : the bot books a slot (the one chosen at checkout, else the earliest that fits the window)
+ */
+export function fulfilPayment(
+  paid: { sessionId: string; system: SystemId; plan: PlanId; slot: string | null },
+  clientId: string,
+): ConfirmResponse {
+  const done = store.fulfilled.get(paid.sessionId);
+  if (done) return done;
+
+  let result: ConfirmResponse;
+  if (paid.plan === "notify") {
+    const bot = process.env.TELEGRAM_BOT_USERNAME?.replace(/^@/, "");
+    const alert: AlertSubscription = {
+      id: randomUUID(),
+      system: paid.system,
+      telegramUrl: bot ? `https://t.me/${bot}?start=${paid.sessionId.slice(-24)}` : null,
+    };
+    result = { plan: "notify", system: paid.system, booking: null, alert };
+  } else {
+    const stillOpen = paid.slot
+      ? seedSlots(paid.system, embassyToday(), embassyClock()).some((s) => s.slot === paid.slot)
+      : false;
+    const slot = stillOpen ? paid.slot : earliestMatch(paid.system, clientId);
+    if (!slot) {
+      throw new ApiError(
+        409,
+        "no_slot_after_payment",
+        `Your payment went through, but no open slot fits your dates right now. Keep reference ${paid.sessionId.slice(-12)} and contact support, or try again shortly.`,
+      );
+    }
+    result = { plan: "autobook", system: paid.system, booking: createBooking(paid.system, slot, clientId), alert: null };
+  }
+  store.fulfilled.set(paid.sessionId, result);
+  return result;
 }

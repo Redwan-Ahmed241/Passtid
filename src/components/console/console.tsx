@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { AlertTriangle, ArrowRight, Check, CreditCard, Globe2, Loader2 } from "lucide-react";
-import { api, ApiRequestError, makeId } from "@/lib/api";
+import { AlertTriangle, ArrowRight, BellRing, Bot, Check, CreditCard, Globe2, Loader2 } from "lucide-react";
+import { api, ApiRequestError } from "@/lib/api";
+import { formatPrice } from "@/lib/plans";
 import { LOCALES, useI18n } from "@/lib/i18n";
 import type { TranslationKey } from "@/lib/i18n/translations";
 import { isComplete } from "@/lib/applicants";
@@ -11,12 +12,15 @@ import {
   SYSTEMS,
   isSystemId,
   type BookingRequest,
+  type AlertSubscription,
   type BookingWindow,
+  type PlanId,
+  type PlansResponse,
   type SlotsResponse,
   type SystemId,
 } from "@/lib/types";
 import { EMBASSY_TZ, clockOf, dayOf, formatDayLong, formatDayShort } from "@/lib/time";
-import { MAX_DATE_RANGES, matchesWindow, parseClock, validateWindow } from "@/lib/window";
+import { describeWindow, matchesWindow, validateWindow } from "@/lib/window";
 import { announceAuthChange, useMe } from "../auth/use-me";
 import { ApplicantsEditor } from "./applicants-editor";
 import type { SaveState } from "./save-badge";
@@ -30,21 +34,6 @@ type Step = 1 | 2 | 3 | 4;
 const STEP_KEYS: Record<Step, TranslationKey> = { 1: "stepService", 2: "stepDateTime", 3: "stepDetails", 4: "stepConfirm" };
 
 const sameRequest = (a: BookingRequest, b: BookingRequest) => JSON.stringify(a) === JSON.stringify(b);
-
-/** The window plus one single-day range that covers `slot`, or null when the window is already full. */
-function widenWindow(window: BookingWindow, slot: string): BookingWindow | null {
-  if (window.ranges.length >= MAX_DATE_RANGES) return null;
-  const day = dayOf(slot);
-  const h = Math.floor((parseClock(clockOf(slot), "start") ?? 0) / 60);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return {
-    emergency: false,
-    ranges: [
-      ...window.ranges,
-      { id: makeId(), from: day, to: day, times: [{ start: `${pad(h)}:00`, end: h >= 23 ? "EOD" : `${pad(h + 1)}:00` }] },
-    ],
-  };
-}
 
 let passtidUsers = 0;
 
@@ -80,7 +69,8 @@ export function Console() {
   const slotLabel = useCallback((iso: string) => `${formatDayShort(iso, locale)} ${clockOf(iso)}`, [locale]);
   const dayLong = (d: string) => formatDayLong(d, locale);
 
-  const [step, setStep] = useState<Step>(1);
+  // Coming back from a cancelled payment lands on the review step again.
+  const [step, setStep] = useState<Step>(params.get("checkout") === "cancel" ? 4 : 1);
   /** The person asked to book another service even though this one already has a booking. */
   const [startNew, setStartNew] = useState(false);
   const [consent, setConsent] = useState(false);
@@ -90,12 +80,16 @@ export function Console() {
   const [slotsBy, setSlotsBy] = useState<Partial<Record<SystemId, SlotsResponse>>>({});
   const [loadError, setLoadError] = useState<string | null>(null);
   const [working, setWorking] = useState(false);
+  const [plans, setPlans] = useState<PlansResponse | null>(null);
+  const [plan, setPlan] = useState<PlanId>("autobook");
+  const [alertSub, setAlertSub] = useState<AlertSubscription | null>(null);
   const [showDetailErrors, setShowDetailErrors] = useState(false);
   const [confirmingCancel, setConfirmingCancel] = useState(false);
   const [toast, setToast] = useState<{ id: number; text: string; tone: "ok" | "warn" } | null>(null);
 
   const announced = useRef(new Set<string>());
   const requestedFor = useRef(new Set<SystemId>());
+  const confirmedSessions = useRef(new Set<string>());
 
   /* ----------------------------- helpers ----------------------------- */
 
@@ -244,6 +238,58 @@ export function Console() {
     return () => clearTimeout(t);
   }, [toast]);
 
+  // Prices come from the server, so the UI never hard-codes them.
+  useEffect(() => {
+    if (!user || step !== 4 || plans) return;
+    api.plans().then(setPlans, (err: unknown) => {
+      if (!handleAuthLoss(err)) notify(t("loadPlansFail"), "warn");
+    });
+  }, [user, step, plans, handleAuthLoss, notify, t]);
+
+  // Back from Stripe: verify the payment, then show what was bought. Runs once per checkout session.
+  const checkoutState = params.get("checkout");
+  const sessionId = params.get("session_id");
+  useEffect(() => {
+    if (!user || !checkoutState) return;
+    const clean = () => {
+      const q = new URLSearchParams(params.toString());
+      q.delete("checkout");
+      q.delete("session_id");
+      const qs = q.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    };
+    if (checkoutState === "cancel") {
+      queueMicrotask(() => notify(t("payCancelled"), "warn"));
+      clean();
+      return;
+    }
+    if (checkoutState !== "success" || !sessionId || confirmedSessions.current.has(sessionId)) return;
+    confirmedSessions.current.add(sessionId);
+    queueMicrotask(() => notify(t("payConfirming")));
+    api.confirmCheckout(sessionId).then(
+      async (res) => {
+        if (res.alert) {
+          setAlertSub(res.alert);
+          setStartNew(false);
+        }
+        if (res.booking) {
+          setStartNew(false);
+          await loadSlots(res.system);
+        }
+        notify(t("payConfirmed"));
+        clean();
+      },
+      (err: unknown) => {
+        if (handleAuthLoss(err)) return;
+        setStep(4);
+        notify(err instanceof ApiRequestError ? err.message : t("payFail"), "warn");
+        clean();
+      },
+    );
+    // params/pathname/router are only read to rewrite the URL once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, checkoutState, sessionId]);
+
   // Each step starts at the top, like turning a page.
   useEffect(() => {
     window.scrollTo({ top: 0 });
@@ -267,6 +313,7 @@ export function Console() {
   );
   const mineSlot = view.find((s) => s.mine) ?? null;
   const showStatus = !!mineSlot && !startNew;
+  const showAlert = !showStatus && !!alertSub && alertSub.system === system && !startNew;
 
   /* ----------------------------- actions ----------------------------- */
 
@@ -303,7 +350,8 @@ export function Console() {
     setStep(4);
   };
 
-  const book = async (slot: ViewSlot) => {
+  /** Step 4: make sure the backend has the latest request, then send the browser to checkout. */
+  const pay = async () => {
     if (!draft || !effectiveWindow) return;
     if (!detailsReady) {
       setStep(3);
@@ -312,37 +360,23 @@ export function Console() {
     }
     setWorking(true);
     try {
-      // Make sure the backend has the latest people and email, and that the bot's window covers this slot.
-      let req: BookingRequest = windowValid ? draft : { ...draft, window: effectiveWindow };
-      if (!matchesWindow(slot.slot, req.window)) {
-        const wider = widenWindow(req.window, slot.slot);
-        if (wider) req = { ...req, window: wider };
-      }
+      const req: BookingRequest = windowValid ? draft : { ...draft, window: effectiveWindow };
       if (!savedReq || !sameRequest(req, savedReq)) {
         await api.saveRequest(system, req);
         setSaved((s) => ({ ...s, [system]: req }));
         setDrafts((d) => ({ ...d, [system]: req }));
       }
-      const b = await api.book(system, slot.slot);
-      const fresh = await loadSlots(system);
-      const depth = fresh?.slots.find((s) => s.slot === b.slot)?.queued ?? slot.queued + 1;
-      setStartNew(false);
-      const n = req.persons.length;
-      notify(t("nQueuedNotify", { slot: slotLabel(b.slot), n, people: t(n === 1 ? "person" : "people"), depth }));
+      const checkout = await api.checkout(system, plan, plan === "autobook" ? (selectedSlot?.slot ?? null) : null);
+      window.location.assign(checkout.url);
+      // Stay "working" while the browser leaves for the payment page.
     } catch (err) {
+      setWorking(false);
       if (handleAuthLoss(err)) return;
-      const message = err instanceof ApiRequestError ? err.message : t("bookFail");
-      notify(message, "warn");
-      if (err instanceof ApiRequestError && err.status === 404) {
-        void loadSlots(system);
-        setStep(2);
-      }
+      notify(err instanceof ApiRequestError ? err.message : t("payFail"), "warn");
       if (err instanceof ApiRequestError && err.code === "incomplete_details") {
         setStep(3);
         setShowDetailErrors(true);
       }
-    } finally {
-      setWorking(false);
     }
   };
 
@@ -420,7 +454,18 @@ export function Console() {
           />
         )}
 
-        {ready && !showStatus && step === 1 && (
+        {ready && showAlert && alertSub && (
+          <AlertCard
+            alert={alertSub}
+            onAnother={() => {
+              setStartNew(true);
+              setAlertSub(null);
+              setStep(1);
+            }}
+          />
+        )}
+
+        {ready && !showStatus && !showAlert && step === 1 && (
           <>
             <h1 className="text-2xl font-semibold text-ink">{t("whatNeed")}</h1>
             <p className="mt-1 text-sm text-muted">{t("bookAppt")}</p>
@@ -448,7 +493,7 @@ export function Console() {
           </>
         )}
 
-        {ready && !showStatus && step === 2 && data && (
+        {ready && !showStatus && !showAlert && step === 2 && data && (
           <>
             <h1 className="text-2xl font-semibold text-ink">{t("chooseDateTime")}</h1>
             <p className="mt-1 text-sm text-muted">{t(system === "passport" ? "svcPassportLong" : "svcCoordLong")}</p>
@@ -489,7 +534,7 @@ export function Console() {
           </>
         )}
 
-        {ready && !showStatus && step === 3 && draft && (
+        {ready && !showStatus && !showAlert && step === 3 && draft && (
           <div id="details">
             <ApplicantsEditor
               key={system}
@@ -518,13 +563,15 @@ export function Console() {
           </div>
         )}
 
-        {ready && !showStatus && step === 4 && draft && selectedSlot && (
+        {ready && !showStatus && !showAlert && step === 4 && draft && (
           <>
             <h1 className="text-2xl font-semibold text-ink">{t("reviewBooking")}</h1>
             <dl className="mt-4 divide-y divide-line-2 text-sm">
               <Row label={t("rowService")} value={t(system === "passport" ? "svcPassport" : "svcMigrationShort")} />
-              <Row label={t("dateLabel")} value={dayLong(dayOf(selectedSlot.slot))} />
-              <Row label={t("timeLabel")} value={clockOf(selectedSlot.slot)} />
+              <Row
+                label={t("rowDates")}
+                value={plan === "autobook" && selectedSlot ? `${dayLong(dayOf(selectedSlot.slot))}, ${clockOf(selectedSlot.slot)}` : describeWindow(draft.window, lang)}
+              />
               <Row
                 label={t("rowName")}
                 value={draft.persons.map((p) => `${p.firstName} ${p.lastName}`.trim()).join(", ")}
@@ -532,16 +579,72 @@ export function Console() {
               <Row label={t("rowEmail")} value={draft.email} />
               <Row label={t("rowApplicants")} value={String(draft.persons.length)} />
             </dl>
-            <p className="mt-4 text-[0.8125rem] text-muted">
-              {selectedSlot.queued === 0 ? t("nobodyElse") : t("alreadyQueued", { n: selectedSlot.queued })}{" "}
-              {t("confirmingAdds")}
+
+            <div role="radiogroup" aria-label={t("planTitle")} className="mt-5">
+              <p className="label-mono">{t("planTitle")}</p>
+              <div className="mt-2 flex flex-col gap-2.5">
+                {(["autobook", "notify"] as const).map((id) => {
+                  const on = plan === id;
+                  const price = plans?.plans.find((p) => p.id === id);
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      role="radio"
+                      aria-checked={on}
+                      onClick={() => setPlan(id)}
+                      className={`flex min-w-0 items-start gap-3 rounded-xl border p-3.5 text-left transition-colors ${
+                        on ? "border-accent bg-accent-soft" : "border-line-strong bg-surface-2 hover:border-accent-line"
+                      }`}
+                    >
+                      <span
+                        aria-hidden="true"
+                        className={`mt-0.5 grid size-5 flex-none place-items-center rounded-full border-2 ${
+                          on ? "border-accent bg-accent text-[var(--on-accent)]" : "border-line-strong"
+                        }`}
+                      >
+                        {on && <Check className="size-3" strokeWidth={3} />}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-baseline justify-between gap-3">
+                          <span className="flex items-center gap-1.5 font-semibold text-ink">
+                            {id === "autobook" ? (
+                              <Bot className="size-4 flex-none text-accent-line" aria-hidden="true" />
+                            ) : (
+                              <BellRing className="size-4 flex-none text-accent-line" aria-hidden="true" />
+                            )}
+                            {t(id === "autobook" ? "planAutoName" : "planNotifyName")}
+                          </span>
+                          <span className="font-mono text-sm font-semibold text-ink tabular">{price ? formatPrice(price) : "…"}</span>
+                        </span>
+                        <span className="mt-1 block text-[0.8125rem] text-muted">
+                          {t(id === "autobook" ? "planAutoDesc" : "planNotifyDesc")}
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {plan === "autobook" && selectedSlot && (
+              <p className="mt-4 text-[0.8125rem] text-muted">
+                {selectedSlot.queued === 0 ? t("nobodyElse") : t("alreadyQueued", { n: selectedSlot.queued })}
+              </p>
+            )}
+            {plan === "autobook" && !selectedSlot && (
+              <p role="alert" className="mt-4 text-[0.8125rem] text-hot">{t("noMatch")}</p>
+            )}
+            <p className="mt-3 flex items-start gap-1.5 text-xs text-muted">
+              <CreditCard className="mt-0.5 size-3.5 flex-none" aria-hidden="true" />
+              {plans?.demo ? t("demoPay") : t("securePay")}
             </p>
             <StepButtons
               onBack={() => setStep(3)}
-              onNext={() => void book(selectedSlot)}
-              nextLabel={t("confirmBooking")}
+              onNext={() => void pay()}
+              nextLabel={plans ? t(plan === "autobook" ? "payAuto" : "payNotify", { price: formatPrice(plans.plans.find((p) => p.id === plan) ?? { amountCents: 0 }) }) : t("next")}
               nextBusy={working}
-              nextDisabled={working}
+              nextDisabled={working || !plans || (plan === "autobook" && !selectedSlot)}
             />
           </>
         )}
@@ -681,6 +784,28 @@ function StatusCard({
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+/** Shown after the notification plan is paid. */
+function AlertCard({ alert, onAnother }: { alert: AlertSubscription; onAnother: () => void }) {
+  const { t } = useI18n();
+  return (
+    <div className="text-center">
+      <span className="mx-auto grid size-14 place-items-center rounded-full bg-[#fecc02] text-[#0b2a3c]" aria-hidden="true">
+        <BellRing className="size-7" />
+      </span>
+      <h1 className="mt-4 text-2xl font-semibold text-ink">{t("alertsTitle")}</h1>
+      <p className="mt-2 text-sm text-muted">{alert.telegramUrl ? t("alertsBody") : t("alertsNoBot")}</p>
+      {alert.telegramUrl && (
+        <a href={alert.telegramUrl} target="_blank" rel="noopener" className="btn btn-primary mt-5 w-full">
+          {t("openTelegram")} <ArrowRight className="size-4" aria-hidden="true" />
+        </a>
+      )}
+      <button type="button" className="btn btn-ghost mt-3 w-full border-accent-line text-accent-line" onClick={onAnother}>
+        {t("bookAnother")}
+      </button>
     </div>
   );
 }

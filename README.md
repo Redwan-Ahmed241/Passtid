@@ -20,6 +20,10 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Payments
+
+The last step of the console sells two plans through Stripe Checkout: Telegram alerts (default $5) and automatic booking (default $25). Prices are placeholders until the client confirms a price list; change them with `PLAN_NOTIFY_CENTS` and `PLAN_AUTOBOOK_CENTS`. See `.env.example` for `STRIPE_SECRET_KEY` and `TELEGRAM_BOT_USERNAME`. Without a Stripe key checkout runs in demo mode and nobody is charged. When `NEXT_PUBLIC_API_BASE_URL` points at the real backend, that backend needs to implement `GET /plans`, `POST /checkout` and `POST /checkout/confirm` (see `src/lib/api.ts`).
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
