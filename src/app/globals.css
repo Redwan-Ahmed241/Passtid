@@ -80,57 +80,96 @@
 }
 
 /*
- * Booking console palette: the deep navy, blue and yellow of the client's reference flow.
- * Applied to <body> while the console is open, so the header and footer match.
+ * Booking console palette, from the passtid-app brand sheet. Light by default, dark with the
+ * system setting. Applied to <body> while the console is open, so the header and footer match.
  */
-body.navy {
-  --paper: #0d171e;
-  --surface: #102331;
-  --surface-2: #0d1d29;
-  --sunken: #0a131a;
-  --ink: #dff3ff;
-  --ink-2: #b7d2e2;
-  --muted: #8aa9bc;
-  --line: #24424f;
-  --line-2: #1b3340;
-  --line-strong: #4b7390;
+body.passtid {
+  --paper: #eef3f7;
+  --surface: #ffffff;
+  --surface-2: #ffffff;
+  --sunken: #f1f5f8;
+  --ink: #0b2a3c;
+  --ink-2: #3d5566;
+  --muted: #3d5566;
+  --line: #c9d6df;
+  --line-2: #c9d6df;
+  --line-strong: #c9d6df;
 
-  --accent: #0b62c0;
-  --accent-ink: #0a54a5;
-  --accent-soft: rgb(11 98 192 / 0.22);
-  --accent-line: #2f7fd6;
+  --accent: #006aa7;
+  --accent-ink: #005283;
+  --accent-soft: #e6f1f8;
+  --accent-line: #006aa7;
   --on-accent: #ffffff;
-  --yellow: #f7ca2a;
+  --yellow: #fecc02;
+  --navy: #0b2a3c;
+  --disabled-ink: #7a8d9a;
 
-  --clear: #5fd0a2;
-  --clear-bg: rgb(95 208 162 / 0.1);
-  --clear-line: rgb(95 208 162 / 0.3);
-  --busy: #f0b54d;
-  --busy-bg: rgb(240 181 77 / 0.1);
-  --busy-line: rgb(240 181 77 / 0.3);
-  --hot: #ff8a7d;
-  --hot-bg: rgb(255 138 125 / 0.1);
-  --hot-line: rgb(255 138 125 / 0.45);
+  --clear: #0b6b4c;
+  --clear-bg: #e2f1ea;
+  --clear-line: #b6dccb;
+  --busy: #8a5800;
+  --busy-bg: #faefd9;
+  --busy-line: #ecd3a0;
+  --hot: #b42318;
+  --hot-bg: #fdecea;
+  --hot-line: #b42318;
+  --on-hot: #ffffff;
 
-  --tick-off: #24424f;
+  --tick-off: #c9d6df;
   --shadow-sm: none;
-  --shadow-md: 0 8px 24px -6px rgb(0 0 0 / 0.5);
-  --shadow-lg: 0 24px 48px -12px rgb(0 0 0 / 0.6);
+  --shadow-md: 0 8px 24px -6px rgb(11 42 60 / 0.15);
+  --shadow-lg: 0 24px 48px -12px rgb(11 42 60 / 0.25);
   --focus: 0 0 0 2px var(--paper), 0 0 0 4px var(--yellow);
-  color-scheme: dark;
 }
-body.navy .field:focus {
+@media (prefers-color-scheme: dark) {
+  body.passtid {
+    --paper: #0a1822;
+    --surface: #11293a;
+    --surface-2: #11293a;
+    --sunken: #0e2130;
+    --ink: #eaf2f8;
+    --ink-2: #a9bdcb;
+    --muted: #a9bdcb;
+    --line: #2e4a5e;
+    --line-2: #2e4a5e;
+    --line-strong: #2e4a5e;
+
+    --accent-soft: #17384f;
+    --accent-line: #5db4e6;
+
+    --clear: #5fd0a2;
+    --clear-bg: rgb(95 208 162 / 0.1);
+    --clear-line: rgb(95 208 162 / 0.3);
+    --busy: #f0b54d;
+    --busy-bg: rgb(240 181 77 / 0.1);
+    --busy-line: rgb(240 181 77 / 0.3);
+    --hot: #ff8a7e;
+    --hot-bg: rgb(255 138 126 / 0.1);
+    --hot-line: #ff8a7e;
+    /* White on the light dark-mode red is hard to read, so text on solid red turns navy. */
+    --on-hot: #0b2a3c;
+
+    --tick-off: #2e4a5e;
+    --shadow-md: 0 8px 24px -6px rgb(0 0 0 / 0.5);
+    --shadow-lg: 0 24px 48px -12px rgb(0 0 0 / 0.6);
+  }
+}
+body.passtid .field:focus {
   border-color: var(--yellow);
-  background: var(--surface-2);
   box-shadow: 0 0 0 1px var(--yellow);
 }
-body.navy .field::-webkit-calendar-picker-indicator {
-  filter: invert(1);
-}
-body.navy .btn-primary:disabled {
+body.passtid .btn-primary:disabled {
   background: var(--sunken);
-  color: var(--muted);
+  color: var(--disabled-ink);
   opacity: 1;
+}
+body.passtid .btn-danger-solid {
+  background: var(--hot);
+  color: var(--on-hot);
+  border: 1px solid var(--hot);
+}
+body.passtid .btn-danger-solid:hover:not(:disabled) {
+  filter: brightness(0.92);
 }
 
 @theme inline {
@@ -158,6 +197,7 @@ body.navy .btn-primary:disabled {
   --color-hot: var(--hot);
   --color-hot-bg: var(--hot-bg);
   --color-hot-line: var(--hot-line);
+  --color-on-hot: var(--on-hot);
 
   --font-sans: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-plex-mono), ui-monospace, "SFMono-Regular", Menlo, monospace;
@@ -367,7 +407,7 @@ body.navy .btn-primary:disabled {
       border-color 150ms,
       transform 120ms var(--ease-out-quart);
   }
-  .tile:hover:not(:disabled) {
+  .tile:hover:not(:disabled):not([aria-pressed="true"]) {
     border-color: var(--accent-line);
     background: var(--accent-soft);
   }
@@ -380,8 +420,8 @@ body.navy .btn-primary:disabled {
     color: var(--on-accent);
   }
   .tile:disabled {
-    opacity: 0.4;
     background: var(--sunken);
+    color: #7a8d9a;
     cursor: not-allowed;
   }
 

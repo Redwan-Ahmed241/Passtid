@@ -47,16 +47,16 @@ function widenWindow(window: BookingWindow, slot: string): BookingWindow | null 
   };
 }
 
-let navyUsers = 0;
+let passtidUsers = 0;
 
-/** The console has its own navy palette; the header and footer follow it. Counted, because the fallback and the page overlap. */
-function useNavyTheme() {
+/** The console has its own passtid palette; the header and footer follow it. Counted, because the fallback and the page overlap. */
+function usePasstidTheme() {
   useEffect(() => {
-    navyUsers += 1;
-    document.body.classList.add("navy");
+    passtidUsers += 1;
+    document.body.classList.add("passtid");
     return () => {
-      navyUsers -= 1;
-      if (navyUsers === 0) document.body.classList.remove("navy");
+      passtidUsers -= 1;
+      if (passtidUsers === 0) document.body.classList.remove("passtid");
     };
   }, []);
 }
@@ -132,7 +132,7 @@ export function Console() {
 
   /* ----------------------------- effects ----------------------------- */
 
-  useNavyTheme();
+  usePasstidTheme();
 
   // Only signed-in users can see slots.
   useEffect(() => {
@@ -569,7 +569,7 @@ export function Console() {
                 checked={consent}
                 onChange={(e) => setConsent(e.target.checked)}
                 aria-invalid={showDetailErrors && !consent}
-                className="mt-0.5 size-5 flex-none accent-[#0b62c0]"
+                className="mt-0.5 size-5 flex-none accent-[#006aa7]"
               />
               <span>I agree that my details are processed for this booking (GDPR).</span>
             </label>
@@ -618,7 +618,7 @@ export function Console() {
           <p
             key={toast.id}
             className={`animate-rise pointer-events-auto flex max-w-md items-center gap-2.5 rounded-xl px-4 py-3 text-sm shadow-lg ${
-              toast.tone === "warn" ? "bg-hot text-paper" : "bg-ink text-paper"
+              toast.tone === "warn" ? "bg-hot text-on-hot" : "bg-ink text-paper"
             }`}
           >
             {toast.text}
@@ -696,7 +696,7 @@ function StatusCard({
   return (
     <div className="text-center">
       <span
-        className={`mx-auto grid size-14 place-items-center rounded-full ${booked ? "bg-[#f7ca2a] text-[#0d171e]" : "border-2 border-[#f7ca2a] text-[#f7ca2a]"}`}
+        className={`mx-auto grid size-14 place-items-center rounded-full ${booked ? "bg-[#fecc02] text-[#0b2a3c]" : "border-2 border-accent text-accent-line"}`}
         aria-hidden="true"
       >
         {booked ? <Check className="size-7" strokeWidth={3} /> : <Loader2 className="size-6 animate-spin" />}
@@ -731,7 +731,7 @@ function StatusCard({
           <button type="button" className="btn btn-ghost flex-1 border-accent-line text-accent-line" onClick={onKeep}>
             Keep it
           </button>
-          <button type="button" className="btn btn-danger flex-1" disabled={working} onClick={onCancel}>
+          <button type="button" className="btn btn-danger-solid flex-1" disabled={working} onClick={onCancel}>
             {working && <Loader2 className="size-4 animate-spin" aria-hidden="true" />} Yes, cancel
           </button>
         </div>
@@ -750,7 +750,7 @@ function StatusCard({
 }
 
 export function ConsoleFallback() {
-  useNavyTheme();
+  usePasstidTheme();
   return (
     <div className="mx-auto w-full max-w-md px-4 pt-6 pb-16" aria-busy="true">
       <div className="rounded-2xl border border-line bg-surface p-5">
