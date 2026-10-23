@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /*
- * Tidlucka design tokens.
+ * Passtid design tokens.
  * Warm paper + cobalt ink, a civic-editorial base with an instrument-panel layer
  * (mono numerals, tick meters) for the data. Three signal colours only, each
  * always paired with a text label so meaning never rides on colour alone.
@@ -500,4 +500,8 @@ body.passtid .btn-danger-solid:hover:not(:disabled) {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+body.passtid .wordmark-tid {
+  color: var(--accent-line);
 }
