@@ -25,7 +25,6 @@ import { WindowEditor } from "./window-editor";
 
 const POLL_SLOTS_MS = 15_000;
 const POLL_BOOKING_MS = 1_500;
-const DAYS_PER_PAGE = 10;
 
 type Step = 1 | 2 | 3 | 4;
 const STEP_KEYS: Record<Step, TranslationKey> = { 1: "stepService", 2: "stepDateTime", 3: "stepDetails", 4: "stepConfirm" };
@@ -79,7 +78,6 @@ export function Console() {
   const { t, lang } = useI18n();
   const locale = LOCALES[lang];
   const slotLabel = useCallback((iso: string) => `${formatDayShort(iso, locale)} ${clockOf(iso)}`, [locale]);
-  const dayShort = (d: string) => formatDayShort(d, locale);
   const dayLong = (d: string) => formatDayLong(d, locale);
 
   const [step, setStep] = useState<Step>(1);
@@ -91,9 +89,6 @@ export function Console() {
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [slotsBy, setSlotsBy] = useState<Partial<Record<SystemId, SlotsResponse>>>({});
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [selection, setSelection] = useState<{ system: SystemId; slot: string } | null>(null);
-  const [pickedDay, setPickedDay] = useState<string | null>(null);
-  const [dayLimit, setDayLimit] = useState(DAYS_PER_PAGE);
   const [working, setWorking] = useState(false);
   const [showDetailErrors, setShowDetailErrors] = useState(false);
   const [confirmingCancel, setConfirmingCancel] = useState(false);
@@ -265,14 +260,11 @@ export function Console() {
     return data.slots.map((s) => ({ ...s, inWindow: matchesWindow(s.slot, effectiveWindow) }));
   }, [data, effectiveWindow]);
 
-  const sortedDays = useMemo(() => [...new Set(view.map((s) => dayOf(s.slot)))].sort(), [view]);
-  const selectedDay = pickedDay && sortedDays.includes(pickedDay) ? pickedDay : null;
-  const daySlots = useMemo(
-    () => (selectedDay ? view.filter((s) => dayOf(s.slot) === selectedDay).sort((a, b) => a.slot.localeCompare(b.slot)) : []),
-    [view, selectedDay],
+  // No slot picker: the bot books the earliest open slot that fits the window ("As soon as possible" fits all).
+  const selectedSlot = useMemo(
+    () => view.filter((s) => s.inWindow).sort((x, y) => x.slot.localeCompare(y.slot))[0] ?? null,
+    [view],
   );
-
-  const selectedSlot = selection?.system === system ? (view.find((s) => s.slot === selection.slot) ?? null) : null;
   const mineSlot = view.find((s) => s.mine) ?? null;
   const showStatus = !!mineSlot && !startNew;
 
@@ -284,9 +276,6 @@ export function Console() {
       if (next === "passport") q.delete("system");
       else q.set("system", next);
       const qs = q.toString();
-      setPickedDay(null);
-      setSelection(null);
-      setDayLimit(DAYS_PER_PAGE);
       setShowDetailErrors(false);
       router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
     }
@@ -297,14 +286,8 @@ export function Console() {
   const setDraft = (update: (r: BookingRequest) => BookingRequest) =>
     setDrafts((d) => (d[system] ? { ...d, [system]: update(d[system] as BookingRequest) } : d));
 
-  const pickDay = (day: string) => {
-    setPickedDay(day);
-    setSelection(null);
-    setTimeout(() => document.getElementById("times-h")?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
-  };
-
   const goDetails = () => {
-    if (!selectedSlot) return;
+    if (!selectedSlot || !windowValid) return;
     setStep(3);
   };
 
@@ -343,7 +326,6 @@ export function Console() {
       const b = await api.book(system, slot.slot);
       const fresh = await loadSlots(system);
       const depth = fresh?.slots.find((s) => s.slot === b.slot)?.queued ?? slot.queued + 1;
-      setSelection({ system, slot: b.slot });
       setStartNew(false);
       const n = req.persons.length;
       notify(t("nQueuedNotify", { slot: slotLabel(b.slot), n, people: t(n === 1 ? "person" : "people"), depth }));
@@ -373,7 +355,6 @@ export function Console() {
       const depth = fresh?.slots.find((s) => s.slot === b.slot)?.queued ?? 0;
       notify(t("nCancelled", { slot: slotLabel(b.slot), depth }));
       setConfirmingCancel(false);
-      setSelection(null);
       setStep(1);
     } catch (err) {
       announced.current.delete(bookingId);
@@ -389,7 +370,6 @@ export function Console() {
 
   const ready = !!data && !!draft && !!effectiveWindow;
   const updated = data ? clockFmt.format(new Date(data.generatedAt)) : null;
-  const visibleDays = sortedDays.slice(0, dayLimit);
 
   return (
     <div className="mx-auto w-full max-w-md px-4 pt-6 pb-16">
@@ -473,85 +453,39 @@ export function Console() {
             <h1 className="text-2xl font-semibold text-ink">{t("chooseDateTime")}</h1>
             <p className="mt-1 text-sm text-muted">{t(system === "passport" ? "svcPassportLong" : "svcCoordLong")}</p>
 
-            {sortedDays.length === 0 ? (
-              <div className="mt-5 rounded-xl border border-dashed border-line-strong p-5 text-center">
-                <p className="font-medium text-ink">{t("noSlotsTitle")}</p>
-                <p className="mt-1 text-sm text-muted">
-                  {t("noSlotsBody", { n: data.scanWeeks })}
-                </p>
-              </div>
-            ) : (
-              <>
-                <p className="label-mono mt-5">{t("dateLabel")}</p>
-                <div className="mt-2 grid grid-cols-2 gap-2">
-                  {visibleDays.map((d) => (
-                    <button key={d} type="button" className="tile" aria-pressed={selectedDay === d} onClick={() => pickDay(d)}>
-                      {dayShort(d)}
-                    </button>
-                  ))}
-                </div>
-                {sortedDays.length > dayLimit && (
-                  <button
-                    type="button"
-                    className="mt-3 min-h-11 w-full text-sm font-semibold text-accent-line hover:text-ink"
-                    onClick={() => setDayLimit((n) => n + DAYS_PER_PAGE)}
-                  >
-                    {t("showMoreDates")}
-                  </button>
-                )}
-
-                {selectedDay && (
-                  <>
-                    <p id="times-h" className="label-mono mt-5 scroll-mt-20">
-                      {t("timeHeading", { d: dayLong(selectedDay) })}
-                    </p>
-                    <div className="mt-2 grid grid-cols-2 gap-2">
-                      {daySlots.map((s) => (
-                        <button
-                          key={s.slot}
-                          type="button"
-                          className="tile"
-                          aria-pressed={selectedSlot?.slot === s.slot}
-                          onClick={() => setSelection({ system, slot: s.slot })}
-                        >
-                          <span className="tabular">{clockOf(s.slot)}</span>
-                          <span className="text-[0.6875rem] font-normal opacity-75">
-                            {s.queued === 0 ? t("noQueue") : t("nQueued", { n: s.queued })}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </>
-            )}
-
             {draft && (
-              <details className="group mt-6 rounded-xl border border-line">
-                <summary className="flex min-h-11 items-center justify-between px-4 text-sm font-medium text-ink-2">
-                  {t("advancedWindow")}
-                  <span className="text-muted transition-transform group-open:rotate-90" aria-hidden="true">›</span>
-                </summary>
-                <div className="p-2">
-                  <WindowEditor
-                    value={draft.window}
-                    today={data.today}
-                    horizon={data.scannedUntil}
-                    save={saveState}
-                    onChange={(window) => setDraft((r) => ({ ...r, window }))}
-                  />
-                </div>
-              </details>
+              <div className="mt-5">
+                <WindowEditor
+                  value={draft.window}
+                  today={data.today}
+                  horizon={data.scannedUntil}
+                  save={saveState}
+                  onChange={(window) => setDraft((r) => ({ ...r, window }))}
+                />
+              </div>
             )}
+
+            <p
+              aria-live="polite"
+              className={`mt-4 rounded-xl border px-3.5 py-3 text-sm ${
+                selectedSlot ? "border-clear-line bg-clear-bg text-clear" : "border-line bg-surface-2 text-ink-2"
+              }`}
+            >
+              {data.slots.length === 0
+                ? t("noSlotsBody", { n: data.scanWeeks })
+                : selectedSlot
+                  ? t("nextAvailable", { slot: `${dayLong(dayOf(selectedSlot.slot))}, ${clockOf(selectedSlot.slot)}` })
+                  : t("noMatch")}
+            </p>
 
             {updated && (
               <p className="mt-4 flex items-center gap-1.5 text-xs text-muted tabular">
                 <span className="size-1.5 rounded-full bg-clear animate-pulse-dot" aria-hidden="true" />
-                Live, updated {updated}
+                {t("liveUpdated", { time: updated })}
               </p>
             )}
 
-            <StepButtons onBack={() => setStep(1)} onNext={goDetails} nextDisabled={!selectedSlot} />
+            <StepButtons onBack={() => setStep(1)} onNext={goDetails} nextDisabled={!selectedSlot || !windowValid} />
           </>
         )}
 

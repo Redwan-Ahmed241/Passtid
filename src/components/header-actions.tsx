@@ -43,7 +43,7 @@ export function HeaderActions() {
         <LogOut className="size-4" aria-hidden="true" /> {t("signOut")}
       </button>
       {/* The nav already links to the console from tablet width up. */}
-      <Link href="/console" className="btn btn-ink h-11 min-h-11 px-3 text-sm max-[359px]:hidden sm:px-4 md:hidden">
+      <Link href="/console" className="btn btn-ink h-11 min-h-11 px-3 text-sm max-[399px]:hidden sm:px-4 md:hidden">
         {t("navConsole")}
         <ArrowUpRight className="size-4" aria-hidden="true" />
       </Link>

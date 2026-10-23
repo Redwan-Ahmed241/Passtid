@@ -205,6 +205,9 @@ const en = {
   nfTitle: "This slot doesn’t exist.",
   nfBody: "The page you were looking for has moved, or was never offered.",
   createAnAccount: "Create an account",
+  nextAvailable: "Earliest matching slot: {slot}",
+  noMatch: "No open slot matches these dates yet. Widen the range, or switch on “As soon as possible”.",
+  liveUpdated: "Live, updated {time}",
   home: "Home",
   openConsole: "Open the console",
 } as const;
@@ -405,6 +408,9 @@ const sv: Record<TranslationKey, string> = {
   nfTitle: "Den här tiden finns inte.",
   nfBody: "Sidan du letade efter har flyttats, eller fanns aldrig.",
   createAnAccount: "Skapa ett konto",
+  nextAvailable: "Tidigaste matchande tid: {slot}",
+  noMatch: "Ingen ledig tid matchar de här datumen än. Vidga intervallet eller slå på ”Så snart som möjligt”.",
+  liveUpdated: "Live, uppdaterad {time}",
   home: "Hem",
   openConsole: "Öppna konsolen",
 };

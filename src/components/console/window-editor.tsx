@@ -43,7 +43,7 @@ export function WindowEditor({ value, today, horizon, save, onChange, footer }: 
   const removeRange = (i: number) => onChange({ ...value, ranges: value.ranges.filter((_, j) => j !== i) });
 
   return (
-    <section aria-labelledby={`${uid}-h`} className="min-w-0 rounded-2xl border border-line bg-surface p-4 shadow-sm sm:p-5">
+    <section aria-labelledby={`${uid}-h`} className="min-w-0">
       {/* As soon as possible comes first: when it is on, the date ranges below are ignored. */}
       <label
         htmlFor={`${uid}-asap`}
@@ -170,7 +170,7 @@ function RangeCard({
         )}
       </div>
 
-      <div className="mt-2 grid grid-cols-1 gap-3 min-[400px]:grid-cols-2">
+      <div className="mt-2 grid grid-cols-1 gap-3 min-[480px]:grid-cols-2">
         <div className="min-w-0">
           <label htmlFor={`${uid}-from`} className="mb-1.5 block text-sm font-medium text-ink-2">{t("from")}</label>
           <input
