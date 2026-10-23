@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { AlertTriangle, ChevronDown, ChevronRight, RefreshCw, ScanLine, SlidersHorizontal } from "lucide-react";
+import { AlertTriangle, ArrowRight, Check, ChevronRight, Loader2, Lock, RefreshCw, ScanLine } from "lucide-react";
 import { api, ApiRequestError, makeId } from "@/lib/api";
 import { isComplete } from "@/lib/applicants";
 import {
@@ -49,6 +49,8 @@ export function Console() {
 
   const [drafts, setDrafts] = useState<Partial<Record<SystemId, BookingRequest>>>({});
   const [saved, setSaved] = useState<Partial<Record<SystemId, BookingRequest>>>({});
+  /** Step 1 (dates and times) confirmed, so step 2 (people and contact) is open. */
+  const [confirmed, setConfirmed] = useState<Partial<Record<SystemId, boolean>>>({});
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [slotsBy, setSlotsBy] = useState<Partial<Record<SystemId, SlotsResponse>>>({});
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -56,7 +58,6 @@ export function Console() {
   const [pickedDay, setPickedDay] = useState<string | null>(null);
   const [pickedMonth, setPickedMonth] = useState<string | null>(null);
   const [working, setWorking] = useState(false);
-  const [editorOpen, setEditorOpen] = useState(false);
   const [showDetailErrors, setShowDetailErrors] = useState(false);
   const [toast, setToast] = useState<{ id: number; text: string; tone: "ok" | "warn" } | null>(null);
 
@@ -112,6 +113,9 @@ export function Console() {
       (r) => {
         setDrafts((d) => ({ ...d, [system]: r.request }));
         setSaved((s) => ({ ...s, [system]: r.request }));
+        // Someone who already finished both steps goes straight back to the full form.
+        const done = isComplete(system, r.request) && validateWindow(r.request.window).length === 0;
+        setConfirmed((c) => ({ ...c, [system]: done }));
       },
       (err: unknown) => {
         requestedFor.current.delete(system);
@@ -141,6 +145,7 @@ export function Console() {
 
   const draft = drafts[system] ?? null;
   const savedReq = saved[system] ?? null;
+  const isConfirmed = !!confirmed[system];
   const windowIssues = draft ? validateWindow(draft.window) : [];
   const windowValid = windowIssues.length === 0;
   const detailsReady = draft ? isComplete(system, draft) : false;
@@ -246,9 +251,12 @@ export function Console() {
   );
 
   const selectedSlot = selection?.system === system ? (daySlots.find((s) => s.slot === selection.slot) ?? null) : null;
+  const mineSlot = view.find((s) => s.mine) ?? null;
   const otherActive = view.find((s) => s.mine && s.slot !== selectedSlot?.slot) ?? null;
   const nextInWindow = inWin.find((s) => !s.mine) ?? null;
   const uncontested = inWin.filter((s) => s.queued === 0).length;
+  /** What the final button books: the slot you picked if it is inside the window, else the earliest one that is. */
+  const bookTarget = selectedSlot && selectedSlot.inWindow && !selectedSlot.mine ? selectedSlot : nextInWindow;
 
   /* ----------------------------- actions ----------------------------- */
 
@@ -286,21 +294,41 @@ export function Console() {
     setPickedDay(dayOf(slot));
     setPickedMonth(null);
     setSelection({ system, slot });
+    document.getElementById("results-h")?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   const selectSlot = (slot: string) =>
     setSelection((cur) => (cur?.system === system && cur.slot === slot ? null : { system, slot }));
 
-  /** Open the form, show every missing field and move focus to the first one. */
-  const fixDetails = useCallback(() => {
-    setShowDetailErrors(true);
-    setEditorOpen(true);
+  /** Bring the people form into view and focus its first empty field. */
+  const focusPeople = useCallback((onlyInvalid: boolean) => {
     setTimeout(() => {
       const section = document.getElementById("people-section");
       section?.scrollIntoView({ behavior: "smooth", block: "start" });
-      section?.querySelector<HTMLElement>("input[aria-invalid='true'], input")?.focus({ preventScroll: true });
-    }, 80);
+      const target = onlyInvalid
+        ? section?.querySelector<HTMLElement>("input[aria-invalid='true']")
+        : section?.querySelector<HTMLElement>("input");
+      (target ?? section?.querySelector<HTMLElement>("input"))?.focus({ preventScroll: true });
+    }, 120);
   }, []);
+
+  /** Step 1 -> step 2. */
+  const confirmDates = () => {
+    if (!windowValid) return;
+    setConfirmed((c) => ({ ...c, [system]: true }));
+    focusPeople(false);
+  };
+
+  /** Someone tried to book with details missing: open step 2, show what is missing. */
+  const fixDetails = useCallback(() => {
+    if (!windowValid) {
+      notify("Fix the dates and times first.", "warn");
+      return;
+    }
+    setConfirmed((c) => ({ ...c, [system]: true }));
+    setShowDetailErrors(true);
+    focusPeople(true);
+  }, [windowValid, system, notify, focusPeople]);
 
   const book = async (slot: ViewSlot) => {
     if (!draft) return;
@@ -319,6 +347,7 @@ export function Console() {
       const fresh = await loadSlots(system);
       const depth = fresh?.slots.find((s) => s.slot === b.slot)?.queued ?? slot.queued + 1;
       setSelection({ system, slot: b.slot });
+      setPickedDay(dayOf(b.slot));
       const n = draft.persons.length;
       notify(`Queued ${slotLabel(b.slot)} for ${n} ${n === 1 ? "person" : "people"}. You are #${depth} in the queue.`);
     } catch (err) {
@@ -353,7 +382,6 @@ export function Console() {
     if (!draft) return;
     if (draft.window.ranges.length >= MAX_DATE_RANGES) {
       notify(`Remove a date range first. You can have up to ${MAX_DATE_RANGES}.`, "warn");
-      setEditorOpen(true);
       return;
     }
     const day = dayOf(slot.slot);
@@ -378,10 +406,10 @@ export function Console() {
 
   const ready = !!data && !!draft && !!effectiveWindow;
   const updated = data ? clockFmt.format(new Date(data.generatedAt)) : null;
-  const sidebarSummary = effectiveWindow ? describeWindow(effectiveWindow) : "";
+  const summary = effectiveWindow ? describeWindow(effectiveWindow) : "";
 
   return (
-    <div className="mx-auto max-w-[96rem] px-4 pt-8 pb-16 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-[76rem] px-4 pt-8 pb-16 sm:px-6 lg:px-8">
       {/* Page head */}
       <div className="flex flex-col gap-5 border-b border-line pb-6 lg:flex-row lg:items-end lg:justify-between">
         <div className="max-w-2xl">
@@ -395,7 +423,7 @@ export function Console() {
                 <span className="font-medium text-hot">Emergency mode: the first slot that appears gets booked.</span>
               ) : (
                 <>
-                  Booking only <span className="font-medium text-ink">{sidebarSummary}</span>
+                  Booking only <span className="font-medium text-ink">{summary}</span>
                 </>
               )
             ) : (
@@ -421,79 +449,16 @@ export function Console() {
         </div>
       </div>
 
-      <div className="mt-6 grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[22rem_minmax(0,1fr)]">
-        {/* Sidebar: window and people */}
-        <aside className="flex flex-col gap-4" aria-label="Booking request">
-          {draft && data ? (
-            <>
-              {/* On phones the form collapses so the calendar is the first thing you see. */}
-              <button
-                type="button"
-                aria-expanded={editorOpen}
-                aria-controls="request-panel"
-                onClick={() => setEditorOpen((o) => !o)}
-                className="flex min-h-14 w-full items-center gap-3 rounded-2xl border border-line bg-surface px-4 py-3 text-left shadow-sm lg:hidden"
-              >
-                <SlidersHorizontal className="size-4 flex-none text-accent" aria-hidden="true" />
-                <span className="min-w-0 flex-1">
-                  <span className="flex items-center gap-2 text-sm font-semibold text-ink">
-                    {editorOpen ? "Hide booking request" : "Edit booking request"}
-                    {!detailsReady && (
-                      <span className="rounded-md border border-busy-line bg-busy-bg px-1.5 py-0.5 text-[0.6875rem] font-medium text-busy">
-                        Details needed
-                      </span>
-                    )}
-                  </span>
-                  {!editorOpen && (
-                    <span className="block truncate font-mono text-xs text-muted">{sidebarSummary}</span>
-                  )}
-                </span>
-                <ChevronDown
-                  className={`size-4 flex-none text-muted transition-transform ${editorOpen ? "rotate-180" : ""}`}
-                  aria-hidden="true"
-                />
-              </button>
-              <div id="request-panel" className={`${editorOpen ? "flex" : "hidden"} flex-col gap-4 lg:flex`}>
-                <WindowEditor
-                  value={draft.window}
-                  today={data.today}
-                  horizon={data.scannedUntil}
-                  save={saveState}
-                  onChange={(window) => setDraft((r) => ({ ...r, window }))}
-                />
-                <div id="people-section" className="scroll-mt-24">
-                  <ApplicantsEditor
-                    key={system}
-                    system={system}
-                    persons={draft.persons}
-                    email={draft.email}
-                    showAll={showDetailErrors}
-                    onChange={({ persons, email }) => setDraft((r) => ({ ...r, persons, email }))}
-                  />
-                </div>
-              </div>
-            </>
-          ) : (
-            <div className="h-14 rounded-2xl border border-line bg-surface p-5 lg:h-[34rem]" aria-hidden="true">
-              <div className="skeleton h-3 w-32" />
-              <div className="mt-6 grid grid-cols-2 gap-3">
-                <div className="skeleton h-11" />
-                <div className="skeleton h-11" />
-              </div>
-              <div className="mt-6 skeleton h-11" />
-              <div className="mt-2 skeleton h-11" />
-            </div>
-          )}
-        </aside>
-
-        {/* Calendar and the day's slots */}
-        <section aria-labelledby="results-h" className="min-w-0 rounded-2xl border border-line bg-surface p-4 shadow-sm sm:p-6">
+      <div className="mt-6 flex flex-col gap-6">
+        {/* Step 1a: the calendar and the chosen day's slots */}
+        <section aria-labelledby="results-h" className="min-w-0 scroll-mt-24 rounded-2xl border border-line bg-surface p-4 shadow-sm sm:p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 id="results-h" className="text-base font-semibold text-ink">
+                <span className="label-mono mr-2">Step 1</span>
                 {info.name}
               </h2>
-              <p className="mt-0.5 font-mono text-xs text-muted tabular" aria-live="polite">
+              <p className="mt-1 font-mono text-xs text-muted tabular" aria-live="polite">
                 {ready ? (
                   <>
                     {inWin.length} in window · {uncontested} uncontested
@@ -548,14 +513,14 @@ export function Console() {
                   <div className="mb-5 rounded-xl border border-hot-line bg-hot-bg p-4">
                     <p className="font-semibold text-hot">No free slot inside your window</p>
                     <p className="mt-1 text-sm text-ink-2">
-                      Nothing will be booked. Widen the dates, add a time range, or switch on emergency mode to take
-                      whatever appears first. Slots outside your window are still shown on the calendar.
+                      Nothing will be booked. Widen the dates below, add a time range, or switch on emergency mode to
+                      take whatever appears first. Slots outside your window are still shown on the calendar.
                     </p>
                   </div>
                 )}
 
-                {/* Calendar beside the day's slots on wide screens, stacked below that. */}
-                <div className="xl:grid xl:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] xl:gap-8">
+                {/* Big calendar, with the day's slots beside it on wide screens and below it otherwise. */}
+                <div className="xl:grid xl:grid-cols-[minmax(0,1fr)_23rem] xl:gap-10">
                   <div>
                     <MonthCalendar
                       month={month}
@@ -579,7 +544,7 @@ export function Console() {
                     )}
                   </div>
 
-                  <div className="mt-6 border-t border-line-2 pt-5 xl:mt-0 xl:border-t-0 xl:border-l xl:pt-0 xl:pl-8">
+                  <div className="mt-6 border-t border-line-2 pt-5 xl:mt-0 xl:border-t-0 xl:border-l xl:pt-0 xl:pl-10">
                     {selectedDay ? (
                       <>
                         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
@@ -629,6 +594,120 @@ export function Console() {
             onFixDetails={fixDetails}
           />
         </section>
+
+        {draft && data ? (
+          <>
+            {/* Step 1b: dates and times, under the calendar */}
+            <WindowEditor
+              value={draft.window}
+              today={data.today}
+              horizon={data.scannedUntil}
+              save={saveState}
+              onChange={(window) => setDraft((r) => ({ ...r, window }))}
+              footer={
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="min-w-0 text-sm text-ink-2">
+                    {windowValid ? (
+                      <>
+                        Booking only <span className="font-medium text-ink">{summary}</span>
+                      </>
+                    ) : (
+                      <span className="text-hot">{windowIssues[0]?.message}</span>
+                    )}
+                  </p>
+                  {isConfirmed ? (
+                    <span className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-clear">
+                      <Check className="size-4" aria-hidden="true" /> Dates and times confirmed
+                    </span>
+                  ) : (
+                    <button type="button" className="btn btn-primary group" disabled={!windowValid} onClick={confirmDates}>
+                      Confirm dates and times
+                      <ArrowRight className="size-4 transition-transform duration-150 group-hover:translate-x-0.5" aria-hidden="true" />
+                    </button>
+                  )}
+                </div>
+              }
+            />
+
+            {/* Step 2: opens once the dates and times are confirmed */}
+            {isConfirmed ? (
+              <>
+                <div id="people-section" className="scroll-mt-24">
+                  <ApplicantsEditor
+                    key={system}
+                    system={system}
+                    persons={draft.persons}
+                    email={draft.email}
+                    showAll={showDetailErrors}
+                    onChange={({ persons, email }) => setDraft((r) => ({ ...r, persons, email }))}
+                  />
+                </div>
+
+                <section aria-labelledby="book-h" className="rounded-2xl border border-line bg-surface p-5 shadow-sm sm:p-6">
+                  <h2 id="book-h" className="label-mono">Step 3 · Book</h2>
+                  <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0 text-sm text-ink-2">
+                      {mineSlot ? (
+                        <p>
+                          You already have a booking on this service for{" "}
+                          <span className="font-mono font-semibold text-ink">{slotLabel(mineSlot.slot)}</span>. Only one is allowed per service.
+                        </p>
+                      ) : bookTarget ? (
+                        <p>
+                          {selectedSlot && bookTarget.slot === selectedSlot.slot ? "Booking the slot you picked: " : "Booking the earliest slot in your window: "}
+                          <span className="font-mono font-semibold text-ink">{slotLabel(bookTarget.slot)}</span>
+                          {" "}for {draft.persons.length} {draft.persons.length === 1 ? "person" : "people"}, confirmation to{" "}
+                          <span className="font-medium text-ink">{draft.email || "your email"}</span>.
+                        </p>
+                      ) : (
+                        <p>No free slot inside your window right now. This page checks again every 15 seconds.</p>
+                      )}
+                    </div>
+                    {mineSlot ? (
+                      <button type="button" className="btn btn-ghost" onClick={() => jumpTo(mineSlot.slot)}>
+                        Show on calendar
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="btn btn-primary group"
+                        disabled={!bookTarget || working || !windowValid}
+                        onClick={() => bookTarget && void book(bookTarget)}
+                      >
+                        {working && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
+                        {working ? "Queuing…" : bookTarget ? `Book ${slotLabel(bookTarget.slot)}` : "Nothing to book"}
+                        {!working && bookTarget && (
+                          <ArrowRight className="size-4 transition-transform duration-150 group-hover:translate-x-0.5" aria-hidden="true" />
+                        )}
+                      </button>
+                    )}
+                  </div>
+                </section>
+              </>
+            ) : (
+              <section
+                aria-labelledby="locked-h"
+                className="flex items-start gap-3 rounded-2xl border border-dashed border-line-strong bg-surface-2 p-5 sm:p-6"
+              >
+                <Lock className="mt-0.5 size-4 flex-none text-muted" aria-hidden="true" />
+                <div>
+                  <h2 id="locked-h" className="label-mono">Step 2 · People and contact</h2>
+                  <p className="mt-2 text-sm text-ink-2">
+                    Confirm your dates and times above, then add who is booking and a contact email.
+                  </p>
+                </div>
+              </section>
+            )}
+          </>
+        ) : (
+          <div className="h-48 rounded-2xl border border-line bg-surface p-5" aria-hidden="true">
+            <div className="skeleton h-3 w-32" />
+            <div className="mt-6 grid grid-cols-2 gap-3">
+              <div className="skeleton h-11" />
+              <div className="skeleton h-11" />
+            </div>
+          </div>
+        )}
       </div>
 
       <div aria-live="polite" className="pointer-events-none fixed inset-x-0 bottom-6 z-50 flex justify-center px-4">
@@ -649,17 +728,14 @@ export function Console() {
 
 export function ConsoleFallback() {
   return (
-    <div className="mx-auto max-w-[96rem] px-4 pt-8 pb-16 sm:px-6 lg:px-8" aria-busy="true">
+    <div className="mx-auto max-w-[76rem] px-4 pt-8 pb-16 sm:px-6 lg:px-8" aria-busy="true">
       <div className="border-b border-line pb-6">
         <p className="label-mono">Booking console</p>
         <div className="mt-3 skeleton h-10 w-full max-w-xl" />
         <div className="mt-3 skeleton h-4 w-72" />
       </div>
-      <div className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[22rem_minmax(0,1fr)]">
-        <div className="h-14 rounded-2xl border border-line bg-surface lg:h-[34rem]" />
-        <div className="rounded-2xl border border-line bg-surface p-5">
-          <SlotListSkeleton />
-        </div>
+      <div className="mt-6 rounded-2xl border border-line bg-surface p-5">
+        <SlotListSkeleton />
       </div>
     </div>
   );

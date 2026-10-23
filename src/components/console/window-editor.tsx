@@ -13,9 +13,11 @@ interface Props {
   horizon: string;
   save: SaveState;
   onChange: (next: BookingWindow) => void;
+  /** Rendered at the bottom of the card, e.g. the confirm button. */
+  footer?: React.ReactNode;
 }
 
-export function WindowEditor({ value, today, horizon, save, onChange }: Props) {
+export function WindowEditor({ value, today, horizon, save, onChange, footer }: Props) {
   const uid = useId();
   const [touched, setTouched] = useState<Set<string>>(new Set());
   const issues = validateWindow(value);
@@ -31,7 +33,7 @@ export function WindowEditor({ value, today, horizon, save, onChange }: Props) {
   return (
     <section aria-labelledby={`${uid}-h`} className="rounded-2xl border border-line bg-surface p-5 shadow-sm">
       <div className="flex items-center justify-between gap-3">
-        <h2 id={`${uid}-h`} className="label-mono">Booking window</h2>
+        <h2 id={`${uid}-h`} className="label-mono">Dates and times</h2>
         <SaveBadge state={issues.length > 0 ? "invalid" : save} />
       </div>
       <p className="mt-2 text-[0.8125rem] text-muted">
@@ -114,6 +116,8 @@ export function WindowEditor({ value, today, horizon, save, onChange }: Props) {
           </span>
         </span>
       </label>
+
+      {footer && <div className="mt-5 border-t border-line-2 pt-5">{footer}</div>}
     </section>
   );
 }
@@ -168,6 +172,9 @@ function RangeCard({
         )}
       </div>
 
+      {/* Dates on the left, times on the right once there is room. */}
+      <div className="lg:mt-2 lg:grid lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)] lg:gap-8">
+      <div>
       <div className="mt-2 grid grid-cols-2 gap-3">
         <div>
           <label htmlFor={`${uid}-from`} className="mb-1.5 block text-sm font-medium text-ink-2">
@@ -222,7 +229,9 @@ function RangeCard({
         )}
       </p>
 
-      <div className="mt-2 border-t border-line pt-3">
+      </div>
+
+      <div className="mt-2 border-t border-line pt-3 lg:mt-0 lg:border-t-0 lg:border-l lg:pt-2 lg:pl-8">
         <p className="mb-2 text-sm font-medium text-ink-2">
           Times of day <span className="font-normal text-muted">(optional)</span>
         </p>
@@ -310,6 +319,7 @@ function RangeCard({
             </button>
           ))}
         </div>
+      </div>
       </div>
     </div>
   );

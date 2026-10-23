@@ -61,7 +61,7 @@ export function MonthCalendar({ month, today, scannedUntil, days, selectedDay, o
         >
           <ChevronLeft className="size-5" aria-hidden="true" />
         </button>
-        <h3 className="font-display text-2xl font-medium tracking-[-0.01em] text-ink" aria-live="polite">
+        <h3 className="font-display text-2xl font-medium tracking-[-0.01em] text-ink sm:text-3xl" aria-live="polite">
           {formatMonth(month)}
         </h3>
         <button
@@ -75,7 +75,7 @@ export function MonthCalendar({ month, today, scannedUntil, days, selectedDay, o
         </button>
       </div>
 
-      <div className="mt-4 grid grid-cols-7 gap-1 sm:gap-1.5" role="group" aria-label={`Days in ${formatMonth(month)}`}>
+      <div className="mt-4 grid grid-cols-7 gap-1.5 sm:gap-2" role="group" aria-label={`Days in ${formatMonth(month)}`}>
         {WEEKDAYS.map(([short, long]) => (
           <div key={short} className="pb-1 text-center font-mono text-[0.6875rem] tracking-wide text-muted uppercase">
             <abbr title={long} className="no-underline">
@@ -99,7 +99,7 @@ export function MonthCalendar({ month, today, scannedUntil, days, selectedDay, o
             return (
               <div
                 key={day}
-                className={`flex min-h-12 flex-col items-center justify-center rounded-xl text-sm text-muted/60 sm:min-h-14 ${
+                className={`flex min-h-14 flex-col items-center justify-center rounded-xl text-sm text-muted/60 sm:min-h-[4.5rem] lg:min-h-24 lg:text-base ${
                   isToday ? "ring-1 ring-line-strong" : ""
                 }`}
               >
@@ -118,7 +118,7 @@ export function MonthCalendar({ month, today, scannedUntil, days, selectedDay, o
               onClick={() => onSelectDay(day)}
               aria-pressed={selected}
               aria-label={`${formatDayLong(day)}, ${slotsLabel}, ${windowLabel}${info.mine ? ", you have a booking" : ""}`}
-              className={`relative flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl border text-sm transition-colors sm:min-h-14 ${
+              className={`relative flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl border text-sm transition-colors sm:min-h-[4.5rem] lg:min-h-24 lg:gap-1 ${
                 selected
                   ? "border-accent bg-accent text-on-accent shadow-sm"
                   : info.inWindow > 0
@@ -126,12 +126,13 @@ export function MonthCalendar({ month, today, scannedUntil, days, selectedDay, o
                     : "border-line bg-surface text-ink-2 hover:border-line-strong"
               } ${isToday && !selected ? "ring-2 ring-line-strong ring-offset-1 ring-offset-surface" : ""}`}
             >
-              <span className="font-semibold tabular">{n}</span>
+              <span className="font-semibold tabular lg:text-xl">{n}</span>
               <span
                 aria-hidden="true"
-                className={`font-mono text-[0.6875rem] leading-none tabular ${selected ? "text-on-accent/80" : "opacity-75"}`}
+                className={`font-mono text-[0.6875rem] leading-none tabular lg:text-xs ${selected ? "text-on-accent/80" : "opacity-75"}`}
               >
                 {info.total}
+                <span className="hidden lg:inline"> {info.total === 1 ? "slot" : "slots"}</span>
               </span>
               {info.mine && (
                 <span
