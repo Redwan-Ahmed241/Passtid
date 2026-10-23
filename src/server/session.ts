@@ -12,7 +12,7 @@ export const SESSION_COOKIE = "tl_session";
 const MAX_AGE_S = 60 * 60 * 24 * 7;
 
 function secret(): string {
-  return process.env.AUTH_SECRET || "tidlucka-demo-secret-replace-with-AUTH_SECRET";
+  return process.env.AUTH_SECRET || "passtid-demo-secret-replace-with-AUTH_SECRET";
 }
 
 const b64 = (s: string) => Buffer.from(s, "utf8").toString("base64url");

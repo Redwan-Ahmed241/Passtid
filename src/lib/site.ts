@@ -11,14 +11,14 @@ function baseUrl(): string {
 }
 
 export const site = {
-  name: "Tidlucka",
+  name: "Passtid",
   tagline: "Book a slot you can actually attend",
   description:
-    "Tidlucka watches Swedish embassy appointment slots in London for passports, national ID cards and migration (coordination numbers). Set the days and hours you can attend, see how many people are already queued for each slot on a month calendar, and book the quiet one.",
+    "Passtid watches Swedish embassy appointment slots in London for passports, national ID cards and migration (coordination numbers). Set the days and hours you can attend, see how many people are already queued for each slot on a month calendar, and book the quiet one.",
   url: baseUrl(),
   locale: "en_GB",
   /** Every FazeSoft project carries this credit in its footer. */
   credit: { lead: "Built by", name: "FazeSoft", url: "https://www.fazesoft.com/" },
   disclaimer:
-    "Tidlucka is an independent booking assistant. It is not affiliated with, endorsed by or operated by the Embassy of Sweden or the Swedish Migration Agency.",
+    "Passtid is an independent booking assistant. It is not affiliated with, endorsed by or operated by the Embassy of Sweden or the Swedish Migration Agency.",
 } as const;
