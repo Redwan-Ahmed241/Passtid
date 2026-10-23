@@ -55,6 +55,7 @@ export default function Home() {
               url: site.url,
               description: site.description,
               applicationCategory: "UtilitiesApplication",
+              creator: { "@type": "Organization", name: site.credit.name, url: site.credit.url },
               operatingSystem: "Web",
               inLanguage: "en-GB",
             },

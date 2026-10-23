@@ -28,9 +28,20 @@ export function SiteFooter() {
         </div>
       </div>
       <div className="border-t border-line-2">
-        <p className="mx-auto max-w-7xl px-4 py-5 font-mono text-xs text-muted sm:px-6 lg:px-8">
-          All times are the embassy&rsquo;s local time (Europe/London).
-        </p>
+        <div className="mx-auto flex max-w-7xl flex-col gap-1 px-4 py-5 font-mono text-xs text-muted sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
+          <p>All times are the embassy&rsquo;s local time (Europe/London).</p>
+          <p>
+            {site.credit.lead}{" "}
+            <a
+              href={site.credit.url}
+              target="_blank"
+              rel="noopener"
+              className="inline-flex min-h-11 items-center font-semibold text-ink-2 underline-offset-4 hover:text-ink hover:underline sm:min-h-0"
+            >
+              {site.credit.name}
+            </a>
+          </p>
+        </div>
       </div>
     </footer>
   );
