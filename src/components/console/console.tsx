@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { AlertTriangle, ArrowRight, Check, ChevronRight, Loader2, Lock, RefreshCw, ScanLine } from "lucide-react";
+import { AlertTriangle, ArrowRight, Check, CreditCard, Globe2, Loader2 } from "lucide-react";
 import { api, ApiRequestError, makeId } from "@/lib/api";
 import { isComplete } from "@/lib/applicants";
 import {
@@ -14,21 +14,52 @@ import {
   type SlotsResponse,
   type SystemId,
 } from "@/lib/types";
-import { EMBASSY_TZ, clockOf, dayOf, formatDayLong, formatDayShort, monthOf } from "@/lib/time";
-import { describeWindow, MAX_DATE_RANGES, matchesWindow, parseClock, validateWindow } from "@/lib/window";
+import { EMBASSY_TZ, clockOf, dayOf, formatDayLong, formatDayShort } from "@/lib/time";
+import { MAX_DATE_RANGES, matchesWindow, parseClock, validateWindow } from "@/lib/window";
 import { announceAuthChange, useMe } from "../auth/use-me";
-import { ActionBar } from "./action-bar";
 import { ApplicantsEditor } from "./applicants-editor";
-import { MonthCalendar, type DayInfo } from "./month-calendar";
 import type { SaveState } from "./save-badge";
-import { SlotList, SlotListSkeleton, type ViewSlot } from "./slot-list";
+import { SlotListSkeleton, type ViewSlot } from "./slot-list";
 import { WindowEditor } from "./window-editor";
 
 const POLL_SLOTS_MS = 15_000;
 const POLL_BOOKING_MS = 1_500;
+const DAYS_PER_PAGE = 10;
+
+type Step = 1 | 2 | 3 | 4;
+const STEP_NAMES: Record<Step, string> = { 1: "Service", 2: "Date & time", 3: "Details", 4: "Confirm" };
 
 const slotLabel = (iso: string) => `${formatDayShort(iso)} ${clockOf(iso)}`;
 const sameRequest = (a: BookingRequest, b: BookingRequest) => JSON.stringify(a) === JSON.stringify(b);
+
+/** The window plus one single-day range that covers `slot`, or null when the window is already full. */
+function widenWindow(window: BookingWindow, slot: string): BookingWindow | null {
+  if (window.ranges.length >= MAX_DATE_RANGES) return null;
+  const day = dayOf(slot);
+  const h = Math.floor((parseClock(clockOf(slot), "start") ?? 0) / 60);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return {
+    emergency: false,
+    ranges: [
+      ...window.ranges,
+      { id: makeId(), from: day, to: day, times: [{ start: `${pad(h)}:00`, end: h >= 23 ? "EOD" : `${pad(h + 1)}:00` }] },
+    ],
+  };
+}
+
+let navyUsers = 0;
+
+/** The console has its own navy palette; the header and footer follow it. Counted, because the fallback and the page overlap. */
+function useNavyTheme() {
+  useEffect(() => {
+    navyUsers += 1;
+    document.body.classList.add("navy");
+    return () => {
+      navyUsers -= 1;
+      if (navyUsers === 0) document.body.classList.remove("navy");
+    };
+  }, []);
+}
 
 const clockFmt = new Intl.DateTimeFormat("en-GB", {
   timeZone: EMBASSY_TZ,
@@ -47,18 +78,21 @@ export function Console() {
   const info = SYSTEM_INFO[system];
   const { loading: authLoading, user } = useMe();
 
+  const [step, setStep] = useState<Step>(1);
+  /** The person asked to book another service even though this one already has a booking. */
+  const [startNew, setStartNew] = useState(false);
+  const [consent, setConsent] = useState(false);
   const [drafts, setDrafts] = useState<Partial<Record<SystemId, BookingRequest>>>({});
   const [saved, setSaved] = useState<Partial<Record<SystemId, BookingRequest>>>({});
-  /** Step 1 (dates and times) confirmed, so step 2 (people and contact) is open. */
-  const [confirmed, setConfirmed] = useState<Partial<Record<SystemId, boolean>>>({});
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [slotsBy, setSlotsBy] = useState<Partial<Record<SystemId, SlotsResponse>>>({});
   const [loadError, setLoadError] = useState<string | null>(null);
   const [selection, setSelection] = useState<{ system: SystemId; slot: string } | null>(null);
   const [pickedDay, setPickedDay] = useState<string | null>(null);
-  const [pickedMonth, setPickedMonth] = useState<string | null>(null);
+  const [dayLimit, setDayLimit] = useState(DAYS_PER_PAGE);
   const [working, setWorking] = useState(false);
   const [showDetailErrors, setShowDetailErrors] = useState(false);
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
   const [toast, setToast] = useState<{ id: number; text: string; tone: "ok" | "warn" } | null>(null);
 
   const announced = useRef(new Set<string>());
@@ -98,6 +132,8 @@ export function Console() {
 
   /* ----------------------------- effects ----------------------------- */
 
+  useNavyTheme();
+
   // Only signed-in users can see slots.
   useEffect(() => {
     if (authLoading || user) return;
@@ -113,9 +149,6 @@ export function Console() {
       (r) => {
         setDrafts((d) => ({ ...d, [system]: r.request }));
         setSaved((s) => ({ ...s, [system]: r.request }));
-        // Someone who already finished both steps goes straight back to the full form.
-        const done = isComplete(system, r.request) && validateWindow(r.request.window).length === 0;
-        setConfirmed((c) => ({ ...c, [system]: done }));
       },
       (err: unknown) => {
         requestedFor.current.delete(system);
@@ -145,9 +178,7 @@ export function Console() {
 
   const draft = drafts[system] ?? null;
   const savedReq = saved[system] ?? null;
-  const isConfirmed = !!confirmed[system];
-  const windowIssues = draft ? validateWindow(draft.window) : [];
-  const windowValid = windowIssues.length === 0;
+  const windowValid = draft ? validateWindow(draft.window).length === 0 : true;
   const detailsReady = draft ? isComplete(system, draft) : false;
 
   // Autosave once the window is valid and something changed. People and email may still be a draft.
@@ -214,6 +245,11 @@ export function Console() {
     return () => clearTimeout(t);
   }, [toast]);
 
+  // Each step starts at the top, like turning a page.
+  useEffect(() => {
+    window.scrollTo({ top: 0 });
+  }, [step]);
+
   /* ----------------------------- derived ----------------------------- */
 
   // The bot keeps using the last valid window while the draft window is broken.
@@ -225,52 +261,33 @@ export function Console() {
     return data.slots.map((s) => ({ ...s, inWindow: matchesWindow(s.slot, effectiveWindow) }));
   }, [data, effectiveWindow]);
 
-  const inWin = useMemo(() => view.filter((s) => s.inWindow), [view]);
-
-  const daysMap = useMemo(() => {
-    const m = new Map<string, DayInfo>();
-    for (const s of view) {
-      const d = dayOf(s.slot);
-      const cur = m.get(d) ?? { total: 0, inWindow: 0, mine: false };
-      cur.total += 1;
-      if (s.inWindow) cur.inWindow += 1;
-      if (s.mine) cur.mine = true;
-      m.set(d, cur);
-    }
-    return m;
-  }, [view]);
-
-  const sortedDays = useMemo(() => [...daysMap.keys()].sort(), [daysMap]);
-  const defaultDay = sortedDays.find((d) => (daysMap.get(d)?.inWindow ?? 0) > 0) ?? sortedDays[0] ?? null;
-  const selectedDay = pickedDay && daysMap.has(pickedDay) ? pickedDay : defaultDay;
-  const month = pickedMonth ?? monthOf(selectedDay ?? data?.today ?? "0000-00");
-
+  const sortedDays = useMemo(() => [...new Set(view.map((s) => dayOf(s.slot)))].sort(), [view]);
+  const selectedDay = pickedDay && sortedDays.includes(pickedDay) ? pickedDay : null;
   const daySlots = useMemo(
     () => (selectedDay ? view.filter((s) => dayOf(s.slot) === selectedDay).sort((a, b) => a.slot.localeCompare(b.slot)) : []),
     [view, selectedDay],
   );
 
-  const selectedSlot = selection?.system === system ? (daySlots.find((s) => s.slot === selection.slot) ?? null) : null;
+  const selectedSlot = selection?.system === system ? (view.find((s) => s.slot === selection.slot) ?? null) : null;
   const mineSlot = view.find((s) => s.mine) ?? null;
-  const otherActive = view.find((s) => s.mine && s.slot !== selectedSlot?.slot) ?? null;
-  const nextInWindow = inWin.find((s) => !s.mine) ?? null;
-  const uncontested = inWin.filter((s) => s.queued === 0).length;
-  /** What the final button books: the slot you picked if it is inside the window, else the earliest one that is. */
-  const bookTarget = selectedSlot && selectedSlot.inWindow && !selectedSlot.mine ? selectedSlot : nextInWindow;
+  const showStatus = !!mineSlot && !startNew;
 
   /* ----------------------------- actions ----------------------------- */
 
-  const switchSystem = (next: SystemId) => {
-    if (next === system) return;
-    const q = new URLSearchParams(params.toString());
-    if (next === "passport") q.delete("system");
-    else q.set("system", next);
-    const qs = q.toString();
-    setPickedDay(null);
-    setPickedMonth(null);
-    setSelection(null);
-    setShowDetailErrors(false);
-    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  const chooseSystem = (next: SystemId) => {
+    if (next !== system) {
+      const q = new URLSearchParams(params.toString());
+      if (next === "passport") q.delete("system");
+      else q.set("system", next);
+      const qs = q.toString();
+      setPickedDay(null);
+      setSelection(null);
+      setDayLimit(DAYS_PER_PAGE);
+      setShowDetailErrors(false);
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    }
+    setStartNew(false);
+    setStep(2);
   };
 
   const setDraft = (update: (r: BookingRequest) => BookingRequest) =>
@@ -278,84 +295,66 @@ export function Console() {
 
   const pickDay = (day: string) => {
     setPickedDay(day);
-    setPickedMonth(null);
     setSelection(null);
+    setTimeout(() => document.getElementById("times-h")?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
   };
 
-  const changeMonth = (m: string) => {
-    setPickedMonth(m);
-    const first = sortedDays.filter((d) => monthOf(d) === m);
-    const preferred = first.find((d) => (daysMap.get(d)?.inWindow ?? 0) > 0) ?? first[0] ?? null;
-    setPickedDay(preferred);
-    setSelection(null);
+  const goDetails = () => {
+    if (!selectedSlot) return;
+    setStep(3);
   };
 
-  const jumpTo = (slot: string) => {
-    setPickedDay(dayOf(slot));
-    setPickedMonth(null);
-    setSelection({ system, slot });
-    document.getElementById("results-h")?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
-
-  const selectSlot = (slot: string) =>
-    setSelection((cur) => (cur?.system === system && cur.slot === slot ? null : { system, slot }));
-
-  /** Bring the people form into view and focus its first empty field. */
-  const focusPeople = useCallback((onlyInvalid: boolean) => {
-    setTimeout(() => {
-      const section = document.getElementById("people-section");
-      section?.scrollIntoView({ behavior: "smooth", block: "start" });
-      const target = onlyInvalid
-        ? section?.querySelector<HTMLElement>("input[aria-invalid='true']")
-        : section?.querySelector<HTMLElement>("input");
-      (target ?? section?.querySelector<HTMLElement>("input"))?.focus({ preventScroll: true });
-    }, 120);
-  }, []);
-
-  /** Step 1 -> step 2. */
-  const confirmDates = () => {
-    if (!windowValid) return;
-    setConfirmed((c) => ({ ...c, [system]: true }));
-    focusPeople(false);
-  };
-
-  /** Someone tried to book with details missing: open step 2, show what is missing. */
-  const fixDetails = useCallback(() => {
-    if (!windowValid) {
-      notify("Fix the dates and times first.", "warn");
+  /** Step 3 -> 4, or show what is missing. */
+  const goConfirm = () => {
+    if (!detailsReady || !consent) {
+      setShowDetailErrors(true);
+      setTimeout(() => {
+        document.querySelector<HTMLElement>("#details input[aria-invalid='true']")?.focus();
+      }, 50);
       return;
     }
-    setConfirmed((c) => ({ ...c, [system]: true }));
-    setShowDetailErrors(true);
-    focusPeople(true);
-  }, [windowValid, system, notify, focusPeople]);
+    setStep(4);
+  };
 
   const book = async (slot: ViewSlot) => {
-    if (!draft) return;
+    if (!draft || !effectiveWindow) return;
     if (!detailsReady) {
-      fixDetails();
+      setStep(3);
+      setShowDetailErrors(true);
       return;
     }
     setWorking(true);
     try {
-      // Make sure the backend has the latest people and email before it books.
-      if (!savedReq || !sameRequest(draft, savedReq)) {
-        await api.saveRequest(system, draft);
-        setSaved((s) => ({ ...s, [system]: draft }));
+      // Make sure the backend has the latest people and email, and that the bot's window covers this slot.
+      let req: BookingRequest = windowValid ? draft : { ...draft, window: effectiveWindow };
+      if (!matchesWindow(slot.slot, req.window)) {
+        const wider = widenWindow(req.window, slot.slot);
+        if (wider) req = { ...req, window: wider };
+      }
+      if (!savedReq || !sameRequest(req, savedReq)) {
+        await api.saveRequest(system, req);
+        setSaved((s) => ({ ...s, [system]: req }));
+        setDrafts((d) => ({ ...d, [system]: req }));
       }
       const b = await api.book(system, slot.slot);
       const fresh = await loadSlots(system);
       const depth = fresh?.slots.find((s) => s.slot === b.slot)?.queued ?? slot.queued + 1;
       setSelection({ system, slot: b.slot });
-      setPickedDay(dayOf(b.slot));
-      const n = draft.persons.length;
+      setStartNew(false);
+      const n = req.persons.length;
       notify(`Queued ${slotLabel(b.slot)} for ${n} ${n === 1 ? "person" : "people"}. You are #${depth} in the queue.`);
     } catch (err) {
       if (handleAuthLoss(err)) return;
       const message = err instanceof ApiRequestError ? err.message : "The booking could not be started.";
       notify(message, "warn");
-      if (err instanceof ApiRequestError && err.status === 404) void loadSlots(system);
-      if (err instanceof ApiRequestError && err.code === "incomplete_details") fixDetails();
+      if (err instanceof ApiRequestError && err.status === 404) {
+        void loadSlots(system);
+        setStep(2);
+      }
+      if (err instanceof ApiRequestError && err.code === "incomplete_details") {
+        setStep(3);
+        setShowDetailErrors(true);
+      }
     } finally {
       setWorking(false);
     }
@@ -369,6 +368,9 @@ export function Console() {
       const fresh = await loadSlots(b.system);
       const depth = fresh?.slots.find((s) => s.slot === b.slot)?.queued ?? 0;
       notify(`Cancelled. ${slotLabel(b.slot)} is back to ${depth} queued.`);
+      setConfirmingCancel(false);
+      setSelection(null);
+      setStep(1);
     } catch (err) {
       announced.current.delete(bookingId);
       if (!handleAuthLoss(err)) notify(err instanceof ApiRequestError ? err.message : "Couldn't cancel. Try again.", "warn");
@@ -377,336 +379,237 @@ export function Console() {
     }
   };
 
-  /** Add a single-day range that covers one outside slot. */
-  const include = (slot: ViewSlot) => {
-    if (!draft) return;
-    if (draft.window.ranges.length >= MAX_DATE_RANGES) {
-      notify(`Remove a date range first. You can have up to ${MAX_DATE_RANGES}.`, "warn");
-      return;
-    }
-    const day = dayOf(slot.slot);
-    const h = Math.floor((parseClock(clockOf(slot.slot), "start") ?? 0) / 60);
-    const pad = (n: number) => String(n).padStart(2, "0");
-    setDraft((r) => ({
-      ...r,
-      window: {
-        emergency: false,
-        ranges: [
-          ...r.window.ranges,
-          { id: makeId(), from: day, to: day, times: [{ start: `${pad(h)}:00`, end: h >= 23 ? "EOD" : `${pad(h + 1)}:00` }] },
-        ],
-      },
-    }));
-    notify(`Window widened to include ${slotLabel(slot.slot)}`);
-  };
-
   /* ----------------------------- render ----------------------------- */
 
   if (authLoading || !user) return <ConsoleFallback />;
 
   const ready = !!data && !!draft && !!effectiveWindow;
   const updated = data ? clockFmt.format(new Date(data.generatedAt)) : null;
-  const summary = effectiveWindow ? describeWindow(effectiveWindow) : "";
+  const visibleDays = sortedDays.slice(0, dayLimit);
 
   return (
-    <div className="mx-auto max-w-7xl px-4 pt-8 pb-16 sm:px-6 lg:px-8">
-      {/* Page head */}
-      <div className="flex flex-col gap-5 border-b border-line pb-6 lg:flex-row lg:items-end lg:justify-between">
-        <div className="max-w-2xl">
-          <p className="label-mono">Booking console</p>
-          <h1 className="mt-2 font-display text-[2.25rem] leading-[1.05] font-medium tracking-[-0.015em] text-ink sm:text-[2.75rem]">
-            Slots you can attend, <em className="text-accent">and how busy they are.</em>
-          </h1>
-          <p className="mt-3 min-h-6 text-[0.9375rem] text-ink-2">
-            {effectiveWindow ? (
-              effectiveWindow.emergency ? (
-                <span className="font-medium text-hot">Emergency mode: the first slot that appears gets booked.</span>
-              ) : (
-                <>
-                  Booking only <span className="font-medium text-ink">{summary}</span>
-                </>
-              )
-            ) : (
-              <span className="skeleton inline-block h-4 w-72 align-middle" aria-hidden="true" />
-            )}
+    <div className="mx-auto w-full max-w-md px-4 pt-6 pb-16">
+      {/* Progress: hidden once there is a booking to look at */}
+      {!showStatus && (
+        <div className="mb-4">
+          <p className="text-xs text-muted tabular" aria-live="polite">
+            {step} / 4 · {STEP_NAMES[step]}
           </p>
+          <div className="mt-2 flex gap-1.5" aria-hidden="true">
+            {([1, 2, 3, 4] as const).map((n) => (
+              <span key={n} className={`h-1 flex-1 rounded-full ${n <= step ? "bg-accent-line" : "bg-line"}`} />
+            ))}
+          </div>
         </div>
+      )}
 
-        <div className="inline-flex self-start rounded-xl border border-line bg-sunken p-1 lg:self-auto" role="group" aria-label="Service">
-          {SYSTEMS.map((id) => (
-            <button
-              key={id}
-              type="button"
-              aria-pressed={system === id}
-              onClick={() => switchSystem(id)}
-              className={`min-h-11 rounded-lg px-4 text-sm font-semibold whitespace-nowrap transition-colors ${
-                system === id ? "bg-surface text-ink shadow-sm" : "text-muted hover:text-ink"
-              }`}
-            >
-              {SYSTEM_INFO[id].short}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="mt-6 flex flex-col gap-6">
-        {/* Step 1a: the calendar and the chosen day's slots */}
-        <section aria-labelledby="results-h" className="min-w-0 scroll-mt-24 rounded-2xl border border-line bg-surface p-4 shadow-sm sm:p-6">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 id="results-h" className="text-base font-semibold text-ink">
-                <span className="label-mono mr-2">Step 1</span>
-                {info.name}
-              </h2>
-              <p className="mt-1 font-mono text-xs text-muted tabular" aria-live="polite">
-                {ready ? (
-                  <>
-                    {inWin.length} in window · {uncontested} uncontested
-                    {updated && (
-                      <>
-                        {" · "}
-                        <span className="inline-flex items-center gap-1">
-                          <span className="size-1.5 rounded-full bg-clear animate-pulse-dot" aria-hidden="true" />
-                          live, {updated}
-                        </span>
-                      </>
-                    )}
-                  </>
-                ) : (
-                  "Loading slots…"
-                )}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => void loadSlots(system)}
-              className="btn btn-ghost h-11 min-h-11 px-3 text-sm sm:h-9 sm:min-h-9"
-              aria-label="Refresh slots now"
-            >
-              <RefreshCw className="size-3.5" aria-hidden="true" /> Refresh
+      <div className="rounded-2xl border border-line bg-surface p-5">
+        {loadError && !data && step > 1 && (
+          <div role="alert" className="rounded-xl border border-hot-line bg-hot-bg p-4">
+            <p className="flex items-center gap-2 font-semibold text-hot">
+              <AlertTriangle className="size-4" aria-hidden="true" /> Can&rsquo;t reach the booking service
+            </p>
+            <p className="mt-1 text-sm text-ink-2">{loadError}</p>
+            <button type="button" className="btn btn-ghost mt-3" onClick={() => void loadSlots(system)}>
+              Try again
             </button>
           </div>
+        )}
 
-          {loadError && !data && (
-            <div role="alert" className="mt-5 rounded-xl border border-hot-line bg-hot-bg p-4">
-              <p className="flex items-center gap-2 font-semibold text-hot">
-                <AlertTriangle className="size-4" aria-hidden="true" /> Can&rsquo;t reach the booking service
-              </p>
-              <p className="mt-1 text-sm text-ink-2">{loadError}</p>
-              <button type="button" className="btn btn-ghost mt-3 h-11 min-h-11 text-sm sm:h-9 sm:min-h-9" onClick={() => void loadSlots(system)}>
-                Try again
-              </button>
+        {!ready && !loadError && <SlotListSkeleton />}
+
+        {ready && showStatus && mineSlot && draft && (
+          <StatusCard
+            system={system}
+            slot={mineSlot}
+            people={draft.persons.length}
+            email={draft.email}
+            working={working}
+            confirming={confirmingCancel}
+            onAskCancel={() => setConfirmingCancel(true)}
+            onKeep={() => setConfirmingCancel(false)}
+            onCancel={() => mineSlot.mine && void cancel(mineSlot.mine.bookingId)}
+            onAnother={() => {
+              setStartNew(true);
+              setStep(1);
+            }}
+          />
+        )}
+
+        {ready && !showStatus && step === 1 && (
+          <>
+            <h1 className="text-2xl font-semibold text-ink">What do you need?</h1>
+            <p className="mt-1 text-sm text-muted">Book your embassy appointment</p>
+            <div className="mt-5 flex flex-col gap-3">
+              {SYSTEMS.map((id) => (
+                <button
+                  key={id}
+                  type="button"
+                  aria-pressed={system === id}
+                  onClick={() => chooseSystem(id)}
+                  className="flex min-h-20 items-center gap-4 rounded-xl border border-line-strong bg-surface-2 p-4 text-left transition-colors hover:border-accent-line hover:bg-accent-soft aria-pressed:border-accent-line"
+                >
+                  <span className="grid size-11 flex-none place-items-center rounded-lg bg-accent-soft text-accent-line">
+                    {id === "passport" ? <CreditCard className="size-5" aria-hidden="true" /> : <Globe2 className="size-5" aria-hidden="true" />}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block font-semibold text-ink">{id === "passport" ? "Passport / ID" : "Coordination number"}</span>
+                    <span className="mt-0.5 block text-sm text-muted">
+                      {id === "passport"
+                        ? "Apply for or renew a Swedish passport or ID card."
+                        : "Samordningsnummer, for people not registered in Sweden."}
+                    </span>
+                  </span>
+                </button>
+              ))}
             </div>
-          )}
-          {loadError && data && (
-            <p className="mt-3 text-[0.8125rem] text-hot" role="status">
-              Couldn&rsquo;t refresh. Showing the slots from {updated}.
-            </p>
-          )}
+          </>
+        )}
 
-          <div className="mt-5 min-h-[24rem]">
-            {!ready && !loadError && <SlotListSkeleton />}
+        {ready && !showStatus && step === 2 && data && (
+          <>
+            <h1 className="text-2xl font-semibold text-ink">Choose date and time</h1>
+            <p className="mt-1 text-sm text-muted">{info.name}</p>
 
-            {ready && data && effectiveWindow && (
+            {sortedDays.length === 0 ? (
+              <div className="mt-5 rounded-xl border border-dashed border-line-strong p-5 text-center">
+                <p className="font-medium text-ink">No open slots right now</p>
+                <p className="mt-1 text-sm text-muted">
+                  Nothing is free in the next {data.scanWeeks} weeks. This page checks again every 15 seconds.
+                </p>
+              </div>
+            ) : (
               <>
-                {!effectiveWindow.emergency && inWin.length === 0 && (
-                  <div className="mb-5 rounded-xl border border-hot-line bg-hot-bg p-4">
-                    <p className="font-semibold text-hot">No free slot inside your window</p>
-                    <p className="mt-1 text-sm text-ink-2">
-                      Nothing will be booked. Widen the dates below, add a time range, or switch on emergency mode to
-                      take whatever appears first. Slots outside your window are still shown on the calendar.
-                    </p>
-                  </div>
+                <p className="label-mono mt-5">Date</p>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  {visibleDays.map((d) => (
+                    <button key={d} type="button" className="tile" aria-pressed={selectedDay === d} onClick={() => pickDay(d)}>
+                      {formatDayShort(d)}
+                    </button>
+                  ))}
+                </div>
+                {sortedDays.length > dayLimit && (
+                  <button
+                    type="button"
+                    className="mt-3 min-h-11 w-full text-sm font-semibold text-accent-line hover:text-ink"
+                    onClick={() => setDayLimit((n) => n + DAYS_PER_PAGE)}
+                  >
+                    Show more dates
+                  </button>
                 )}
 
-                {/* Big calendar, with the day's slots beside it on wide screens and below it otherwise. */}
-                <div className="xl:grid xl:grid-cols-[minmax(0,1fr)_23rem] xl:gap-10">
-                  <div>
-                    <MonthCalendar
-                      month={month}
-                      today={data.today}
-                      scannedUntil={data.scannedUntil}
-                      days={daysMap}
-                      selectedDay={selectedDay}
-                      onSelectDay={pickDay}
-                      onMonthChange={changeMonth}
-                    />
-
-                    {nextInWindow && dayOf(nextInWindow.slot) !== selectedDay && (
-                      <button
-                        type="button"
-                        onClick={() => jumpTo(nextInWindow.slot)}
-                        className="mt-4 inline-flex min-h-11 items-center gap-1.5 rounded-md text-sm font-semibold text-accent hover:text-accent-ink"
-                      >
-                        Next slot in your window: {slotLabel(nextInWindow.slot)}
-                        <ChevronRight className="size-4" aria-hidden="true" />
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="mt-6 border-t border-line-2 pt-5 xl:mt-0 xl:border-t-0 xl:border-l xl:pt-0 xl:pl-10">
-                    {selectedDay ? (
-                      <>
-                        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                          <h3 className="text-base font-semibold text-ink">{formatDayLong(selectedDay)}</h3>
-                          <span className="font-mono text-xs text-muted tabular">
-                            {daySlots.length} slot{daySlots.length === 1 ? "" : "s"}
+                {selectedDay && (
+                  <>
+                    <p id="times-h" className="label-mono mt-5 scroll-mt-20">
+                      Time · {formatDayLong(selectedDay)}
+                    </p>
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      {daySlots.map((s) => (
+                        <button
+                          key={s.slot}
+                          type="button"
+                          className="tile"
+                          aria-pressed={selectedSlot?.slot === s.slot}
+                          onClick={() => setSelection({ system, slot: s.slot })}
+                        >
+                          <span className="tabular">{clockOf(s.slot)}</span>
+                          <span className="text-[0.6875rem] font-normal opacity-75">
+                            {s.queued === 0 ? "no queue" : `${s.queued} queued`}
                           </span>
-                        </div>
-                        <div className="mt-3">
-                          <SlotList
-                            slots={daySlots}
-                            today={data.today}
-                            grouped={false}
-                            selected={selectedSlot?.slot ?? null}
-                            onSelect={selectSlot}
-                          />
-                        </div>
-                      </>
-                    ) : (
-                      <div className="rounded-xl border border-dashed border-line-strong p-5 text-center">
-                        <p className="font-medium text-ink">No open slots right now</p>
-                        <p className="mt-1 text-sm text-muted">The site has nothing free in the next {data.scanWeeks} weeks. This page checks again every 15 seconds.</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <p className="mt-6 flex items-center gap-2 font-mono text-xs text-muted">
-                  <ScanLine className="size-3.5" aria-hidden="true" />
-                  Scanned {data.scanWeeks} weeks ahead, up to {formatDayShort(data.scannedUntil)}. Nothing later is checked.
-                </p>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
               </>
             )}
-          </div>
 
-          <ActionBar
-            slot={selectedSlot}
-            otherActive={otherActive}
-            emergency={!!effectiveWindow?.emergency}
-            windowValid={windowValid}
-            detailsReady={detailsReady}
-            working={working}
-            onBook={() => selectedSlot && void book(selectedSlot)}
-            onCancel={(id) => void cancel(id)}
-            onInclude={() => selectedSlot && include(selectedSlot)}
-            onJump={jumpTo}
-            onFixDetails={fixDetails}
-          />
-        </section>
-
-        {draft && data ? (
-          <>
-            {/* Step 1b: dates and times, under the calendar */}
-            <WindowEditor
-              value={draft.window}
-              today={data.today}
-              horizon={data.scannedUntil}
-              save={saveState}
-              onChange={(window) => setDraft((r) => ({ ...r, window }))}
-              footer={
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <p className="min-w-0 text-sm text-ink-2">
-                    {windowValid ? (
-                      <>
-                        Booking only <span className="font-medium text-ink">{summary}</span>
-                      </>
-                    ) : (
-                      <span className="text-hot">{windowIssues[0]?.message}</span>
-                    )}
-                  </p>
-                  {isConfirmed ? (
-                    <span className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-clear">
-                      <Check className="size-4" aria-hidden="true" /> Dates and times confirmed
-                    </span>
-                  ) : (
-                    <button type="button" className="btn btn-primary group" disabled={!windowValid} onClick={confirmDates}>
-                      Confirm dates and times
-                      <ArrowRight className="size-4 transition-transform duration-150 group-hover:translate-x-0.5" aria-hidden="true" />
-                    </button>
-                  )}
-                </div>
-              }
-            />
-
-            {/* Step 2: opens once the dates and times are confirmed */}
-            {isConfirmed ? (
-              <>
-                <div id="people-section" className="scroll-mt-24">
-                  <ApplicantsEditor
-                    key={system}
-                    system={system}
-                    persons={draft.persons}
-                    email={draft.email}
-                    showAll={showDetailErrors}
-                    onChange={({ persons, email }) => setDraft((r) => ({ ...r, persons, email }))}
+            {draft && (
+              <details className="group mt-6 rounded-xl border border-line">
+                <summary className="flex min-h-11 items-center justify-between px-4 text-sm font-medium text-ink-2">
+                  Advanced: dates the bot may book
+                  <span className="text-muted transition-transform group-open:rotate-90" aria-hidden="true">›</span>
+                </summary>
+                <div className="p-2">
+                  <WindowEditor
+                    value={draft.window}
+                    today={data.today}
+                    horizon={data.scannedUntil}
+                    save={saveState}
+                    onChange={(window) => setDraft((r) => ({ ...r, window }))}
                   />
                 </div>
-
-                <section aria-labelledby="book-h" className="rounded-2xl border border-line bg-surface p-5 shadow-sm sm:p-6">
-                  <h2 id="book-h" className="label-mono">Step 3 · Book</h2>
-                  <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="min-w-0 text-sm text-ink-2">
-                      {mineSlot ? (
-                        <p>
-                          You already have a booking on this service for{" "}
-                          <span className="font-mono font-semibold text-ink">{slotLabel(mineSlot.slot)}</span>. Only one is allowed per service.
-                        </p>
-                      ) : bookTarget ? (
-                        <p>
-                          {selectedSlot && bookTarget.slot === selectedSlot.slot ? "Booking the slot you picked: " : "Booking the earliest slot in your window: "}
-                          <span className="font-mono font-semibold text-ink">{slotLabel(bookTarget.slot)}</span>
-                          {" "}for {draft.persons.length} {draft.persons.length === 1 ? "person" : "people"}, confirmation to{" "}
-                          <span className="font-medium text-ink">{draft.email || "your email"}</span>.
-                        </p>
-                      ) : (
-                        <p>No free slot inside your window right now. This page checks again every 15 seconds.</p>
-                      )}
-                    </div>
-                    {mineSlot ? (
-                      <button type="button" className="btn btn-ghost" onClick={() => jumpTo(mineSlot.slot)}>
-                        Show on calendar
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        className="btn btn-primary group"
-                        disabled={!bookTarget || working || !windowValid}
-                        onClick={() => bookTarget && void book(bookTarget)}
-                      >
-                        {working && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
-                        {working ? "Queuing…" : bookTarget ? `Book ${slotLabel(bookTarget.slot)}` : "Nothing to book"}
-                        {!working && bookTarget && (
-                          <ArrowRight className="size-4 transition-transform duration-150 group-hover:translate-x-0.5" aria-hidden="true" />
-                        )}
-                      </button>
-                    )}
-                  </div>
-                </section>
-              </>
-            ) : (
-              <section
-                aria-labelledby="locked-h"
-                className="flex items-start gap-3 rounded-2xl border border-dashed border-line-strong bg-surface-2 p-5 sm:p-6"
-              >
-                <Lock className="mt-0.5 size-4 flex-none text-muted" aria-hidden="true" />
-                <div>
-                  <h2 id="locked-h" className="label-mono">Step 2 · People and contact</h2>
-                  <p className="mt-2 text-sm text-ink-2">
-                    Confirm your dates and times above, then add who is booking and a contact email.
-                  </p>
-                </div>
-              </section>
+              </details>
             )}
+
+            {updated && (
+              <p className="mt-4 flex items-center gap-1.5 text-xs text-muted tabular">
+                <span className="size-1.5 rounded-full bg-clear animate-pulse-dot" aria-hidden="true" />
+                Live, updated {updated}
+              </p>
+            )}
+
+            <StepButtons onBack={() => setStep(1)} onNext={goDetails} nextDisabled={!selectedSlot} />
           </>
-        ) : (
-          <div className="h-48 rounded-2xl border border-line bg-surface p-5" aria-hidden="true">
-            <div className="skeleton h-3 w-32" />
-            <div className="mt-6 grid grid-cols-2 gap-3">
-              <div className="skeleton h-11" />
-              <div className="skeleton h-11" />
-            </div>
+        )}
+
+        {ready && !showStatus && step === 3 && draft && (
+          <div id="details">
+            <ApplicantsEditor
+              key={system}
+              system={system}
+              persons={draft.persons}
+              email={draft.email}
+              showAll={showDetailErrors}
+              onChange={({ persons, email }) => setDraft((r) => ({ ...r, persons, email }))}
+            />
+            <label className="mt-4 flex cursor-pointer items-start gap-3 text-sm text-ink-2">
+              <input
+                type="checkbox"
+                checked={consent}
+                onChange={(e) => setConsent(e.target.checked)}
+                aria-invalid={showDetailErrors && !consent}
+                className="mt-0.5 size-5 flex-none accent-[#0b62c0]"
+              />
+              <span>I agree that my details are processed for this booking (GDPR).</span>
+            </label>
+            {showDetailErrors && !consent && (
+              <p role="alert" className="mt-1.5 text-[0.8125rem] text-hot">
+                Please tick the box to continue.
+              </p>
+            )}
+            <StepButtons onBack={() => setStep(2)} onNext={goConfirm} />
           </div>
+        )}
+
+        {ready && !showStatus && step === 4 && draft && selectedSlot && (
+          <>
+            <h1 className="text-2xl font-semibold text-ink">Review your booking</h1>
+            <dl className="mt-4 divide-y divide-line-2 text-sm">
+              <Row label="Service" value={info.short} />
+              <Row label="Date" value={formatDayLong(dayOf(selectedSlot.slot))} />
+              <Row label="Time" value={clockOf(selectedSlot.slot)} />
+              <Row
+                label="Name"
+                value={draft.persons.map((p) => `${p.firstName} ${p.lastName}`.trim()).join(", ")}
+              />
+              <Row label="Email" value={draft.email} />
+              <Row label="Number of applicants" value={String(draft.persons.length)} />
+            </dl>
+            <p className="mt-4 text-[0.8125rem] text-muted">
+              {selectedSlot.queued === 0
+                ? "Nobody else is queued for this slot."
+                : `${selectedSlot.queued} already queued for this slot.`}{" "}
+              Confirming adds you to the queue straight away.
+            </p>
+            <StepButtons
+              onBack={() => setStep(3)}
+              onNext={() => void book(selectedSlot)}
+              nextLabel="Confirm booking"
+              nextBusy={working}
+              nextDisabled={working}
+            />
+          </>
         )}
       </div>
 
@@ -715,7 +618,7 @@ export function Console() {
           <p
             key={toast.id}
             className={`animate-rise pointer-events-auto flex max-w-md items-center gap-2.5 rounded-xl px-4 py-3 text-sm shadow-lg ${
-              toast.tone === "warn" ? "bg-hot text-surface" : "bg-ink text-paper"
+              toast.tone === "warn" ? "bg-hot text-paper" : "bg-ink text-paper"
             }`}
           >
             {toast.text}
@@ -726,15 +629,131 @@ export function Console() {
   );
 }
 
-export function ConsoleFallback() {
+function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div className="mx-auto max-w-7xl px-4 pt-8 pb-16 sm:px-6 lg:px-8" aria-busy="true">
-      <div className="border-b border-line pb-6">
-        <p className="label-mono">Booking console</p>
-        <div className="mt-3 skeleton h-10 w-full max-w-xl" />
-        <div className="mt-3 skeleton h-4 w-72" />
-      </div>
-      <div className="mt-6 rounded-2xl border border-line bg-surface p-5">
+    <div className="flex items-baseline justify-between gap-4 py-3">
+      <dt className="text-muted">{label}</dt>
+      <dd className="min-w-0 text-right font-medium break-words text-ink">{value}</dd>
+    </div>
+  );
+}
+
+function StepButtons({
+  onBack,
+  onNext,
+  nextLabel = "Next",
+  nextDisabled,
+  nextBusy,
+}: {
+  onBack: () => void;
+  onNext: () => void;
+  nextLabel?: string;
+  nextDisabled?: boolean;
+  nextBusy?: boolean;
+}) {
+  return (
+    <div className="mt-6 flex gap-3">
+      <button type="button" className="btn btn-ghost flex-none border-accent-line px-6 text-accent-line" onClick={onBack}>
+        Back
+      </button>
+      <button type="button" className="btn btn-primary group flex-1" disabled={nextDisabled} onClick={onNext}>
+        {nextBusy && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
+        {nextBusy ? "Queuing…" : nextLabel}
+        {!nextBusy && nextLabel === "Next" && (
+          <ArrowRight className="size-4 transition-transform duration-150 group-hover:translate-x-0.5" aria-hidden="true" />
+        )}
+      </button>
+    </div>
+  );
+}
+
+/** What the person sees once they hold a place: in the queue, or booked. */
+function StatusCard({
+  system,
+  slot,
+  people,
+  email,
+  working,
+  confirming,
+  onAskCancel,
+  onKeep,
+  onCancel,
+  onAnother,
+}: {
+  system: SystemId;
+  slot: ViewSlot;
+  people: number;
+  email: string;
+  working: boolean;
+  confirming: boolean;
+  onAskCancel: () => void;
+  onKeep: () => void;
+  onCancel: () => void;
+  onAnother: () => void;
+}) {
+  const booked = slot.mine?.status === "booked";
+  const ahead = Math.max(slot.queued - 1, 0);
+  return (
+    <div className="text-center">
+      <span
+        className={`mx-auto grid size-14 place-items-center rounded-full ${booked ? "bg-[#f7ca2a] text-[#0d171e]" : "border-2 border-[#f7ca2a] text-[#f7ca2a]"}`}
+        aria-hidden="true"
+      >
+        {booked ? <Check className="size-7" strokeWidth={3} /> : <Loader2 className="size-6 animate-spin" />}
+      </span>
+      <h1 className="mt-4 text-2xl font-semibold text-ink">
+        {booked ? "Your appointment is booked" : "You are in the queue"}
+      </h1>
+      {booked ? (
+        <>
+          <p className="mt-2 text-sm text-muted">Booking number</p>
+          <p className="mx-auto mt-2 w-fit rounded-lg bg-surface-2 px-5 py-2.5 font-mono text-lg font-semibold tracking-wider text-ink">
+            {slot.mine?.reference ?? "pending"}
+          </p>
+        </>
+      ) : (
+        <p className="mt-2 text-sm text-muted" aria-live="polite">
+          {ahead === 0 ? "Nobody is ahead of you." : `${ahead} ${ahead === 1 ? "person is" : "people are"} ahead of you.`} Keep this page
+          open. We will tell you the moment it is booked.
+        </p>
+      )}
+
+      <dl className="mt-5 divide-y divide-line-2 text-left text-sm">
+        <Row label="Service" value={SYSTEM_INFO[system].short} />
+        <Row label="Date" value={formatDayLong(dayOf(slot.slot))} />
+        <Row label="Time" value={clockOf(slot.slot)} />
+        <Row label="Number of applicants" value={String(people)} />
+        <Row label="Email" value={email} />
+      </dl>
+
+      {confirming ? (
+        <div className="mt-6 flex gap-3">
+          <button type="button" className="btn btn-ghost flex-1 border-accent-line text-accent-line" onClick={onKeep}>
+            Keep it
+          </button>
+          <button type="button" className="btn btn-danger flex-1" disabled={working} onClick={onCancel}>
+            {working && <Loader2 className="size-4 animate-spin" aria-hidden="true" />} Yes, cancel
+          </button>
+        </div>
+      ) : (
+        <div className="mt-6 flex gap-3">
+          <button type="button" className="btn btn-ghost flex-1 border-accent-line text-accent-line" onClick={onAnother}>
+            Book another
+          </button>
+          <button type="button" className="btn btn-danger flex-1" onClick={onAskCancel}>
+            {booked ? "Cancel booking" : "Leave queue"}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function ConsoleFallback() {
+  useNavyTheme();
+  return (
+    <div className="mx-auto w-full max-w-md px-4 pt-6 pb-16" aria-busy="true">
+      <div className="rounded-2xl border border-line bg-surface p-5">
         <SlotListSkeleton />
       </div>
     </div>
