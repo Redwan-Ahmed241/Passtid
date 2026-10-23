@@ -4,11 +4,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AlertTriangle, ArrowRight, Check, CreditCard, Globe2, Loader2 } from "lucide-react";
 import { api, ApiRequestError, makeId } from "@/lib/api";
-import { useI18n } from "@/lib/i18n";
+import { LOCALES, useI18n } from "@/lib/i18n";
 import type { TranslationKey } from "@/lib/i18n/translations";
 import { isComplete } from "@/lib/applicants";
 import {
-  SYSTEM_INFO,
   SYSTEMS,
   isSystemId,
   type BookingRequest,
@@ -31,7 +30,6 @@ const DAYS_PER_PAGE = 10;
 type Step = 1 | 2 | 3 | 4;
 const STEP_KEYS: Record<Step, TranslationKey> = { 1: "stepService", 2: "stepDateTime", 3: "stepDetails", 4: "stepConfirm" };
 
-const slotLabel = (iso: string) => `${formatDayShort(iso)} ${clockOf(iso)}`;
 const sameRequest = (a: BookingRequest, b: BookingRequest) => JSON.stringify(a) === JSON.stringify(b);
 
 /** The window plus one single-day range that covers `slot`, or null when the window is already full. */
@@ -77,9 +75,12 @@ export function Console() {
   const params = useSearchParams();
   const requested = params.get("system");
   const system: SystemId = requested === "coordination" ? "migration" : isSystemId(requested) ? requested : "passport";
-  const info = SYSTEM_INFO[system];
   const { loading: authLoading, user } = useMe();
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  const locale = LOCALES[lang];
+  const slotLabel = useCallback((iso: string) => `${formatDayShort(iso, locale)} ${clockOf(iso)}`, [locale]);
+  const dayShort = (d: string) => formatDayShort(d, locale);
+  const dayLong = (d: string) => formatDayLong(d, locale);
 
   const [step, setStep] = useState<Step>(1);
   /** The person asked to book another service even though this one already has a booking. */
@@ -126,11 +127,11 @@ export function Console() {
         },
         (err: unknown) => {
           if (signal?.aborted || handleAuthLoss(err)) return null;
-          setLoadError(err instanceof ApiRequestError ? err.message : "Couldn't load slots.");
+          setLoadError(err instanceof ApiRequestError ? err.message : t("loadSlotsFail"));
           return null;
         },
       ),
-    [handleAuthLoss],
+    [handleAuthLoss, t],
   );
 
   /* ----------------------------- effects ----------------------------- */
@@ -155,10 +156,10 @@ export function Console() {
       },
       (err: unknown) => {
         requestedFor.current.delete(system);
-        if (!handleAuthLoss(err)) setLoadError("Couldn't load your booking request.");
+        if (!handleAuthLoss(err)) setLoadError(t("loadReqFail"));
       },
     );
-  }, [system, user, handleAuthLoss]);
+  }, [system, user, handleAuthLoss, t]);
 
   // Slots for the active service, refreshed while the tab is visible.
   useEffect(() => {
@@ -226,10 +227,10 @@ export function Console() {
             const fresh = await loadSlots(b.system);
             const depth = fresh?.slots.find((s) => s.slot === b.slot)?.queued ?? 0;
             if (b.status === "booked") {
-              notify(`Booked ${slotLabel(b.slot)}. Booking number ${b.reference}.`);
+              notify(t("nBooked", { slot: slotLabel(b.slot), ref: b.reference ?? "" }));
             } else if (b.reason !== "cancelled") {
-              const why = b.reason === "timed_out" ? "it made no progress for 15 minutes" : "the slot was gone by the time it was clicked";
-              notify(`Booking failed: ${why}. ${slotLabel(b.slot)} is released and back to ${depth} queued.`, "warn");
+              const why = t(b.reason === "timed_out" ? "whyTimeout" : "whyGone");
+              notify(t("nFailed", { why, slot: slotLabel(b.slot), depth }), "warn");
             }
           })
           .catch(() => {
@@ -345,10 +346,10 @@ export function Console() {
       setSelection({ system, slot: b.slot });
       setStartNew(false);
       const n = req.persons.length;
-      notify(`Queued ${slotLabel(b.slot)} for ${n} ${n === 1 ? "person" : "people"}. You are #${depth} in the queue.`);
+      notify(t("nQueuedNotify", { slot: slotLabel(b.slot), n, people: t(n === 1 ? "person" : "people"), depth }));
     } catch (err) {
       if (handleAuthLoss(err)) return;
-      const message = err instanceof ApiRequestError ? err.message : "The booking could not be started.";
+      const message = err instanceof ApiRequestError ? err.message : t("bookFail");
       notify(message, "warn");
       if (err instanceof ApiRequestError && err.status === 404) {
         void loadSlots(system);
@@ -370,13 +371,13 @@ export function Console() {
       const b = await api.cancel(bookingId);
       const fresh = await loadSlots(b.system);
       const depth = fresh?.slots.find((s) => s.slot === b.slot)?.queued ?? 0;
-      notify(`Cancelled. ${slotLabel(b.slot)} is back to ${depth} queued.`);
+      notify(t("nCancelled", { slot: slotLabel(b.slot), depth }));
       setConfirmingCancel(false);
       setSelection(null);
       setStep(1);
     } catch (err) {
       announced.current.delete(bookingId);
-      if (!handleAuthLoss(err)) notify(err instanceof ApiRequestError ? err.message : "Couldn't cancel. Try again.", "warn");
+      if (!handleAuthLoss(err)) notify(err instanceof ApiRequestError ? err.message : t("cancelFail"), "warn");
     } finally {
       setWorking(false);
     }
@@ -410,11 +411,11 @@ export function Console() {
         {loadError && !data && step > 1 && (
           <div role="alert" className="rounded-xl border border-hot-line bg-hot-bg p-4">
             <p className="flex items-center gap-2 font-semibold text-hot">
-              <AlertTriangle className="size-4" aria-hidden="true" /> Can&rsquo;t reach the booking service
+              <AlertTriangle className="size-4" aria-hidden="true" /> {t("cantReach")}
             </p>
             <p className="mt-1 text-sm text-ink-2">{loadError}</p>
             <button type="button" className="btn btn-ghost mt-3" onClick={() => void loadSlots(system)}>
-              Try again
+              {t("tryAgain")}
             </button>
           </div>
         )}
@@ -456,11 +457,9 @@ export function Console() {
                     {id === "passport" ? <CreditCard className="size-5" aria-hidden="true" /> : <Globe2 className="size-5" aria-hidden="true" />}
                   </span>
                   <span className="min-w-0">
-                    <span className="block font-semibold text-ink">{id === "passport" ? "Passport / ID" : "Coordination number"}</span>
+                    <span className="block font-semibold text-ink">{t(id === "passport" ? "svcPassport" : "svcCoord")}</span>
                     <span className="mt-0.5 block text-sm text-muted">
-                      {id === "passport"
-                        ? "Apply for or renew a Swedish passport or ID card."
-                        : "Samordningsnummer, for people not registered in Sweden."}
+                      {t(id === "passport" ? "passportDesc" : "coordDesc")}
                     </span>
                   </span>
                 </button>
@@ -472,22 +471,22 @@ export function Console() {
         {ready && !showStatus && step === 2 && data && (
           <>
             <h1 className="text-2xl font-semibold text-ink">{t("chooseDateTime")}</h1>
-            <p className="mt-1 text-sm text-muted">{info.name}</p>
+            <p className="mt-1 text-sm text-muted">{t(system === "passport" ? "svcPassportLong" : "svcCoordLong")}</p>
 
             {sortedDays.length === 0 ? (
               <div className="mt-5 rounded-xl border border-dashed border-line-strong p-5 text-center">
-                <p className="font-medium text-ink">No open slots right now</p>
+                <p className="font-medium text-ink">{t("noSlotsTitle")}</p>
                 <p className="mt-1 text-sm text-muted">
-                  Nothing is free in the next {data.scanWeeks} weeks. This page checks again every 15 seconds.
+                  {t("noSlotsBody", { n: data.scanWeeks })}
                 </p>
               </div>
             ) : (
               <>
-                <p className="label-mono mt-5">Date</p>
+                <p className="label-mono mt-5">{t("dateLabel")}</p>
                 <div className="mt-2 grid grid-cols-2 gap-2">
                   {visibleDays.map((d) => (
                     <button key={d} type="button" className="tile" aria-pressed={selectedDay === d} onClick={() => pickDay(d)}>
-                      {formatDayShort(d)}
+                      {dayShort(d)}
                     </button>
                   ))}
                 </div>
@@ -497,14 +496,14 @@ export function Console() {
                     className="mt-3 min-h-11 w-full text-sm font-semibold text-accent-line hover:text-ink"
                     onClick={() => setDayLimit((n) => n + DAYS_PER_PAGE)}
                   >
-                    Show more dates
+                    {t("showMoreDates")}
                   </button>
                 )}
 
                 {selectedDay && (
                   <>
                     <p id="times-h" className="label-mono mt-5 scroll-mt-20">
-                      Time · {formatDayLong(selectedDay)}
+                      {t("timeHeading", { d: dayLong(selectedDay) })}
                     </p>
                     <div className="mt-2 grid grid-cols-2 gap-2">
                       {daySlots.map((s) => (
@@ -517,7 +516,7 @@ export function Console() {
                         >
                           <span className="tabular">{clockOf(s.slot)}</span>
                           <span className="text-[0.6875rem] font-normal opacity-75">
-                            {s.queued === 0 ? "no queue" : `${s.queued} queued`}
+                            {s.queued === 0 ? t("noQueue") : t("nQueued", { n: s.queued })}
                           </span>
                         </button>
                       ))}
@@ -574,11 +573,11 @@ export function Console() {
                 aria-invalid={showDetailErrors && !consent}
                 className="mt-0.5 size-5 flex-none accent-[#006aa7]"
               />
-              <span>I agree that my details are processed for this booking (GDPR).</span>
+              <span>{t("gdpr")}</span>
             </label>
             {showDetailErrors && !consent && (
               <p role="alert" className="mt-1.5 text-[0.8125rem] text-hot">
-                Please tick the box to continue.
+                {t("tickBox")}
               </p>
             )}
             <StepButtons onBack={() => setStep(2)} onNext={goConfirm} />
@@ -589,21 +588,19 @@ export function Console() {
           <>
             <h1 className="text-2xl font-semibold text-ink">{t("reviewBooking")}</h1>
             <dl className="mt-4 divide-y divide-line-2 text-sm">
-              <Row label="Service" value={info.short} />
-              <Row label="Date" value={formatDayLong(dayOf(selectedSlot.slot))} />
-              <Row label="Time" value={clockOf(selectedSlot.slot)} />
+              <Row label={t("rowService")} value={t(system === "passport" ? "svcPassport" : "svcMigrationShort")} />
+              <Row label={t("dateLabel")} value={dayLong(dayOf(selectedSlot.slot))} />
+              <Row label={t("timeLabel")} value={clockOf(selectedSlot.slot)} />
               <Row
-                label="Name"
+                label={t("rowName")}
                 value={draft.persons.map((p) => `${p.firstName} ${p.lastName}`.trim()).join(", ")}
               />
-              <Row label="Email" value={draft.email} />
-              <Row label="Number of applicants" value={String(draft.persons.length)} />
+              <Row label={t("rowEmail")} value={draft.email} />
+              <Row label={t("rowApplicants")} value={String(draft.persons.length)} />
             </dl>
             <p className="mt-4 text-[0.8125rem] text-muted">
-              {selectedSlot.queued === 0
-                ? "Nobody else is queued for this slot."
-                : `${selectedSlot.queued} already queued for this slot.`}{" "}
-              Confirming adds you to the queue straight away.
+              {selectedSlot.queued === 0 ? t("nobodyElse") : t("alreadyQueued", { n: selectedSlot.queued })}{" "}
+              {t("confirmingAdds")}
             </p>
             <StepButtons
               onBack={() => setStep(3)}
@@ -696,6 +693,7 @@ function StatusCard({
   onCancel: () => void;
   onAnother: () => void;
 }) {
+  const { t, lang } = useI18n();
   const booked = slot.mine?.status === "booked";
   const ahead = Math.max(slot.queued - 1, 0);
   return (
@@ -707,46 +705,45 @@ function StatusCard({
         {booked ? <Check className="size-7" strokeWidth={3} /> : <Loader2 className="size-6 animate-spin" />}
       </span>
       <h1 className="mt-4 text-2xl font-semibold text-ink">
-        {booked ? "Your appointment is booked" : "You are in the queue"}
+        {t(booked ? "bookedTitle" : "queueTitle")}
       </h1>
       {booked ? (
         <>
-          <p className="mt-2 text-sm text-muted">Booking number</p>
+          <p className="mt-2 text-sm text-muted">{t("bookingNumber")}</p>
           <p className="mx-auto mt-2 w-fit rounded-lg bg-surface-2 px-5 py-2.5 font-mono text-lg font-semibold tracking-wider text-ink">
-            {slot.mine?.reference ?? "pending"}
+            {slot.mine?.reference ?? t("refPending")}
           </p>
         </>
       ) : (
         <p className="mt-2 text-sm text-muted" aria-live="polite">
-          {ahead === 0 ? "Nobody is ahead of you." : `${ahead} ${ahead === 1 ? "person is" : "people are"} ahead of you.`} Keep this page
-          open. We will tell you the moment it is booked.
+          {ahead === 0 ? t("nobodyAhead") : ahead === 1 ? t("oneAhead") : t("manyAhead", { n: ahead })} {t("keepOpen")}
         </p>
       )}
 
       <dl className="mt-5 divide-y divide-line-2 text-left text-sm">
-        <Row label="Service" value={SYSTEM_INFO[system].short} />
-        <Row label="Date" value={formatDayLong(dayOf(slot.slot))} />
-        <Row label="Time" value={clockOf(slot.slot)} />
-        <Row label="Number of applicants" value={String(people)} />
-        <Row label="Email" value={email} />
+        <Row label={t("rowService")} value={t(system === "passport" ? "svcPassport" : "svcMigrationShort")} />
+        <Row label={t("dateLabel")} value={formatDayLong(dayOf(slot.slot), LOCALES[lang])} />
+        <Row label={t("timeLabel")} value={clockOf(slot.slot)} />
+        <Row label={t("rowApplicants")} value={String(people)} />
+        <Row label={t("rowEmail")} value={email} />
       </dl>
 
       {confirming ? (
         <div className="mt-6 flex gap-3">
           <button type="button" className="btn btn-ghost flex-1 border-accent-line text-accent-line" onClick={onKeep}>
-            Keep it
+            {t("keepIt")}
           </button>
           <button type="button" className="btn btn-danger-solid flex-1" disabled={working} onClick={onCancel}>
-            {working && <Loader2 className="size-4 animate-spin" aria-hidden="true" />} Yes, cancel
+            {working && <Loader2 className="size-4 animate-spin" aria-hidden="true" />} {t("yesCancel")}
           </button>
         </div>
       ) : (
         <div className="mt-6 flex gap-3">
           <button type="button" className="btn btn-ghost flex-1 border-accent-line text-accent-line" onClick={onAnother}>
-            Book another
+            {t("bookAnother")}
           </button>
           <button type="button" className="btn btn-danger flex-1" onClick={onAskCancel}>
-            {booked ? "Cancel booking" : "Leave queue"}
+            {t(booked ? "cancelBooking" : "leaveQueue")}
           </button>
         </div>
       )}

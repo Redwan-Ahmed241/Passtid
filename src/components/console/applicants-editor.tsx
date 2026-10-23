@@ -2,6 +2,7 @@
 
 import { useId, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
+import { useI18n } from "@/lib/i18n";
 import { emptyPerson, validateApplicants } from "@/lib/applicants";
 import { MAX_PERSONS, SYSTEM_INFO, type Person, type SystemId } from "@/lib/types";
 
@@ -16,10 +17,16 @@ interface Props {
 
 export function ApplicantsEditor({ system, persons, email, showAll, onChange }: Props) {
   const uid = useId();
+  const { t } = useI18n();
   const [touched, setTouched] = useState<Set<string>>(new Set());
   const issues = validateApplicants(system, persons, email);
   const issueFor = (field: string) =>
-    showAll || touched.has(field) ? issues.find((i) => i.field === field)?.message : undefined;
+    showAll || touched.has(field)
+      ? (() => {
+          const i = issues.find((x) => x.field === field);
+          return i ? (i.key ? t(i.key, i.vars) : i.message) : undefined;
+        })()
+      : undefined;
   const touch = (field: string) => setTouched((t) => (t.has(field) ? t : new Set(t).add(field)));
   const usesPhone = SYSTEM_INFO[system].identifier === "phone";
 
@@ -29,15 +36,13 @@ export function ApplicantsEditor({ system, persons, email, showAll, onChange }: 
   return (
     <section aria-labelledby={`${uid}-h`}>
       <div className="flex items-baseline justify-between gap-3">
-        <h1 id={`${uid}-h`} className="text-2xl font-semibold text-ink">Your details</h1>
+        <h1 id={`${uid}-h`} className="text-2xl font-semibold text-ink">{t("yourDetails")}</h1>
         <span className="font-mono text-xs text-muted tabular">
-          {persons.length} {persons.length === 1 ? "person" : "people"}
+          {persons.length} {t(persons.length === 1 ? "person" : "people")}
         </span>
       </div>
       <p className="mt-2 text-[0.8125rem] text-muted">
-        {usesPhone
-          ? "Migration bookings need each person's name and phone number."
-          : "Passport bookings need each person's name and personal (security) number. That is not a phone number."}
+        {t(usesPhone ? "hintPhone" : "hintPersonal")}
       </p>
 
       <ul className="mt-4 space-y-4">
@@ -46,12 +51,12 @@ export function ApplicantsEditor({ system, persons, email, showAll, onChange }: 
           return (
             <li key={i} className="rounded-xl border border-line bg-surface-2 p-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-ink">Person {i + 1}</h3>
+                <h3 className="text-sm font-semibold text-ink">{t("personN", { n: i + 1 })}</h3>
                 {persons.length > 1 && (
                   <button
                     type="button"
                     onClick={() => onChange({ persons: persons.filter((_, j) => j !== i), email })}
-                    aria-label={`Remove person ${i + 1}`}
+                    aria-label={t("removePersonN", { n: i + 1 })}
                     className="grid size-11 place-items-center rounded-lg text-muted transition-colors hover:bg-hot-bg hover:text-hot"
                   >
                     <Trash2 className="size-4" aria-hidden="true" />
@@ -61,7 +66,7 @@ export function ApplicantsEditor({ system, persons, email, showAll, onChange }: 
 
               <div className="mt-1">
               <div className="grid grid-cols-2 gap-3">
-                <Field id={`${uid}-${i}-fn`} label="First name" error={issueFor(f("firstName"))}>
+                <Field id={`${uid}-${i}-fn`} label={t("firstName")} error={issueFor(f("firstName"))}>
                   <input
                     id={`${uid}-${i}-fn`}
                     className="field"
@@ -73,7 +78,7 @@ export function ApplicantsEditor({ system, persons, email, showAll, onChange }: 
                     aria-describedby={issueFor(f("firstName")) ? `${uid}-${i}-fn-err` : undefined}
                   />
                 </Field>
-                <Field id={`${uid}-${i}-ln`} label="Last name" error={issueFor(f("lastName"))}>
+                <Field id={`${uid}-${i}-ln`} label={t("lastName")} error={issueFor(f("lastName"))}>
                   <input
                     id={`${uid}-${i}-ln`}
                     className="field"
@@ -91,9 +96,9 @@ export function ApplicantsEditor({ system, persons, email, showAll, onChange }: 
                 {usesPhone ? (
                   <Field
                     id={`${uid}-${i}-ph`}
-                    label="Phone number"
+                    label={t("phoneNumber")}
                     error={issueFor(f("phone"))}
-                    hint="With country code, e.g. +44 7700 900123."
+                    hint={t("phoneHint")}
                   >
                     <input
                       id={`${uid}-${i}-ph`}
@@ -111,9 +116,9 @@ export function ApplicantsEditor({ system, persons, email, showAll, onChange }: 
                 ) : (
                   <Field
                     id={`${uid}-${i}-pn`}
-                    label="Personal number"
+                    label={t("personalNumber")}
                     error={issueFor(f("personalNumber"))}
-                    hint="Personal or security number. Not your phone number."
+                    hint={t("personalHint")}
                   >
                     <input
                       id={`${uid}-${i}-pn`}
@@ -141,16 +146,16 @@ export function ApplicantsEditor({ system, persons, email, showAll, onChange }: 
         disabled={persons.length >= MAX_PERSONS}
         onClick={() => onChange({ persons: [...persons, emptyPerson()], email })}
       >
-        <Plus className="size-4" aria-hidden="true" /> Add a person
-        {persons.length >= MAX_PERSONS && <span className="font-normal text-muted">(max {MAX_PERSONS})</span>}
+        <Plus className="size-4" aria-hidden="true" /> {t("addPerson")}
+        {persons.length >= MAX_PERSONS && <span className="font-normal text-muted">{t("maxN", { n: MAX_PERSONS })}</span>}
       </button>
 
       <div className="mt-4 border-t border-line-2 pt-4">
         <Field
           id={`${uid}-email`}
-          label="Contact email"
+          label={t("contactEmail")}
           error={issueFor("email")}
-          hint="One email for the whole submission."
+          hint={t("contactHint")}
         >
           <input
             id={`${uid}-email`}

@@ -1,6 +1,8 @@
 "use client";
 
 import { Check, Loader2 } from "lucide-react";
+import { useI18n } from "@/lib/i18n";
+import { LOCALES } from "@/lib/i18n";
 import type { Slot } from "@/lib/types";
 import { clockOf, dayOf, formatDayLong, formatDayShort, relativeDay } from "@/lib/time";
 import { QueueMeter } from "../queue-meter";
@@ -19,6 +21,8 @@ interface ListProps {
 }
 
 export function SlotList({ slots, today, grouped, selected, onSelect, dimmed }: ListProps) {
+  const { t, lang } = useI18n();
+  const locale = LOCALES[lang];
   if (!grouped) {
     return (
       <ul className="flex flex-col gap-2" role="list">
@@ -44,16 +48,16 @@ export function SlotList({ slots, today, grouped, selected, onSelect, dimmed }: 
       {[...groups.entries()].map(([day, items]) => {
         const rel = relativeDay(day, today);
         return (
-          <section key={day} aria-label={formatDayLong(day)}>
+          <section key={day} aria-label={formatDayLong(day, locale)}>
             <div className="flex items-baseline gap-3 px-0.5 pt-4 pb-2">
-              <h3 className="text-[0.9375rem] font-semibold text-ink">{formatDayLong(day)}</h3>
+              <h3 className="text-[0.9375rem] font-semibold text-ink">{formatDayLong(day, locale)}</h3>
               {rel && (
                 <span className="rounded-md bg-accent-soft px-1.5 py-0.5 font-mono text-[0.6875rem] font-medium tracking-wide text-accent-ink uppercase">
-                  {rel}
+                  {t(rel)}
                 </span>
               )}
               <span className="font-mono text-xs text-muted tabular">
-                {items.length} slot{items.length > 1 ? "s" : ""}
+                {t(items.length > 1 ? "slotMany" : "slotOne", { n: items.length })}
               </span>
               <span className="h-px flex-1 self-center bg-line-2" aria-hidden="true" />
             </div>
@@ -86,11 +90,15 @@ function SlotRow({
   showDay?: boolean;
   dimmed?: boolean;
 }) {
+  const { t, lang } = useI18n();
+  const locale = LOCALES[lang];
   const day = dayOf(s.slot);
   const rel = relativeDay(day, today);
-  const label = `${formatDayLong(day)} at ${clockOf(s.slot)}, ${s.queued} queued${
-    s.freeOnSite !== null ? `, ${s.freeOnSite} free on site` : ""
-  }${s.inWindow ? "" : ", outside your window"}${s.mine ? `, your booking is ${s.mine.status}` : ""}`;
+  const label =
+    t("slotAria", { day: formatDayLong(day, locale), time: clockOf(s.slot), n: s.queued }) +
+    (s.freeOnSite !== null ? t("ariaFree", { n: s.freeOnSite }) : "") +
+    (s.inWindow ? "" : t("ariaOutside")) +
+    (s.mine ? t("ariaMine", { status: t(s.mine.status === "booked" ? "statusBooked" : "statusPending") }) : "");
 
   return (
     <button
@@ -113,28 +121,28 @@ function SlotRow({
         <span className="block font-mono text-lg leading-tight font-semibold tracking-tight text-ink tabular">
           {clockOf(s.slot)}
         </span>
-        <span className="block text-xs text-muted">{showDay ? (rel ?? formatDayShort(day)) : formatDayShort(day)}</span>
+        <span className="block text-xs text-muted">{showDay && rel ? t(rel) : formatDayShort(day, locale)}</span>
       </span>
 
       <span className="order-3 flex min-w-0 basis-full flex-wrap items-center gap-1.5 @[30rem]:order-2 @[30rem]:flex-1 @[30rem]:basis-0">
         {s.inWindow ? (
-          <Tag tone="accent">In window</Tag>
+          <Tag tone="accent">{t("inWindow")}</Tag>
         ) : (
-          <Tag tone="neutral">Outside window</Tag>
+          <Tag tone="neutral">{t("outsideWindow")}</Tag>
         )}
         {s.freeOnSite !== null && (
           <Tag tone={s.freeOnSite <= 1 ? "hot" : s.freeOnSite <= 2 ? "busy" : "neutral"}>
-            {s.freeOnSite} free on site
+            {t("freeOnSite", { n: s.freeOnSite })}
           </Tag>
         )}
         {s.mine?.status === "pending" && (
           <Tag tone="accent-strong">
-            <Loader2 className="size-3 animate-spin" aria-hidden="true" /> Yours · booking
+            <Loader2 className="size-3 animate-spin" aria-hidden="true" /> {t("yoursBooking")}
           </Tag>
         )}
         {s.mine?.status === "booked" && (
           <Tag tone="clear">
-            <Check className="size-3" aria-hidden="true" /> Yours · booked
+            <Check className="size-3" aria-hidden="true" /> {t("yoursBooked")}
           </Tag>
         )}
       </span>

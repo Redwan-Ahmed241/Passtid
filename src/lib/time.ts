@@ -77,9 +77,9 @@ export function formatDayCompact(dayOrIso: string, locale = "en-GB"): string {
 }
 
 /** Human relative label for a day relative to today. */
-export function relativeDay(day: string, today: string): string | null {
-  if (day === today) return "Today";
-  if (day === addDays(today, 1)) return "Tomorrow";
+export function relativeDay(day: string, today: string): "today" | "tomorrow" | null {
+  if (day === today) return "today";
+  if (day === addDays(today, 1)) return "tomorrow";
   return null;
 }
 
