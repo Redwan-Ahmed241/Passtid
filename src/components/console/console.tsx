@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AlertTriangle, ArrowRight, Check, CreditCard, Globe2, Loader2 } from "lucide-react";
 import { api, ApiRequestError, makeId } from "@/lib/api";
+import { useI18n } from "@/lib/i18n";
+import type { TranslationKey } from "@/lib/i18n/translations";
 import { isComplete } from "@/lib/applicants";
 import {
   SYSTEM_INFO,
@@ -27,7 +29,7 @@ const POLL_BOOKING_MS = 1_500;
 const DAYS_PER_PAGE = 10;
 
 type Step = 1 | 2 | 3 | 4;
-const STEP_NAMES: Record<Step, string> = { 1: "Service", 2: "Date & time", 3: "Details", 4: "Confirm" };
+const STEP_KEYS: Record<Step, TranslationKey> = { 1: "stepService", 2: "stepDateTime", 3: "stepDetails", 4: "stepConfirm" };
 
 const slotLabel = (iso: string) => `${formatDayShort(iso)} ${clockOf(iso)}`;
 const sameRequest = (a: BookingRequest, b: BookingRequest) => JSON.stringify(a) === JSON.stringify(b);
@@ -77,6 +79,7 @@ export function Console() {
   const system: SystemId = requested === "coordination" ? "migration" : isSystemId(requested) ? requested : "passport";
   const info = SYSTEM_INFO[system];
   const { loading: authLoading, user } = useMe();
+  const { t } = useI18n();
 
   const [step, setStep] = useState<Step>(1);
   /** The person asked to book another service even though this one already has a booking. */
@@ -393,7 +396,7 @@ export function Console() {
       {!showStatus && (
         <div className="mb-4">
           <p className="text-xs text-muted tabular" aria-live="polite">
-            {step} / 4 · {STEP_NAMES[step]}
+            {step} / 4 · {t(STEP_KEYS[step])}
           </p>
           <div className="mt-2 flex gap-1.5" aria-hidden="true">
             {([1, 2, 3, 4] as const).map((n) => (
@@ -438,8 +441,8 @@ export function Console() {
 
         {ready && !showStatus && step === 1 && (
           <>
-            <h1 className="text-2xl font-semibold text-ink">What do you need?</h1>
-            <p className="mt-1 text-sm text-muted">Book your embassy appointment</p>
+            <h1 className="text-2xl font-semibold text-ink">{t("whatNeed")}</h1>
+            <p className="mt-1 text-sm text-muted">{t("bookAppt")}</p>
             <div className="mt-5 flex flex-col gap-3">
               {SYSTEMS.map((id) => (
                 <button
@@ -468,7 +471,7 @@ export function Console() {
 
         {ready && !showStatus && step === 2 && data && (
           <>
-            <h1 className="text-2xl font-semibold text-ink">Choose date and time</h1>
+            <h1 className="text-2xl font-semibold text-ink">{t("chooseDateTime")}</h1>
             <p className="mt-1 text-sm text-muted">{info.name}</p>
 
             {sortedDays.length === 0 ? (
@@ -527,7 +530,7 @@ export function Console() {
             {draft && (
               <details className="group mt-6 rounded-xl border border-line">
                 <summary className="flex min-h-11 items-center justify-between px-4 text-sm font-medium text-ink-2">
-                  Advanced: dates the bot may book
+                  {t("advancedWindow")}
                   <span className="text-muted transition-transform group-open:rotate-90" aria-hidden="true">›</span>
                 </summary>
                 <div className="p-2">
@@ -584,7 +587,7 @@ export function Console() {
 
         {ready && !showStatus && step === 4 && draft && selectedSlot && (
           <>
-            <h1 className="text-2xl font-semibold text-ink">Review your booking</h1>
+            <h1 className="text-2xl font-semibold text-ink">{t("reviewBooking")}</h1>
             <dl className="mt-4 divide-y divide-line-2 text-sm">
               <Row label="Service" value={info.short} />
               <Row label="Date" value={formatDayLong(dayOf(selectedSlot.slot))} />
@@ -605,7 +608,7 @@ export function Console() {
             <StepButtons
               onBack={() => setStep(3)}
               onNext={() => void book(selectedSlot)}
-              nextLabel="Confirm booking"
+              nextLabel={t("confirmBooking")}
               nextBusy={working}
               nextDisabled={working}
             />
@@ -641,7 +644,7 @@ function Row({ label, value }: { label: string; value: string }) {
 function StepButtons({
   onBack,
   onNext,
-  nextLabel = "Next",
+  nextLabel,
   nextDisabled,
   nextBusy,
 }: {
@@ -651,15 +654,17 @@ function StepButtons({
   nextDisabled?: boolean;
   nextBusy?: boolean;
 }) {
+  const { t } = useI18n();
+  const label = nextLabel ?? t("next");
   return (
     <div className="mt-6 flex gap-3">
       <button type="button" className="btn btn-ghost flex-none border-accent-line px-6 text-accent-line" onClick={onBack}>
-        Back
+        {t("back")}
       </button>
       <button type="button" className="btn btn-primary group flex-1" disabled={nextDisabled} onClick={onNext}>
         {nextBusy && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
-        {nextBusy ? "Queuing…" : nextLabel}
-        {!nextBusy && nextLabel === "Next" && (
+        {nextBusy ? t("queuing") : label}
+        {!nextBusy && nextLabel === undefined && (
           <ArrowRight className="size-4 transition-transform duration-150 group-hover:translate-x-0.5" aria-hidden="true" />
         )}
       </button>

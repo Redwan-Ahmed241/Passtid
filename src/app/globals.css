@@ -304,6 +304,17 @@ body.passtid .btn-danger-solid:hover:not(:disabled) {
       box-shadow 150ms,
       background-color 150ms;
   }
+  /* iOS Safari sizes date inputs to their content, which pushed them out of their grid cell. */
+  .field[type="date"] {
+    min-width: 0;
+    max-width: 100%;
+    -webkit-appearance: none;
+    appearance: none;
+    text-align: left;
+  }
+  .field::-webkit-date-and-time-value {
+    text-align: left;
+  }
   .field:hover {
     border-color: var(--line-strong);
   }

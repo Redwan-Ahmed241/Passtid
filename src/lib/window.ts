@@ -1,4 +1,6 @@
 import type { BookingWindow, DateRange, TimeRange } from "./types";
+import type { Lang, TranslationKey } from "./i18n/translations";
+import { translate } from "./i18n/translations";
 import { clockOf, dayOf, formatDayShort, minutesToClock } from "./time";
 
 /**
@@ -56,7 +58,9 @@ export interface RangeMinutes {
 export interface WindowIssue {
   /** e.g. "ranges", "ranges.0.from", "ranges.0.to", "ranges.0.times.1" */
   field: string;
+  /** English text for API errors; the UI translates `key` instead. */
   message: string;
+  key?: TranslationKey;
 }
 
 export function emptyRange(id: string, from: string | null = null, to: string | null = null): DateRange {
@@ -68,15 +72,15 @@ function validateRange(r: DateRange, i: number): WindowIssue[] {
   const hasFrom = !!r.from;
   const hasTo = !!r.to;
   if (hasFrom && !DAY_RE.test(r.from as string)) {
-    issues.push({ field: `ranges.${i}.from`, message: "The start date is not a valid date." });
+    issues.push({ field: `ranges.${i}.from`, message: "The start date is not a valid date.", key: "errBadFrom" });
   }
   if (hasTo && !DAY_RE.test(r.to as string)) {
-    issues.push({ field: `ranges.${i}.to`, message: "The end date is not a valid date." });
+    issues.push({ field: `ranges.${i}.to`, message: "The end date is not a valid date.", key: "errBadTo" });
   }
   if (!hasFrom && !hasTo) {
-    issues.push({ field: `ranges.${i}.from`, message: "Add a start date, an end date, or both." });
+    issues.push({ field: `ranges.${i}.from`, message: "Add a start date, an end date, or both.", key: "errAddDate" });
   } else if (hasFrom && hasTo && (r.to as string) < (r.from as string)) {
-    issues.push({ field: `ranges.${i}.to`, message: "The end date is before the start date." });
+    issues.push({ field: `ranges.${i}.to`, message: "The end date is before the start date.", key: "errEndBeforeStart" });
   }
   r.times.forEach((t, j) => {
     const s = parseClock(t.start, "start");
@@ -98,7 +102,7 @@ function validateRange(r: DateRange, i: number): WindowIssue[] {
 export function validateWindow(w: BookingWindow): WindowIssue[] {
   if (w.emergency) return [];
   if (w.ranges.length === 0) {
-    return [{ field: "ranges", message: "Add at least one date range." }];
+    return [{ field: "ranges", message: "Add at least one date range.", key: "errAddRange" }];
   }
   return w.ranges.flatMap(validateRange);
 }
@@ -135,27 +139,30 @@ export function formatRange(r: RangeMinutes): string {
   return `${minutesToClock(r.start)}–${r.end >= DAY_END ? "EOD" : minutesToClock(r.end)}`;
 }
 
+const LOCALES: Record<Lang, string> = { en: "en-GB", sv: "sv-SE" };
+
 /** "Thu 22 Oct – Wed 4 Nov", "from Thu 22 Oct onwards", "until Wed 4 Nov", "Thu 22 Oct only". */
-export function describeDates(r: DateRange): string {
+export function describeDates(r: DateRange, lang: Lang = "en"): string {
+  const d = (day: string) => formatDayShort(day, LOCALES[lang]);
   if (r.from && r.to) {
-    return r.from === r.to ? `${formatDayShort(r.from)} only` : `${formatDayShort(r.from)} – ${formatDayShort(r.to)}`;
+    return r.from === r.to ? translate(lang, "onlyDay", { d: d(r.from) }) : `${d(r.from)} – ${d(r.to)}`;
   }
-  if (r.from) return `from ${formatDayShort(r.from)} onwards`;
-  if (r.to) return `until ${formatDayShort(r.to)}`;
-  return "no dates yet";
+  if (r.from) return translate(lang, "fromOnwards", { d: d(r.from) });
+  if (r.to) return translate(lang, "until", { d: d(r.to) });
+  return translate(lang, "noDatesYet");
 }
 
-export function describeTimes(r: DateRange): string {
+export function describeTimes(r: DateRange, lang: Lang = "en"): string {
   const ranges = timeRanges(r.times);
-  return ranges.length ? ranges.map(formatRange).join(", ") : "any time of day";
+  return ranges.length ? ranges.map(formatRange).join(", ") : translate(lang, "anyTimeOfDay");
 }
 
 /** The exact sentence the user is told in the chat and that appears in the logs. */
-export function describeWindow(w: BookingWindow): string {
-  if (w.emergency) return "any slot, whenever it appears";
+export function describeWindow(w: BookingWindow, lang: Lang = "en"): string {
+  if (w.emergency) return translate(lang, "anySlotAnytime");
   const valid = w.ranges.filter((r) => r.from || r.to);
-  if (valid.length === 0) return "no date range yet";
-  return valid.map((r) => `${describeDates(r)}, ${describeTimes(r)}`).join("; ");
+  if (valid.length === 0) return translate(lang, "noRangeYetShort");
+  return valid.map((r) => `${describeDates(r, lang)}, ${describeTimes(r, lang)}`).join("; ");
 }
 
 export function sameWindow(a: BookingWindow, b: BookingWindow): boolean {
