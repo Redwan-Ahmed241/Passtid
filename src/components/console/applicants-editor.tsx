@@ -27,9 +27,9 @@ export function ApplicantsEditor({ system, persons, email, showAll, onChange }: 
     onChange({ persons: persons.map((p, j) => (j === i ? { ...p, ...patch } : p)), email });
 
   return (
-    <section aria-labelledby={`${uid}-h`} className="rounded-2xl border border-line bg-surface p-5 shadow-sm">
+    <section aria-labelledby={`${uid}-h`}>
       <div className="flex items-baseline justify-between gap-3">
-        <h2 id={`${uid}-h`} className="label-mono">Step 2 · People and contact</h2>
+        <h1 id={`${uid}-h`} className="text-2xl font-semibold text-ink">Your details</h1>
         <span className="font-mono text-xs text-muted tabular">
           {persons.length} {persons.length === 1 ? "person" : "people"}
         </span>
@@ -59,8 +59,8 @@ export function ApplicantsEditor({ system, persons, email, showAll, onChange }: 
                 )}
               </div>
 
-              <div className="mt-1 lg:grid lg:grid-cols-3 lg:gap-4">
-              <div className="grid grid-cols-2 gap-3 lg:col-span-2">
+              <div className="mt-1">
+              <div className="grid grid-cols-2 gap-3">
                 <Field id={`${uid}-${i}-fn`} label="First name" error={issueFor(f("firstName"))}>
                   <input
                     id={`${uid}-${i}-fn`}
@@ -87,7 +87,7 @@ export function ApplicantsEditor({ system, persons, email, showAll, onChange }: 
                 </Field>
               </div>
 
-              <div className="mt-3 lg:mt-0">
+              <div className="mt-3">
                 {usesPhone ? (
                   <Field
                     id={`${uid}-${i}-ph`}
@@ -137,7 +137,7 @@ export function ApplicantsEditor({ system, persons, email, showAll, onChange }: 
 
       <button
         type="button"
-        className="mt-3 inline-flex min-h-11 items-center gap-1.5 rounded-md px-1 text-sm font-semibold text-accent hover:text-accent-ink disabled:opacity-50"
+        className="mt-3 inline-flex min-h-11 items-center gap-1.5 rounded-md px-1 text-sm font-semibold text-accent-line hover:text-ink disabled:opacity-50"
         disabled={persons.length >= MAX_PERSONS}
         onClick={() => onChange({ persons: [...persons, emptyPerson()], email })}
       >
@@ -145,7 +145,7 @@ export function ApplicantsEditor({ system, persons, email, showAll, onChange }: 
         {persons.length >= MAX_PERSONS && <span className="font-normal text-muted">(max {MAX_PERSONS})</span>}
       </button>
 
-      <div className="mt-4 border-t border-line-2 pt-4 lg:max-w-md">
+      <div className="mt-4 border-t border-line-2 pt-4">
         <Field
           id={`${uid}-email`}
           label="Contact email"
