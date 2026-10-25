@@ -1,7 +1,5 @@
 /**
- * Shared contract between this frontend and the booking backend.
- * The bundled mock API (src/app/api/v1) implements exactly these shapes, so
- * pointing NEXT_PUBLIC_API_BASE_URL at the real backend needs no UI changes.
+ * Shared contract between the UI and the route handlers in src/app/api/v1.
  */
 
 /** The two services one user can hold: passports / ID cards, and migration (coordination numbers). */

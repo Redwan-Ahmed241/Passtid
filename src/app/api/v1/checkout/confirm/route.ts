@@ -1,5 +1,5 @@
 import { errorJson, handle, json, requireUser } from "@/server/http";
-import { fulfilPayment } from "@/server/mock-backend";
+import { fulfilPayment } from "@/server/store";
 import { verifyCheckout } from "@/server/payments";
 
 /** Called when the browser comes back from checkout: verify the payment, then activate what was bought. */
@@ -11,6 +11,6 @@ export async function POST(request: Request) {
       return errorJson(422, "invalid_session", "`sessionId` is required.");
     }
     const paid = await verifyCheckout(body.sessionId, user.id);
-    return json(fulfilPayment(paid, user.id));
+    return json(await fulfilPayment(paid, user.id));
   });
 }
