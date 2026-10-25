@@ -5,6 +5,7 @@ import { JsonLd } from "@/components/json-ld";
 import { QueueMeter } from "@/components/queue-meter";
 import { WindowTimeline } from "@/components/window-timeline";
 import { faq } from "@/lib/faq";
+import { features } from "@/lib/features";
 import { site } from "@/lib/site";
 
 const principles = [
@@ -196,9 +197,11 @@ export default function Home() {
               Ask for 09:00 to 12:00 and you can get 09:00 or 11:45, never 12:00. Dates are different: both the first
               and the last day of your range count.
             </p>
-            <Link href="/rules" className="mt-6 inline-flex min-h-11 items-center gap-1.5 font-semibold text-accent hover:text-accent-ink">
-              All matching and queue rules <ArrowRight className="size-4" aria-hidden="true" />
-            </Link>
+            {features.rules && (
+              <Link href="/rules" className="mt-6 inline-flex min-h-11 items-center gap-1.5 font-semibold text-accent hover:text-accent-ink">
+                All matching and queue rules <ArrowRight className="size-4" aria-hidden="true" />
+              </Link>
+            )}
           </div>
           <WindowTimeline />
         </div>

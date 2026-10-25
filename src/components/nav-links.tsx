@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { features } from "@/lib/features";
 
 const links = [
   { href: "/console", label: "Console" },
-  { href: "/rules", label: "Booking rules" },
+  ...(features.rules ? [{ href: "/rules", label: "Booking rules" }] : []),
   { href: "/#faq", label: "FAQ" },
 ] as const;
 

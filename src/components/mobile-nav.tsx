@@ -4,11 +4,12 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Menu, X } from "lucide-react";
+import { features } from "@/lib/features";
 import { signOut, useMe } from "./auth/use-me";
 
 const links = [
   { href: "/console", label: "Console" },
-  { href: "/rules", label: "Booking rules" },
+  ...(features.rules ? [{ href: "/rules", label: "Booking rules" }] : []),
   { href: "/#faq", label: "FAQ" },
 ] as const;
 

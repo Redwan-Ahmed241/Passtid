@@ -3,6 +3,8 @@ import Link from "next/link";
 import { ArrowRight, Check, Minus } from "lucide-react";
 import { JsonLd } from "@/components/json-ld";
 import { WindowTimeline } from "@/components/window-timeline";
+import { notFound } from "next/navigation";
+import { features } from "@/lib/features";
 import { site } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -68,6 +70,9 @@ function SectionHead({ id, n, title, children }: { id: string; n: string; title:
 }
 
 export default function RulesPage() {
+  // Built but hidden for now. Set NEXT_PUBLIC_SHOW_RULES=true and redeploy to show it.
+  if (!features.rules) notFound();
+
   return (
     <>
       <JsonLd

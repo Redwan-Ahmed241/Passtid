@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { features } from "@/lib/features";
 import { useMe } from "./auth/use-me";
 
 /** Primary calls to action. They change once you're signed in, since slots are for signed-in users only. */
@@ -28,9 +29,11 @@ export function HeroActions() {
           </Link>
         </>
       )}
-      <Link href="/rules" className="btn h-12 px-3 text-base text-ink-2 hover:text-ink">
-        How matching works
-      </Link>
+      {features.rules && (
+        <Link href="/rules" className="btn h-12 px-3 text-base text-ink-2 hover:text-ink">
+          How matching works
+        </Link>
+      )}
     </div>
   );
 }
