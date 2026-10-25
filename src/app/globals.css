@@ -7,13 +7,13 @@
  * always paired with a text label so meaning never rides on colour alone.
  */
 :root {
-  --paper: #f4f2ec;
+  --paper: #f8fafc;
   --surface: #ffffff;
   --surface-2: #faf9f5;
   --sunken: #eceae3;
-  --ink: #14161b;
-  --ink-2: #3b4049;
-  --muted: #636a75;
+  --ink: #0a0a0a;
+  --ink-2: #1f2933;
+  --muted: #46525e;
   --line: #e0ddd4;
   --line-2: #ebe8e1;
   --line-strong: #cbc7bc;
@@ -42,55 +42,19 @@
   color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --paper: #0e1014;
-    --surface: #15181e;
-    --surface-2: #191c23;
-    --sunken: #0b0d10;
-    --ink: #eceef1;
-    --ink-2: #c3c7ce;
-    --muted: #959ba6;
-    --line: #262a33;
-    --line-2: #1f232b;
-    --line-strong: #353a45;
-
-    --accent: #8aa6ff;
-    --accent-ink: #b3c4ff;
-    --accent-soft: rgb(138 166 255 / 0.12);
-    --accent-line: rgb(138 166 255 / 0.32);
-    --on-accent: #0b1430;
-
-    --clear: #5fd0a2;
-    --clear-bg: rgb(95 208 162 / 0.1);
-    --clear-line: rgb(95 208 162 / 0.3);
-    --busy: #f0b54d;
-    --busy-bg: rgb(240 181 77 / 0.1);
-    --busy-line: rgb(240 181 77 / 0.3);
-    --hot: #ff8a7d;
-    --hot-bg: rgb(255 138 125 / 0.1);
-    --hot-line: rgb(255 138 125 / 0.3);
-
-    --tick-off: #2c313b;
-    --shadow-sm: 0 1px 0 rgb(0 0 0 / 0.3);
-    --shadow-md: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px -6px rgb(0 0 0 / 0.5);
-    --shadow-lg: 0 2px 4px rgb(0 0 0 / 0.4), 0 24px 48px -12px rgb(0 0 0 / 0.6);
-    color-scheme: dark;
-  }
-}
 
 /*
- * Booking console palette, from the passtid-app brand sheet. Light by default, dark with the
- * system setting. Applied to <body> while the console is open, so the header and footer match.
+ * Booking console palette, from the passtid-app brand sheet. Light only: black text on light
+ * surfaces, for readability and colour-blind users. Applied to <body> while the console is open, so the header and footer match.
  */
 body.passtid {
-  --paper: #eef3f7;
+  --paper: #f4f8fb;
   --surface: #ffffff;
   --surface-2: #ffffff;
   --sunken: #f1f5f8;
-  --ink: #0b2a3c;
-  --ink-2: #3d5566;
-  --muted: #3d5566;
+  --ink: #0a0a0a;
+  --ink-2: #1f2933;
+  --muted: #3a4752;
   --line: #c9d6df;
   --line-2: #c9d6df;
   --line-strong: #c9d6df;
@@ -120,39 +84,6 @@ body.passtid {
   --shadow-md: 0 8px 24px -6px rgb(11 42 60 / 0.15);
   --shadow-lg: 0 24px 48px -12px rgb(11 42 60 / 0.25);
   --focus: 0 0 0 2px var(--paper), 0 0 0 4px var(--yellow);
-}
-@media (prefers-color-scheme: dark) {
-  body.passtid {
-    --paper: #0a1822;
-    --surface: #11293a;
-    --surface-2: #11293a;
-    --sunken: #0e2130;
-    --ink: #eaf2f8;
-    --ink-2: #a9bdcb;
-    --muted: #a9bdcb;
-    --line: #2e4a5e;
-    --line-2: #2e4a5e;
-    --line-strong: #2e4a5e;
-
-    --accent-soft: #17384f;
-    --accent-line: #5db4e6;
-
-    --clear: #5fd0a2;
-    --clear-bg: rgb(95 208 162 / 0.1);
-    --clear-line: rgb(95 208 162 / 0.3);
-    --busy: #f0b54d;
-    --busy-bg: rgb(240 181 77 / 0.1);
-    --busy-line: rgb(240 181 77 / 0.3);
-    --hot: #ff8a7e;
-    --hot-bg: rgb(255 138 126 / 0.1);
-    --hot-line: #ff8a7e;
-    /* White on the light dark-mode red is hard to read, so text on solid red turns navy. */
-    --on-hot: #0b2a3c;
-
-    --tick-off: #2e4a5e;
-    --shadow-md: 0 8px 24px -6px rgb(0 0 0 / 0.5);
-    --shadow-lg: 0 24px 48px -12px rgb(0 0 0 / 0.6);
-  }
 }
 body.passtid .field:focus {
   border-color: var(--yellow);
@@ -332,11 +263,6 @@ body.passtid .btn-danger-solid:hover:not(:disabled) {
     opacity: 0.6;
     cursor: pointer;
   }
-  @media (prefers-color-scheme: dark) {
-    .field::-webkit-calendar-picker-indicator {
-      filter: invert(1);
-    }
-  }
 
   .btn {
     display: inline-flex;
@@ -367,11 +293,6 @@ body.passtid .btn-danger-solid:hover:not(:disabled) {
   }
   .btn-primary:hover:not(:disabled) {
     background: var(--accent-ink);
-  }
-  @media (prefers-color-scheme: dark) {
-    .btn-primary:hover:not(:disabled) {
-      background: var(--accent-ink);
-    }
   }
   .btn-ink {
     background: var(--ink);
@@ -515,4 +436,9 @@ body.passtid .btn-danger-solid:hover:not(:disabled) {
 
 body.passtid .wordmark-tid {
   color: var(--accent-line);
+}
+
+/* Room for the fixed step buttons at the very end of the console page. */
+body.passtid footer {
+  padding-bottom: 5.5rem;
 }

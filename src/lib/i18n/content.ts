@@ -10,9 +10,10 @@ const en = {
     heroBefore: "Book a slot you can ",
     heroEm: "actually attend",
     heroAfter: ", and see how busy it is.",
-    lead: "Tell the bot which days and hours work for you. It watches the passport, ID card and migration calendars, shows how many people are already queued for every slot, and books only inside your windows. Sign in to see the live calendar.",
+    lead: "Tell the bot which days and hours work for you. It watches the passport, ID card and migration calendars, shows how many people are already queued for every slot, and books only inside your windows.",
     openConsole: "Open the console",
     createAccount: "Create an account",
+    startBooking: "Start booking",
     signIn: "Sign in",
     howMatching: "How matching works",
     facts: [
@@ -56,7 +57,7 @@ const en = {
     ctaBody: "The bot keeps looking, books only what you can attend, and tells you how busy it was.",
   },
   faq: [
-    { q: "Do I need an account?", a: "Yes. Only signed-in users can see slots and queue counts. One account covers both services: passports and ID cards, and migration (coordination numbers)." },
+    { q: "Do I need an account?", a: "You set your dates and details first, and create the account at the very end, right before paying. Slots and queue counts are shown to signed-in users. One account covers both services: passports and ID cards, and migration (coordination numbers)." },
     { q: "What is a booking window?", a: "A list of date ranges, each with its own optional times of day. The bot only books slots inside it. Both dates of a range count, and either can be left open: a start date alone means that date onwards, an end date alone means from now until then. The start of each time range is bookable and the end is not, so 09:00–12:00 takes 11:45 but never 12:00." },
     { q: "What details do I have to give?", a: "For every person: a first name, a last name, and either a personal (security) number for passports and ID cards or a phone number for migration. A personal number and a phone number are different things. One contact email covers the whole submission." },
     { q: "What does “3 queued” mean?", a: "Three people have confirmed a booking request for that exact slot, or already hold it. The number rises the moment someone confirms, not when the booking succeeds, and drops back when an attempt fails, is cancelled or stalls for 15 minutes." },
@@ -156,9 +157,10 @@ const sv: Content = {
     heroBefore: "Boka en tid du ",
     heroEm: "verkligen kan komma på",
     heroAfter: ", och se hur hårt tryck det är.",
-    lead: "Berätta vilka dagar och tider som passar dig. Boten bevakar kalendrarna för pass, ID-kort och migration, visar hur många som redan står i kö för varje tid och bokar bara inom dina fönster. Logga in för att se den levande kalendern.",
+    lead: "Berätta vilka dagar och tider som passar dig. Boten bevakar kalendrarna för pass, ID-kort och migration, visar hur många som redan står i kö för varje tid och bokar bara inom dina fönster.",
     openConsole: "Öppna konsolen",
     createAccount: "Skapa konto",
+    startBooking: "Starta bokning",
     signIn: "Logga in",
     howMatching: "Så fungerar matchningen",
     facts: [
@@ -202,7 +204,7 @@ const sv: Content = {
     ctaBody: "Boten fortsätter leta, bokar bara det du kan passa och berättar hur hårt tryck det var.",
   },
   faq: [
-    { q: "Behöver jag ett konto?", a: "Ja. Bara inloggade användare kan se tider och kölängder. Ett konto täcker båda tjänsterna: pass och ID-kort samt migration (samordningsnummer)." },
+    { q: "Behöver jag ett konto?", a: "Du anger först dina datum och uppgifter och skapar kontot allra sist, precis innan du betalar. Tider och kölängder visas för inloggade användare. Ett konto täcker båda tjänsterna: pass och ID-kort samt migration (samordningsnummer)." },
     { q: "Vad är ett bokningsfönster?", a: "En lista med datumintervall, vart och ett med valfri tid på dagen. Boten bokar bara tider inom det. Båda datumen i ett intervall räknas, och vart och ett kan lämnas öppet: bara ett startdatum betyder det datumet och framåt, bara ett slutdatum betyder från nu till dess. Början av varje tidsintervall går att boka och slutet gör det inte, så 09:00–12:00 tar 11:45 men aldrig 12:00." },
     { q: "Vilka uppgifter måste jag lämna?", a: "För varje person: ett förnamn, ett efternamn, och antingen ett personnummer för pass och ID-kort eller ett telefonnummer för migration. Personnummer och telefonnummer är olika saker. En kontaktmejl gäller hela bokningen." },
     { q: "Vad betyder ”3 i kö”?", a: "Tre personer har bekräftat en bokningsförfrågan för exakt den tiden, eller håller redan den. Siffran stiger i samma stund någon bekräftar, inte när bokningen lyckas, och sjunker när ett försök misslyckas, avbryts eller står stilla i 15 minuter." },

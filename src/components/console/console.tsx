@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AlertTriangle, ArrowRight, BellRing, Bot, Check, CreditCard, Globe2, Loader2 } from "lucide-react";
 import { api, ApiRequestError } from "@/lib/api";
@@ -8,8 +9,10 @@ import { formatPrice } from "@/lib/plans";
 import { LOCALES, useI18n } from "@/lib/i18n";
 import type { TranslationKey } from "@/lib/i18n/translations";
 import { isComplete } from "@/lib/applicants";
+import { defaultRequest } from "@/lib/defaults";
 import {
   SYSTEMS,
+  SYSTEM_INFO,
   isSystemId,
   type BookingRequest,
   type AlertSubscription,
@@ -19,7 +22,7 @@ import {
   type SlotsResponse,
   type SystemId,
 } from "@/lib/types";
-import { EMBASSY_TZ, clockOf, dayOf, formatDayLong, formatDayShort } from "@/lib/time";
+import { EMBASSY_TZ, addDays, clockOf, dayOf, embassyToday, formatDayLong, formatDayShort } from "@/lib/time";
 import { describeWindow, matchesWindow, validateWindow } from "@/lib/window";
 import { announceAuthChange, useMe } from "../auth/use-me";
 import { ApplicantsEditor } from "./applicants-editor";
@@ -83,6 +86,10 @@ export function Console() {
   const [plans, setPlans] = useState<PlansResponse | null>(null);
   const [plan, setPlan] = useState<PlanId>("autobook");
   const [alertSub, setAlertSub] = useState<AlertSubscription | null>(null);
+  const [watching, setWatching] = useState(false);
+  const [accountName, setAccountName] = useState("");
+  const [accountPassword, setAccountPassword] = useState("");
+  const [showAccountErrors, setShowAccountErrors] = useState(false);
   const [showDetailErrors, setShowDetailErrors] = useState(false);
   const [confirmingCancel, setConfirmingCancel] = useState(false);
   const [toast, setToast] = useState<{ id: number; text: string; tone: "ok" | "warn" } | null>(null);
@@ -127,13 +134,6 @@ export function Console() {
 
   usePasstidTheme();
 
-  // Only signed-in users can see slots.
-  useEffect(() => {
-    if (authLoading || user) return;
-    const search = params.toString();
-    router.replace(`/login?next=${encodeURIComponent(search ? `${pathname}?${search}` : pathname)}`);
-  }, [authLoading, user, router, pathname, params]);
-
   // The people, email and window live on the backend per service.
   useEffect(() => {
     if (!user || requestedFor.current.has(system)) return;
@@ -169,7 +169,10 @@ export function Console() {
     };
   }, [system, user, loadSlots]);
 
-  const draft = drafts[system] ?? null;
+  // Guests can go through every step; the account is created at the end, right before paying.
+  const guest = !authLoading && !user;
+  const guestDefault = useMemo(() => defaultRequest(embassyToday(), ""), []);
+  const draft = drafts[system] ?? (guest ? guestDefault : null);
   const savedReq = saved[system] ?? null;
   const windowValid = draft ? validateWindow(draft.window).length === 0 : true;
   const detailsReady = draft ? isComplete(system, draft) : false;
@@ -240,11 +243,11 @@ export function Console() {
 
   // Prices come from the server, so the UI never hard-codes them.
   useEffect(() => {
-    if (!user || step !== 4 || plans) return;
+    if (step !== 4 || plans) return;
     api.plans().then(setPlans, (err: unknown) => {
       if (!handleAuthLoss(err)) notify(t("loadPlansFail"), "warn");
     });
-  }, [user, step, plans, handleAuthLoss, notify, t]);
+  }, [step, plans, handleAuthLoss, notify, t]);
 
   // Back from Stripe: verify the payment, then show what was bought. Runs once per checkout session.
   const checkoutState = params.get("checkout");
@@ -270,6 +273,10 @@ export function Console() {
       async (res) => {
         if (res.alert) {
           setAlertSub(res.alert);
+          setStartNew(false);
+        }
+        if (res.watching) {
+          setWatching(true);
           setStartNew(false);
         }
         if (res.booking) {
@@ -299,7 +306,20 @@ export function Console() {
 
   // The bot keeps using the last valid window while the draft window is broken.
   const effectiveWindow: BookingWindow | null = draft ? (windowValid ? draft.window : (savedReq?.window ?? null)) : null;
-  const data = slotsBy[system];
+  const guestData = useMemo<SlotsResponse>(() => {
+    const today = embassyToday();
+    const weeks = SYSTEM_INFO[system].scanWeeks;
+    return {
+      system,
+      timezone: EMBASSY_TZ,
+      today,
+      scannedUntil: addDays(today, weeks * 7 - 1),
+      scanWeeks: weeks,
+      generatedAt: new Date().toISOString(),
+      slots: [],
+    };
+  }, [system]);
+  const data = slotsBy[system] ?? (guest ? guestData : undefined);
 
   const view = useMemo<ViewSlot[]>(() => {
     if (!data || !effectiveWindow) return [];
@@ -314,6 +334,7 @@ export function Console() {
   const mineSlot = view.find((s) => s.mine) ?? null;
   const showStatus = !!mineSlot && !startNew;
   const showAlert = !showStatus && !!alertSub && alertSub.system === system && !startNew;
+  const showWatching = !showStatus && !showAlert && watching && !startNew;
 
   /* ----------------------------- actions ----------------------------- */
 
@@ -331,10 +352,13 @@ export function Console() {
   };
 
   const setDraft = (update: (r: BookingRequest) => BookingRequest) =>
-    setDrafts((d) => (d[system] ? { ...d, [system]: update(d[system] as BookingRequest) } : d));
+    setDrafts((d) => {
+      const current = d[system] ?? (guest ? guestDefault : null);
+      return current ? { ...d, [system]: update(current) } : d;
+    });
 
   const goDetails = () => {
-    if (!selectedSlot || !windowValid) return;
+    if (!windowValid) return;
     setStep(3);
   };
 
@@ -358,8 +382,14 @@ export function Console() {
       setShowDetailErrors(true);
       return;
     }
+    if (!user && (!accountName.trim() || accountPassword.length < 8)) {
+      setShowAccountErrors(true);
+      return;
+    }
     setWorking(true);
     try {
+      // Guests create their account now, with the contact email they already gave.
+      if (!user) announceAuthChange(await api.register(accountName.trim(), draft.email, accountPassword));
       const req: BookingRequest = windowValid ? draft : { ...draft, window: effectiveWindow };
       if (!savedReq || !sameRequest(req, savedReq)) {
         await api.saveRequest(system, req);
@@ -400,13 +430,13 @@ export function Console() {
 
   /* ----------------------------- render ----------------------------- */
 
-  if (authLoading || !user) return <ConsoleFallback />;
+  if (authLoading) return <ConsoleFallback />;
 
   const ready = !!data && !!draft && !!effectiveWindow;
   const updated = data ? clockFmt.format(new Date(data.generatedAt)) : null;
 
   return (
-    <div className="mx-auto w-full max-w-md px-4 pt-6 pb-16">
+    <div className="mx-auto w-full max-w-md px-4 pt-6 pb-28">
       {/* Progress: hidden once there is a booking to look at */}
       {!showStatus && (
         <div className="mb-4">
@@ -465,7 +495,17 @@ export function Console() {
           />
         )}
 
-        {ready && !showStatus && !showAlert && step === 1 && (
+        {ready && showWatching && (
+          <WatchingCard
+            onAnother={() => {
+              setStartNew(true);
+              setWatching(false);
+              setStep(1);
+            }}
+          />
+        )}
+
+        {ready && !showStatus && !showAlert && !showWatching && step === 1 && (
           <>
             <h1 className="text-2xl font-semibold text-ink">{t("whatNeed")}</h1>
             <p className="mt-1 text-sm text-muted">{t("bookAppt")}</p>
@@ -493,7 +533,7 @@ export function Console() {
           </>
         )}
 
-        {ready && !showStatus && !showAlert && step === 2 && data && (
+        {ready && !showStatus && !showAlert && !showWatching && step === 2 && data && (
           <>
             <h1 className="text-2xl font-semibold text-ink">{t("chooseDateTime")}</h1>
             <p className="mt-1 text-sm text-muted">{t(system === "passport" ? "svcPassportLong" : "svcCoordLong")}</p>
@@ -516,11 +556,9 @@ export function Console() {
                 selectedSlot ? "border-clear-line bg-clear-bg text-clear" : "border-line bg-surface-2 text-ink-2"
               }`}
             >
-              {data.slots.length === 0
-                ? t("noSlotsBody", { n: data.scanWeeks })
-                : selectedSlot
-                  ? t("nextAvailable", { slot: `${dayLong(dayOf(selectedSlot.slot))}, ${clockOf(selectedSlot.slot)}` })
-                  : t("noMatch")}
+              {selectedSlot
+                ? t("nextAvailable", { slot: `${dayLong(dayOf(selectedSlot.slot))}, ${clockOf(selectedSlot.slot)}` })
+                : t("guestWatch")}
             </p>
 
             {updated && (
@@ -530,11 +568,11 @@ export function Console() {
               </p>
             )}
 
-            <StepButtons onBack={() => setStep(1)} onNext={goDetails} nextDisabled={!selectedSlot || !windowValid} />
+            <StepButtons onBack={() => setStep(1)} onNext={goDetails} nextDisabled={!windowValid} />
           </>
         )}
 
-        {ready && !showStatus && !showAlert && step === 3 && draft && (
+        {ready && !showStatus && !showAlert && !showWatching && step === 3 && draft && (
           <div id="details">
             <ApplicantsEditor
               key={system}
@@ -563,14 +601,14 @@ export function Console() {
           </div>
         )}
 
-        {ready && !showStatus && !showAlert && step === 4 && draft && (
+        {ready && !showStatus && !showAlert && !showWatching && step === 4 && draft && (
           <>
             <h1 className="text-2xl font-semibold text-ink">{t("reviewBooking")}</h1>
             <dl className="mt-4 divide-y divide-line-2 text-sm">
               <Row label={t("rowService")} value={t(system === "passport" ? "svcPassport" : "svcMigrationShort")} />
               <Row
                 label={t("rowDates")}
-                value={plan === "autobook" && selectedSlot ? `${dayLong(dayOf(selectedSlot.slot))}, ${clockOf(selectedSlot.slot)}` : describeWindow(draft.window, lang)}
+                value={describeWindow(draft.window, lang)}
               />
               <Row
                 label={t("rowName")}
@@ -632,8 +670,53 @@ export function Console() {
                 {selectedSlot.queued === 0 ? t("nobodyElse") : t("alreadyQueued", { n: selectedSlot.queued })}
               </p>
             )}
-            {plan === "autobook" && !selectedSlot && (
-              <p role="alert" className="mt-4 text-[0.8125rem] text-hot">{t("noMatch")}</p>
+            {guest && (
+              <div className="mt-5 rounded-xl border border-line bg-surface-2 p-3.5">
+                <p className="text-sm font-semibold text-ink">{t("accountTitle")}</p>
+                <p className="mt-0.5 text-[0.8125rem] text-muted">{t("accountHint")}</p>
+                <div className="mt-3 space-y-3">
+                  <div>
+                    <label htmlFor="acct-name" className="mb-1.5 block text-sm font-medium text-ink-2">{t("fullName")}</label>
+                    <input
+                      id="acct-name"
+                      className="field"
+                      autoComplete="name"
+                      value={accountName}
+                      onChange={(e) => setAccountName(e.target.value)}
+                      aria-invalid={showAccountErrors && !accountName.trim()}
+                    />
+                    {showAccountErrors && !accountName.trim() && (
+                      <p role="alert" className="mt-1.5 text-[0.8125rem] text-hot">{t("errEnterName")}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label htmlFor="acct-pass" className="mb-1.5 block text-sm font-medium text-ink-2">{t("password")}</label>
+                    <input
+                      id="acct-pass"
+                      className="field"
+                      type="password"
+                      autoComplete="new-password"
+                      value={accountPassword}
+                      onChange={(e) => setAccountPassword(e.target.value)}
+                      aria-invalid={showAccountErrors && accountPassword.length < 8}
+                    />
+                    {showAccountErrors && accountPassword.length < 8 ? (
+                      <p role="alert" className="mt-1.5 text-[0.8125rem] text-hot">{t("errPassword8")}</p>
+                    ) : (
+                      <p className="mt-1.5 text-xs text-muted">{t("passwordHint")}</p>
+                    )}
+                  </div>
+                </div>
+                <p className="mt-3 text-sm text-ink-2">
+                  {t("haveAccount")}{" "}
+                  <Link
+                    href={`/login?next=${encodeURIComponent(`/console?system=${system}`)}`}
+                    className="inline-flex min-h-11 items-center font-semibold text-accent hover:text-accent-ink"
+                  >
+                    {t("signIn")}
+                  </Link>
+                </p>
+              </div>
             )}
             <p className="mt-3 flex items-start gap-1.5 text-xs text-muted">
               <CreditCard className="mt-0.5 size-3.5 flex-none" aria-hidden="true" />
@@ -642,15 +725,15 @@ export function Console() {
             <StepButtons
               onBack={() => setStep(3)}
               onNext={() => void pay()}
-              nextLabel={plans ? t(plan === "autobook" ? "payAuto" : "payNotify", { price: formatPrice(plans.plans.find((p) => p.id === plan) ?? { amountCents: 0 }) }) : t("next")}
+              nextLabel={plans ? t(guest ? "payAccount" : plan === "autobook" ? "payAuto" : "payNotify", { price: formatPrice(plans.plans.find((p) => p.id === plan) ?? { amountCents: 0 }) }) : t("next")}
               nextBusy={working}
-              nextDisabled={working || !plans || (plan === "autobook" && !selectedSlot)}
+              nextDisabled={working || !plans}
             />
           </>
         )}
       </div>
 
-      <div aria-live="polite" className="pointer-events-none fixed inset-x-0 bottom-6 z-50 flex justify-center px-4">
+      <div aria-live="polite" className="pointer-events-none fixed inset-x-0 bottom-24 z-50 flex justify-center px-4">
         {toast && (
           <p
             key={toast.id}
@@ -691,7 +774,9 @@ function StepButtons({
   const { t } = useI18n();
   const label = nextLabel ?? t("next");
   return (
-    <div className="mt-6 flex gap-3">
+    // Fixed to the bottom of the screen so the next action is always in reach, like a native app.
+    <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-4px_16px_-8px_rgb(10_10_10/0.18)]">
+      <div className="mx-auto flex max-w-md gap-3">
       <button type="button" className="btn btn-ghost flex-none border-accent-line px-6 text-accent-line" onClick={onBack}>
         {t("back")}
       </button>
@@ -702,6 +787,7 @@ function StepButtons({
           <ArrowRight className="size-4 transition-transform duration-150 group-hover:translate-x-0.5" aria-hidden="true" />
         )}
       </button>
+      </div>
     </div>
   );
 }
@@ -784,6 +870,23 @@ function StatusCard({
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+/** Shown after automatic booking is paid but no slot fits yet. */
+function WatchingCard({ onAnother }: { onAnother: () => void }) {
+  const { t } = useI18n();
+  return (
+    <div className="text-center">
+      <span className="mx-auto grid size-14 place-items-center rounded-full border-2 border-accent text-accent-line" aria-hidden="true">
+        <Bot className="size-7" />
+      </span>
+      <h1 className="mt-4 text-2xl font-semibold text-ink">{t("watchingTitle")}</h1>
+      <p className="mt-2 text-sm text-muted">{t("watchingBody")}</p>
+      <button type="button" className="btn btn-ghost mt-6 w-full border-accent-line text-accent-line" onClick={onAnother}>
+        {t("bookAnother")}
+      </button>
     </div>
   );
 }

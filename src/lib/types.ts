@@ -205,4 +205,6 @@ export interface ConfirmResponse {
   booking: Booking | null;
   /** Set for the notification plan. */
   alert: AlertSubscription | null;
+  /** Auto-book was paid but no slot fits yet: the bot keeps watching and books when one opens. */
+  watching: boolean;
 }

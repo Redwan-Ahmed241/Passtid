@@ -20,7 +20,8 @@ import {
   type SlotsResponse,
   type SystemId,
 } from "@/lib/types";
-import { emptyPerson, isComplete } from "@/lib/applicants";
+import { isComplete } from "@/lib/applicants";
+import { defaultRequest } from "@/lib/defaults";
 import { matchesWindow } from "@/lib/window";
 import { EMBASSY_TZ, addDays, embassyClock, embassyToday, minutesToClock, weekday } from "@/lib/time";
 
@@ -296,28 +297,6 @@ export function cancelBooking(id: string, clientId: string): Booking {
 
 const requestKey = (userId: string, system: SystemId) => `${userId}|${system}`;
 
-/** A fresh request: one empty person, the account email, and the next two weeks, mornings and afternoons. */
-export function defaultRequest(today: string, email: string): BookingRequest {
-  return {
-    persons: [emptyPerson()],
-    email,
-    window: {
-      emergency: false,
-      ranges: [
-        {
-          id: "r1",
-          from: today,
-          to: addDays(today, 13),
-          times: [
-            { start: "09:00", end: "12:00" },
-            { start: "14:00", end: "EOD" },
-          ],
-        },
-      ],
-    },
-  };
-}
-
 function toResponse(system: SystemId, request: BookingRequest, updatedAt: string | null): RequestResponse {
   return { request, updatedAt, complete: isComplete(system, request) };
 }
@@ -368,20 +347,19 @@ export function fulfilPayment(
       system: paid.system,
       telegramUrl: bot ? `https://t.me/${bot}?start=${paid.sessionId.slice(-24)}` : null,
     };
-    result = { plan: "notify", system: paid.system, booking: null, alert };
+    result = { plan: "notify", system: paid.system, booking: null, alert, watching: false };
   } else {
     const stillOpen = paid.slot
       ? seedSlots(paid.system, embassyToday(), embassyClock()).some((s) => s.slot === paid.slot)
       : false;
     const slot = stillOpen ? paid.slot : earliestMatch(paid.system, clientId);
+    // Nothing open inside the dates right now: the bot keeps watching and books when one appears.
     if (!slot) {
-      throw new ApiError(
-        409,
-        "no_slot_after_payment",
-        `Your payment went through, but no open slot fits your dates right now. Keep reference ${paid.sessionId.slice(-12)} and contact support, or try again shortly.`,
-      );
+      result = { plan: "autobook", system: paid.system, booking: null, alert: null, watching: true };
+      store.fulfilled.set(paid.sessionId, result);
+      return result;
     }
-    result = { plan: "autobook", system: paid.system, booking: createBooking(paid.system, slot, clientId), alert: null };
+    result = { plan: "autobook", system: paid.system, booking: createBooking(paid.system, slot, clientId), alert: null, watching: false };
   }
   store.fulfilled.set(paid.sessionId, result);
   return result;
