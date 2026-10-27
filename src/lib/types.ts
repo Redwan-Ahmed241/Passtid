@@ -2,10 +2,10 @@
  * Shared contract between the UI and the route handlers in src/app/api/v1.
  */
 
-/** The two services one user can hold: passports / ID cards, and coordination numbers. */
-export type SystemId = "passport" | "coordination_number";
+/** The two services one user can hold: passports / ID cards, and migration (coordination numbers). */
+export type SystemId = "passport" | "migration";
 
-export const SYSTEMS: readonly SystemId[] = ["passport", "coordination_number"] as const;
+export const SYSTEMS: readonly SystemId[] = ["passport", "migration"] as const;
 
 export interface SystemInfo {
   id: SystemId;
@@ -28,10 +28,10 @@ export const SYSTEM_INFO: Record<SystemId, SystemInfo> = {
     showsFreeCount: false,
     identifier: "personalNumber",
   },
-  coordination_number: {
-    id: "coordination_number",
-    name: "Coordination number",
-    short: "Coordination number",
+  migration: {
+    id: "migration",
+    name: "Migration (coordination number)",
+    short: "Migration",
     scanWeeks: 8,
     showsFreeCount: true,
     identifier: "phone",
@@ -39,7 +39,7 @@ export const SYSTEM_INFO: Record<SystemId, SystemInfo> = {
 };
 
 export function isSystemId(value: unknown): value is SystemId {
-  return value === "passport" || value === "coordination_number";
+  return value === "passport" || value === "migration";
 }
 
 /* ----------------------------- auth ----------------------------- */
@@ -91,7 +91,7 @@ export interface Person {
   lastName: string;
   /** Passport / ID service only. Not the same thing as a phone number. */
   personalNumber: string;
-  /** Coordination number service only. */
+  /** Migration service only. */
   phone: string;
 }
 

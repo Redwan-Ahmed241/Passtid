@@ -5,7 +5,7 @@ import { Booking, BookingFallback } from "@/components/booking/booking";
 export const metadata: Metadata = {
   title: "Booking",
   description:
-    "Set the days and times you can attend, see every open Swedish embassy slot in London on a month calendar with its live queue count, and book the quiet one. Covers passports, ID cards and coordination numbers.",
+    "Set the days and times you can attend, see every open Swedish embassy slot in London on a month calendar with its live queue count, and book the quiet one. Covers passports, ID cards and migration.",
   robots: { index: false, follow: false },
   alternates: { canonical: "/booking" },
   openGraph: { url: "/booking" },

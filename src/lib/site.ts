@@ -14,7 +14,7 @@ export const site = {
   name: "Passtid",
   tagline: "Book a slot you can actually attend",
   description:
-    "Passtid watches Swedish embassy appointment slots in London for passports, national ID cards and coordination numbers. Set the days and hours you can attend, see how many people are already queued for each slot on a month calendar, and book the quiet one.",
+    "Passtid watches Swedish embassy appointment slots in London for passports, national ID cards and migration (coordination numbers). Set the days and hours you can attend, see how many people are already queued for each slot on a month calendar, and book the quiet one.",
   url: baseUrl(),
   /** Shown in the privacy policy and terms. Set NEXT_PUBLIC_CONTACT_EMAIL to the real support address. */
   contactEmail: process.env.NEXT_PUBLIC_CONTACT_EMAIL || "support@passtid.com",

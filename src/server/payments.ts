@@ -108,7 +108,7 @@ const invalid = () => new ApiError(402, "payment_not_confirmed", "We could not c
 function paidFromSession(s: StripeSession, expectedUserId: string | null): PaidSession {
   const m = s.metadata ?? {};
   const plan = m.plan === "notify" || m.plan === "autobook" ? m.plan : null;
-  const system = m.system === "passport" || m.system === "coordination_number" ? m.system : null;
+  const system = m.system === "passport" || m.system === "migration" ? m.system : null;
   if (s.payment_status !== "paid" || !m.user_id || !plan || !system) throw invalid();
   if (expectedUserId && m.user_id !== expectedUserId) throw invalid();
   if (s.amount_total !== planFor(plan).amountCents || s.currency !== "usd") throw invalid();
