@@ -4,7 +4,7 @@ import { MAX_PERSONS, SYSTEM_INFO, type BookingRequest, type Person, type System
 /**
  * Applicant rules per service:
  *  - passport / ID : first name, last name, personal (security) number
- *  - migration     : first name, last name, phone number
+ *  - coordination_number : first name, last name, phone number
  *  - both          : one contact email for the whole submission
  * A personal number is not a phone number, so the two are separate fields.
  */

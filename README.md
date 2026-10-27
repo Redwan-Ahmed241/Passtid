@@ -25,7 +25,7 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 The last step of the console sells two plans through Stripe Checkout: Telegram alerts (default $5) and automatic booking (default $25). Prices are placeholders until the client confirms a price list; change them with `PLAN_NOTIFY_CENTS` and `PLAN_AUTOBOOK_CENTS`. See `.env.example` for `STRIPE_SECRET_KEY` and `TELEGRAM_BOT_USERNAME`. Without a Stripe key checkout runs in demo mode and nobody is charged. When `NEXT_PUBLIC_API_BASE_URL` points at the real backend, that backend needs to implement `GET /plans`, `POST /checkout` and `POST /checkout/confirm` (see `src/lib/api.ts`).
 
 > **Backend.** This branch (main) runs on the bundled in-memory demo API in src/server/mock-backend.ts, so it needs no database and cannot fail for lack of one.
-> The real backend (Postgres via DATABASE_URL, email and password accounts, the Stripe webhook and the bot API) lives on the **ackend** branch. See docs/BACKEND_BRANCH.md for how it is kept apart and merged back.
+> The real backend (Postgres via DATABASE_URL, email and password accounts, the Stripe webhook and the bot API) lives on the **ackend** branch. See docs/BACKEND_BRANCH.md for how it is kept apart and merged back.
 
 ## Learn More
 
