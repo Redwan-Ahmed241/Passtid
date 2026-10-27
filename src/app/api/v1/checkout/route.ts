@@ -1,5 +1,5 @@
 import { isPlanId, isSystemId, type CheckoutResponse } from "@/lib/types";
-import { getRequest } from "@/server/mock-backend";
+import { getRequest } from "@/server/store";
 import { SLOT_RE, errorJson, handle, json, requireUser } from "@/server/http";
 import { createCheckout } from "@/server/payments";
 
@@ -12,7 +12,7 @@ export async function POST(request: Request) {
     if (!isPlanId(body.plan)) return errorJson(422, "invalid_plan", "`plan` must be notify or autobook.");
     const slot = typeof body.slot === "string" && SLOT_RE.test(body.slot) ? body.slot : null;
 
-    if (!getRequest(user.id, body.system, user.email).complete) {
+    if (!(await getRequest(user.id, body.system, user.email)).complete) {
       return errorJson(422, "incomplete_details", "Complete the people and email details for this service before paying.");
     }
     const origin = new URL(request.url).origin;

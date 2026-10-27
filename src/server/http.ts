@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import {
   MAX_PERSONS,
   type ApiErrorBody,
@@ -8,7 +9,7 @@ import {
   type User,
 } from "@/lib/types";
 import { DAY_RE, MAX_DATE_RANGES, MAX_TIME_RANGES, validateWindow } from "@/lib/window";
-import { ApiError } from "./mock-backend";
+import { ApiError } from "./errors";
 import { userFromRequest } from "./session";
 
 const NO_STORE = { "Cache-Control": "no-store" };
@@ -40,6 +41,17 @@ export function requireUser(request: Request): User {
   const user = userFromRequest(request);
   if (!user) throw new ApiError(401, "unauthenticated", "Sign in to continue.");
   return user;
+}
+
+/** The booking bot authenticates with a shared key: Authorization: Bearer $BOT_API_KEY. */
+export function requireBot(request: Request): void {
+  const key = process.env.BOT_API_KEY;
+  if (!key) throw new ApiError(503, "bot_api_disabled", "The bot API is not configured.");
+  const given = Buffer.from((request.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, ""));
+  const expected = Buffer.from(key);
+  if (given.length !== expected.length || !timingSafeEqual(given, expected)) {
+    throw new ApiError(401, "unauthenticated", "Invalid bot key.");
+  }
 }
 
 export const SLOT_RE = /^\d{4}-\d{2}-\d{2}T([01]\d|2[0-3]):[0-5]\d$/;
