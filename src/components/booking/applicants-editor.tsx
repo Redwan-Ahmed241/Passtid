@@ -41,17 +41,14 @@ export function ApplicantsEditor({ system, persons, email, showAll, onChange }: 
           {persons.length} {t(persons.length === 1 ? "person" : "people")}
         </span>
       </div>
-      <p className="mt-2 text-[0.8125rem] text-muted">
-        {t(usesPhone ? "hintPhone" : "hintPersonal")}
-      </p>
 
-      <ul className="mt-4 space-y-4">
+      <ul className="mt-2 divide-y divide-line">
         {persons.map((p, i) => {
           const f = (name: keyof Person) => `persons.${i}.${name}`;
           return (
-            <li key={i} className="rounded-xl border border-line bg-surface-2 p-4">
+            <li key={i} className="py-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-ink">{t("personN", { n: i + 1 })}</h3>
+                {persons.length > 1 ? <h3 className="text-sm font-semibold text-ink">{t("personN", { n: i + 1 })}</h3> : <span />}
                 {persons.length > 1 && (
                   <button
                     type="button"
@@ -150,12 +147,11 @@ export function ApplicantsEditor({ system, persons, email, showAll, onChange }: 
         {persons.length >= MAX_PERSONS && <span className="font-normal text-muted">{t("maxN", { n: MAX_PERSONS })}</span>}
       </button>
 
-      <div className="mt-4 border-t border-line-2 pt-4">
+      <div className="border-t border-line pt-4">
         <Field
           id={`${uid}-email`}
           label={t("contactEmail")}
           error={issueFor("email")}
-          hint={t("contactHint")}
         >
           <input
             id={`${uid}-email`}

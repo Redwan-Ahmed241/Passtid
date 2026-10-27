@@ -60,7 +60,7 @@ const PRODUCT_NAME: Record<PlanId, string> = {
 /** Start a payment and return the URL to send the browser to. */
 export async function createCheckout(intent: CheckoutIntent, origin: string): Promise<{ url: string; demo: boolean }> {
   const plan = planFor(intent.plan);
-  const back = `${origin}/console?system=${intent.system}`;
+  const back = `${origin}/booking?system=${intent.system}`;
 
   if (isDemoPayments()) {
     const id = `${DEMO_PREFIX}${randomUUID()}`;

@@ -122,7 +122,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
           id={`${uid}-password`}
           label={t("password")}
           error={shown("password")}
-          hint={mode === "register" ? t("passwordHint") : undefined}
+          
         >
           <div className="relative">
             <input
@@ -163,7 +163,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
       <p className="mt-6 text-sm text-ink-2">
         {t(copy.swap.text)}{" "}
         <Link
-          href={next === "/console" ? copy.swap.href : `${copy.swap.href}?next=${encodeURIComponent(next)}`}
+          href={next === "/booking" ? copy.swap.href : `${copy.swap.href}?next=${encodeURIComponent(next)}`}
           className="inline-flex min-h-11 items-center font-semibold text-accent hover:text-accent-ink"
         >
           {t(copy.swap.cta)}

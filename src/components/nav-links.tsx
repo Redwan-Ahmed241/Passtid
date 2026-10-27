@@ -6,9 +6,10 @@ import { useI18n } from "@/lib/i18n";
 import type { TranslationKey } from "@/lib/i18n/translations";
 
 const links = [
-  { href: "/console", label: "navConsole" },
-  { href: "/rules", label: "navRules" },
+  { href: "/#how", label: "navHow" },
+  { href: "/#price", label: "navPrice" },
   { href: "/#faq", label: "navFaq" },
+  { href: "/rules", label: "navRules" },
 ] as const satisfies readonly { href: string; label: TranslationKey }[];
 
 export function NavLinks() {

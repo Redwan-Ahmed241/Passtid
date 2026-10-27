@@ -26,7 +26,6 @@ import { EMBASSY_TZ, addDays, clockOf, dayOf, embassyToday, formatDayLong, forma
 import { describeWindow, matchesWindow, validateWindow } from "@/lib/window";
 import { announceAuthChange, useMe } from "../auth/use-me";
 import { ApplicantsEditor } from "./applicants-editor";
-import type { SaveState } from "./save-badge";
 import { SlotListSkeleton, type ViewSlot } from "./slot-list";
 import { WindowEditor } from "./window-editor";
 
@@ -38,29 +37,7 @@ const STEP_KEYS: Record<Step, TranslationKey> = { 1: "stepService", 2: "stepDate
 
 const sameRequest = (a: BookingRequest, b: BookingRequest) => JSON.stringify(a) === JSON.stringify(b);
 
-let passtidUsers = 0;
-
-/** The console has its own passtid palette; the header and footer follow it. Counted, because the fallback and the page overlap. */
-function usePasstidTheme() {
-  useEffect(() => {
-    passtidUsers += 1;
-    document.body.classList.add("passtid");
-    return () => {
-      passtidUsers -= 1;
-      if (passtidUsers === 0) document.body.classList.remove("passtid");
-    };
-  }, []);
-}
-
-const clockFmt = new Intl.DateTimeFormat("en-GB", {
-  timeZone: EMBASSY_TZ,
-  hour: "2-digit",
-  minute: "2-digit",
-  second: "2-digit",
-  hourCycle: "h23",
-});
-
-export function Console() {
+export function Booking() {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -70,7 +47,6 @@ export function Console() {
   const { t, lang } = useI18n();
   const locale = LOCALES[lang];
   const slotLabel = useCallback((iso: string) => `${formatDayShort(iso, locale)} ${clockOf(iso)}`, [locale]);
-  const dayLong = (d: string) => formatDayLong(d, locale);
 
   // Coming back from a cancelled payment lands on the review step again.
   const [step, setStep] = useState<Step>(params.get("checkout") === "cancel" ? 4 : 1);
@@ -79,12 +55,11 @@ export function Console() {
   const [consent, setConsent] = useState(false);
   const [drafts, setDrafts] = useState<Partial<Record<SystemId, BookingRequest>>>({});
   const [saved, setSaved] = useState<Partial<Record<SystemId, BookingRequest>>>({});
-  const [saveState, setSaveState] = useState<SaveState>("idle");
   const [slotsBy, setSlotsBy] = useState<Partial<Record<SystemId, SlotsResponse>>>({});
   const [loadError, setLoadError] = useState<string | null>(null);
   const [working, setWorking] = useState(false);
   const [plans, setPlans] = useState<PlansResponse | null>(null);
-  const [plan, setPlan] = useState<PlanId>("autobook");
+  const [plan, setPlan] = useState<PlanId>(params.get("plan") === "notify" ? "notify" : "autobook");
   const [alertSub, setAlertSub] = useState<AlertSubscription | null>(null);
   const [watching, setWatching] = useState(false);
   const [accountName, setAccountName] = useState("");
@@ -131,8 +106,6 @@ export function Console() {
   );
 
   /* ----------------------------- effects ----------------------------- */
-
-  usePasstidTheme();
 
   // The people, email and window live on the backend per service.
   useEffect(() => {
@@ -181,15 +154,9 @@ export function Console() {
   useEffect(() => {
     if (!draft || !savedReq || sameRequest(draft, savedReq) || validateWindow(draft.window).length) return;
     const t = setTimeout(() => {
-      setSaveState("saving");
       api.saveRequest(system, draft).then(
-        () => {
-          setSaved((s) => ({ ...s, [system]: draft }));
-          setSaveState("saved");
-        },
-        (err: unknown) => {
-          if (!handleAuthLoss(err)) setSaveState("error");
-        },
+        () => setSaved((s) => ({ ...s, [system]: draft })),
+        (err: unknown) => void handleAuthLoss(err),
       );
     }, 600);
     return () => clearTimeout(t);
@@ -243,11 +210,11 @@ export function Console() {
 
   // Prices come from the server, so the UI never hard-codes them.
   useEffect(() => {
-    if (step !== 4 || plans) return;
+    if (plans) return;
     api.plans().then(setPlans, (err: unknown) => {
       if (!handleAuthLoss(err)) notify(t("loadPlansFail"), "warn");
     });
-  }, [step, plans, handleAuthLoss, notify, t]);
+  }, [plans, handleAuthLoss, notify, t]);
 
   // Back from Stripe: verify the payment, then show what was bought. Runs once per checkout session.
   const checkoutState = params.get("checkout");
@@ -430,197 +397,177 @@ export function Console() {
 
   /* ----------------------------- render ----------------------------- */
 
-  if (authLoading) return <ConsoleFallback />;
+  if (authLoading) return <BookingFallback />;
 
   const ready = !!data && !!draft && !!effectiveWindow;
-  const updated = data ? clockFmt.format(new Date(data.generatedAt)) : null;
+  const inFlow = ready && !showStatus && !showAlert && !showWatching;
+  const names = draft?.persons.map((p) => `${p.firstName} ${p.lastName}`.trim()).filter(Boolean).join(", ") ?? "";
+  const planPrice = plans?.plans.find((p) => p.id === plan);
+  const serviceName = t(system === "passport" ? "svcPassport" : "svcMigrationShort");
+  const heading = "text-2xl font-bold text-ink sm:text-3xl";
 
   return (
-    <div className="mx-auto w-full max-w-md px-4 pt-6 pb-28">
-      {/* Progress: hidden once there is a booking to look at */}
-      {!showStatus && (
-        <div className="mb-4">
-          <p className="text-xs text-muted tabular" aria-live="polite">
-            {step} / 4 · {t(STEP_KEYS[step])}
-          </p>
-          <div className="mt-2 flex gap-1.5" aria-hidden="true">
-            {([1, 2, 3, 4] as const).map((n) => (
-              <span key={n} className={`h-1 flex-1 rounded-full ${n <= step ? "bg-accent-line" : "bg-line"}`} />
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div className="rounded-2xl border border-line bg-surface p-5">
-        {loadError && !data && step > 1 && (
-          <div role="alert" className="rounded-xl border border-hot-line bg-hot-bg p-4">
-            <p className="flex items-center gap-2 font-semibold text-hot">
-              <AlertTriangle className="size-4" aria-hidden="true" /> {t("cantReach")}
-            </p>
-            <p className="mt-1 text-sm text-ink-2">{loadError}</p>
-            <button type="button" className="btn btn-ghost mt-3" onClick={() => void loadSlots(system)}>
-              {t("tryAgain")}
-            </button>
-          </div>
-        )}
-
-        {!ready && !loadError && <SlotListSkeleton />}
-
-        {ready && showStatus && mineSlot && draft && (
-          <StatusCard
-            system={system}
-            slot={mineSlot}
-            people={draft.persons.length}
-            email={draft.email}
-            working={working}
-            confirming={confirmingCancel}
-            onAskCancel={() => setConfirmingCancel(true)}
-            onKeep={() => setConfirmingCancel(false)}
-            onCancel={() => mineSlot.mine && void cancel(mineSlot.mine.bookingId)}
-            onAnother={() => {
-              setStartNew(true);
-              setStep(1);
-            }}
-          />
-        )}
-
-        {ready && showAlert && alertSub && (
-          <AlertCard
-            alert={alertSub}
-            onAnother={() => {
-              setStartNew(true);
-              setAlertSub(null);
-              setStep(1);
-            }}
-          />
-        )}
-
-        {ready && showWatching && (
-          <WatchingCard
-            onAnother={() => {
-              setStartNew(true);
-              setWatching(false);
-              setStep(1);
-            }}
-          />
-        )}
-
-        {ready && !showStatus && !showAlert && !showWatching && step === 1 && (
-          <>
-            <h1 className="text-2xl font-semibold text-ink">{t("whatNeed")}</h1>
-            <p className="mt-1 text-sm text-muted">{t("bookAppt")}</p>
-            <div className="mt-5 flex flex-col gap-3">
-              {SYSTEMS.map((id) => (
-                <button
-                  key={id}
-                  type="button"
-                  aria-pressed={system === id}
-                  onClick={() => chooseSystem(id)}
-                  className="flex min-h-20 items-center gap-4 rounded-xl border border-line-strong bg-surface-2 p-4 text-left transition-colors hover:border-accent-line hover:bg-accent-soft aria-pressed:border-accent-line"
-                >
-                  <span className="grid size-11 flex-none place-items-center rounded-lg bg-accent-soft text-accent-line">
-                    {id === "passport" ? <CreditCard className="size-5" aria-hidden="true" /> : <Globe2 className="size-5" aria-hidden="true" />}
+    <div className="mx-auto w-full max-w-5xl px-4 pt-8 pb-28 lg:pb-16">
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_21rem] lg:items-start lg:gap-14">
+        <div className={`min-w-0 max-w-xl ${inFlow ? "" : "mx-auto"}`}>
+          {!showStatus && !showAlert && !showWatching && (
+            <ol className="mb-8 grid grid-cols-4 gap-2">
+              {([1, 2, 3, 4] as const).map((n) => (
+                <li key={n} aria-current={n === step ? "step" : undefined}>
+                  <span className={`block h-1.5 rounded-full ${n <= step ? "bg-accent" : "bg-line"}`} aria-hidden="true" />
+                  <span className={`mt-2 block text-[0.8125rem] ${n === step ? "font-semibold text-ink" : "text-muted"}`}>
+                    {t(STEP_KEYS[n])}
                   </span>
-                  <span className="min-w-0">
-                    <span className="block font-semibold text-ink">{t(id === "passport" ? "svcPassport" : "svcCoord")}</span>
-                    <span className="mt-0.5 block text-sm text-muted">
-                      {t(id === "passport" ? "passportDesc" : "coordDesc")}
-                    </span>
-                  </span>
-                </button>
+                </li>
               ))}
+            </ol>
+          )}
+
+          {loadError && !data && step > 1 && (
+            <div role="alert" className="border-l-4 border-hot py-1 pl-4">
+              <p className="flex items-center gap-2 font-semibold text-hot">
+                <AlertTriangle className="size-4" aria-hidden="true" /> {t("cantReach")}
+              </p>
+              <p className="mt-1 text-sm text-ink-2">{loadError}</p>
+              <button type="button" className="btn btn-ghost mt-3" onClick={() => void loadSlots(system)}>
+                {t("tryAgain")}
+              </button>
             </div>
-          </>
-        )}
+          )}
 
-        {ready && !showStatus && !showAlert && !showWatching && step === 2 && data && (
-          <>
-            <h1 className="text-2xl font-semibold text-ink">{t("chooseDateTime")}</h1>
-            <p className="mt-1 text-sm text-muted">{t(system === "passport" ? "svcPassportLong" : "svcCoordLong")}</p>
+          {!ready && !loadError && <SlotListSkeleton />}
 
-            {draft && (
+          {ready && showStatus && mineSlot && draft && (
+            <StatusCard
+              system={system}
+              slot={mineSlot}
+              people={draft.persons.length}
+              email={draft.email}
+              working={working}
+              confirming={confirmingCancel}
+              onAskCancel={() => setConfirmingCancel(true)}
+              onKeep={() => setConfirmingCancel(false)}
+              onCancel={() => mineSlot.mine && void cancel(mineSlot.mine.bookingId)}
+              onAnother={() => {
+                setStartNew(true);
+                setStep(1);
+              }}
+            />
+          )}
+
+          {ready && showAlert && alertSub && (
+            <AlertCard
+              alert={alertSub}
+              onAnother={() => {
+                setStartNew(true);
+                setAlertSub(null);
+                setStep(1);
+              }}
+            />
+          )}
+
+          {ready && showWatching && (
+            <WatchingCard
+              onAnother={() => {
+                setStartNew(true);
+                setWatching(false);
+                setStep(1);
+              }}
+            />
+          )}
+
+          {inFlow && step === 1 && (
+            <>
+              <h1 className={heading}>{t("whatNeed")}</h1>
+              <div className="mt-6 flex flex-col gap-3">
+                {SYSTEMS.map((id) => (
+                  <button
+                    key={id}
+                    type="button"
+                    aria-pressed={system === id}
+                    onClick={() => chooseSystem(id)}
+                    className="flex min-h-20 items-center gap-4 rounded-xl border border-line-strong bg-surface p-4 text-left transition-colors hover:border-accent hover:bg-accent-soft aria-pressed:border-accent aria-pressed:bg-accent-soft"
+                  >
+                    <span className="grid size-11 flex-none place-items-center rounded-lg bg-accent-soft text-accent">
+                      {id === "passport" ? <CreditCard className="size-5" aria-hidden="true" /> : <Globe2 className="size-5" aria-hidden="true" />}
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block font-semibold text-ink">{t(id === "passport" ? "svcPassport" : "svcCoord")}</span>
+                      <span className="mt-0.5 block text-sm text-muted">{t(id === "passport" ? "passportDesc" : "coordDesc")}</span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
+          {inFlow && step === 2 && data && draft && (
+            <>
+              <h1 className={heading}>{t("chooseDateTime")}</h1>
               <div className="mt-5">
                 <WindowEditor
                   value={draft.window}
                   today={data.today}
                   horizon={data.scannedUntil}
-                  save={saveState}
                   onChange={(window) => setDraft((r) => ({ ...r, window }))}
                 />
               </div>
-            )}
+              <StepButtons onBack={() => setStep(1)} onNext={goDetails} nextDisabled={!windowValid} />
+            </>
+          )}
 
-            <p
-              aria-live="polite"
-              className={`mt-4 rounded-xl border px-3.5 py-3 text-sm ${
-                selectedSlot ? "border-clear-line bg-clear-bg text-clear" : "border-line bg-surface-2 text-ink-2"
-              }`}
-            >
-              {selectedSlot
-                ? t("nextAvailable", { slot: `${dayLong(dayOf(selectedSlot.slot))}, ${clockOf(selectedSlot.slot)}` })
-                : t("guestWatch")}
-            </p>
-
-            {updated && (
-              <p className="mt-4 flex items-center gap-1.5 text-xs text-muted tabular">
-                <span className="size-1.5 rounded-full bg-clear animate-pulse-dot" aria-hidden="true" />
-                {t("liveUpdated", { time: updated })}
-              </p>
-            )}
-
-            <StepButtons onBack={() => setStep(1)} onNext={goDetails} nextDisabled={!windowValid} />
-          </>
-        )}
-
-        {ready && !showStatus && !showAlert && !showWatching && step === 3 && draft && (
-          <div id="details">
-            <ApplicantsEditor
-              key={system}
-              system={system}
-              persons={draft.persons}
-              email={draft.email}
-              showAll={showDetailErrors}
-              onChange={({ persons, email }) => setDraft((r) => ({ ...r, persons, email }))}
-            />
-            <label className="mt-4 flex cursor-pointer items-start gap-3 text-sm text-ink-2">
-              <input
-                type="checkbox"
-                checked={consent}
-                onChange={(e) => setConsent(e.target.checked)}
-                aria-invalid={showDetailErrors && !consent}
-                className="mt-0.5 size-5 flex-none accent-[#006aa7]"
+          {inFlow && step === 3 && draft && (
+            <div id="details">
+              <ApplicantsEditor
+                key={system}
+                system={system}
+                persons={draft.persons}
+                email={draft.email}
+                showAll={showDetailErrors}
+                onChange={({ persons, email }) => setDraft((r) => ({ ...r, persons, email }))}
               />
-              <span>{t("gdpr")}</span>
-            </label>
-            {showDetailErrors && !consent && (
-              <p role="alert" className="mt-1.5 text-[0.8125rem] text-hot">
-                {t("tickBox")}
-              </p>
-            )}
-            <StepButtons onBack={() => setStep(2)} onNext={goConfirm} />
-          </div>
-        )}
+              <label className="mt-5 flex cursor-pointer items-start gap-3 text-sm text-ink-2">
+                <input
+                  type="checkbox"
+                  checked={consent}
+                  onChange={(e) => setConsent(e.target.checked)}
+                  aria-invalid={showDetailErrors && !consent}
+                  className="mt-0.5 size-5 flex-none accent-[#006aa7]"
+                />
+                <span>
+                  {t("gdpr")}{" "}
+                  <Link href="/privacy" target="_blank" className="font-semibold text-accent underline-offset-2 hover:underline">
+                    {t("navPrivacy")}
+                  </Link>{" "}
+                  {t("gdprAnd")}{" "}
+                  <Link href="/terms" target="_blank" className="font-semibold text-accent underline-offset-2 hover:underline">
+                    {t("navTerms")}
+                  </Link>
+                  .
+                </span>
+              </label>
+              {showDetailErrors && !consent && (
+                <p role="alert" className="mt-1.5 text-[0.8125rem] text-hot">
+                  {t("tickBox")}
+                </p>
+              )}
+              <StepButtons onBack={() => setStep(2)} onNext={goConfirm} />
+            </div>
+          )}
 
-        {ready && !showStatus && !showAlert && !showWatching && step === 4 && draft && (
-          <>
-            <h1 className="text-2xl font-semibold text-ink">{t("reviewBooking")}</h1>
-            <dl className="mt-4 divide-y divide-line-2 text-sm">
-              <Row label={t("rowService")} value={t(system === "passport" ? "svcPassport" : "svcMigrationShort")} />
-              <Row
-                label={t("rowDates")}
-                value={describeWindow(draft.window, lang)}
-              />
-              <Row
-                label={t("rowName")}
-                value={draft.persons.map((p) => `${p.firstName} ${p.lastName}`.trim()).join(", ")}
-              />
-              <Row label={t("rowEmail")} value={draft.email} />
-              <Row label={t("rowApplicants")} value={String(draft.persons.length)} />
-            </dl>
+          {inFlow && step === 4 && draft && (
+            <>
+              <h1 className={heading}>{t("reviewBooking")}</h1>
+              {/* On wide screens the summary beside the form already shows this. */}
+              <dl className="mt-4 divide-y divide-line text-sm lg:hidden">
+                <Row label={t("rowService")} value={serviceName} />
+                <Row label={t("rowDates")} value={describeWindow(draft.window, lang)} />
+                <Row label={t("rowName")} value={names || t("nameMissing")} />
+                <Row label={t("rowEmail")} value={draft.email} />
+                <Row label={t("rowApplicants")} value={String(draft.persons.length)} />
+              </dl>
 
-            <div role="radiogroup" aria-label={t("planTitle")} className="mt-5">
-              <p className="label-mono">{t("planTitle")}</p>
-              <div className="mt-2 flex flex-col gap-2.5">
+              <div role="radiogroup" aria-label={t("planTitle")} className="mt-6 divide-y divide-line border-y border-line">
                 {(["autobook", "notify"] as const).map((id) => {
                   const on = plan === id;
                   const price = plans?.plans.find((p) => p.id === id);
@@ -631,9 +578,7 @@ export function Console() {
                       role="radio"
                       aria-checked={on}
                       onClick={() => setPlan(id)}
-                      className={`flex min-w-0 items-start gap-3 rounded-xl border p-3.5 text-left transition-colors ${
-                        on ? "border-accent bg-accent-soft" : "border-line-strong bg-surface-2 hover:border-accent-line"
-                      }`}
+                      className="flex w-full min-w-0 items-start gap-3 py-4 text-left"
                     >
                       <span
                         aria-hidden="true"
@@ -647,9 +592,9 @@ export function Console() {
                         <span className="flex items-baseline justify-between gap-3">
                           <span className="flex items-center gap-1.5 font-semibold text-ink">
                             {id === "autobook" ? (
-                              <Bot className="size-4 flex-none text-accent-line" aria-hidden="true" />
+                              <Bot className="size-4 flex-none text-accent" aria-hidden="true" />
                             ) : (
-                              <BellRing className="size-4 flex-none text-accent-line" aria-hidden="true" />
+                              <BellRing className="size-4 flex-none text-accent" aria-hidden="true" />
                             )}
                             {t(id === "autobook" ? "planAutoName" : "planNotifyName")}
                           </span>
@@ -663,73 +608,84 @@ export function Console() {
                   );
                 })}
               </div>
-            </div>
 
-            {plan === "autobook" && selectedSlot && (
-              <p className="mt-4 text-[0.8125rem] text-muted">
-                {selectedSlot.queued === 0 ? t("nobodyElse") : t("alreadyQueued", { n: selectedSlot.queued })}
-              </p>
-            )}
-            {guest && (
-              <div className="mt-5 rounded-xl border border-line bg-surface-2 p-3.5">
-                <p className="text-sm font-semibold text-ink">{t("accountTitle")}</p>
-                <p className="mt-0.5 text-[0.8125rem] text-muted">{t("accountHint")}</p>
-                <div className="mt-3 space-y-3">
-                  <div>
-                    <label htmlFor="acct-name" className="mb-1.5 block text-sm font-medium text-ink-2">{t("fullName")}</label>
-                    <input
-                      id="acct-name"
-                      className="field"
-                      autoComplete="name"
-                      value={accountName}
-                      onChange={(e) => setAccountName(e.target.value)}
-                      aria-invalid={showAccountErrors && !accountName.trim()}
-                    />
-                    {showAccountErrors && !accountName.trim() && (
-                      <p role="alert" className="mt-1.5 text-[0.8125rem] text-hot">{t("errEnterName")}</p>
-                    )}
+              {guest && (
+                <div className="mt-6">
+                  <p className="font-semibold text-ink">{t("accountTitle")}</p>
+                  <div className="mt-3 space-y-3">
+                    <div>
+                      <label htmlFor="acct-name" className="mb-1.5 block text-sm font-medium text-ink-2">{t("fullName")}</label>
+                      <input
+                        id="acct-name"
+                        className="field"
+                        autoComplete="name"
+                        value={accountName}
+                        onChange={(e) => setAccountName(e.target.value)}
+                        aria-invalid={showAccountErrors && !accountName.trim()}
+                      />
+                      {showAccountErrors && !accountName.trim() && (
+                        <p role="alert" className="mt-1.5 text-[0.8125rem] text-hot">{t("errEnterName")}</p>
+                      )}
+                    </div>
+                    <div>
+                      <label htmlFor="acct-pass" className="mb-1.5 block text-sm font-medium text-ink-2">{t("password")}</label>
+                      <input
+                        id="acct-pass"
+                        className="field"
+                        type="password"
+                        autoComplete="new-password"
+                        value={accountPassword}
+                        onChange={(e) => setAccountPassword(e.target.value)}
+                        aria-invalid={showAccountErrors && accountPassword.length < 8}
+                      />
+                      {showAccountErrors && accountPassword.length < 8 && (
+                        <p role="alert" className="mt-1.5 text-[0.8125rem] text-hot">{t("errPassword8")}</p>
+                      )}
+                    </div>
                   </div>
-                  <div>
-                    <label htmlFor="acct-pass" className="mb-1.5 block text-sm font-medium text-ink-2">{t("password")}</label>
-                    <input
-                      id="acct-pass"
-                      className="field"
-                      type="password"
-                      autoComplete="new-password"
-                      value={accountPassword}
-                      onChange={(e) => setAccountPassword(e.target.value)}
-                      aria-invalid={showAccountErrors && accountPassword.length < 8}
-                    />
-                    {showAccountErrors && accountPassword.length < 8 ? (
-                      <p role="alert" className="mt-1.5 text-[0.8125rem] text-hot">{t("errPassword8")}</p>
-                    ) : (
-                      <p className="mt-1.5 text-xs text-muted">{t("passwordHint")}</p>
-                    )}
-                  </div>
+                  <p className="mt-2 text-sm text-ink-2">
+                    {t("haveAccount")}{" "}
+                    <Link
+                      href={`/login?next=${encodeURIComponent(`/booking?system=${system}`)}`}
+                      className="inline-flex min-h-11 items-center font-semibold text-accent hover:text-accent-ink"
+                    >
+                      {t("signIn")}
+                    </Link>
+                  </p>
                 </div>
-                <p className="mt-3 text-sm text-ink-2">
-                  {t("haveAccount")}{" "}
-                  <Link
-                    href={`/login?next=${encodeURIComponent(`/console?system=${system}`)}`}
-                    className="inline-flex min-h-11 items-center font-semibold text-accent hover:text-accent-ink"
-                  >
-                    {t("signIn")}
-                  </Link>
-                </p>
+              )}
+              <p className="mt-3 flex items-start gap-1.5 text-xs text-muted">
+                <CreditCard className="mt-0.5 size-3.5 flex-none" aria-hidden="true" />
+                {plans?.demo ? t("demoPay") : t("securePay")}
+              </p>
+              <StepButtons
+                onBack={() => setStep(3)}
+                onNext={() => void pay()}
+                nextLabel={plans ? t(guest ? "payAccount" : plan === "autobook" ? "payAuto" : "payNotify", { price: formatPrice(plans.plans.find((p) => p.id === plan) ?? { amountCents: 0 }) }) : t("next")}
+                nextBusy={working}
+                nextDisabled={working || !plans}
+              />
+            </>
+          )}
+        </div>
+
+        {/* The summary beside the form, like a receipt that fills in as you go. */}
+        {inFlow && draft && (
+          <aside aria-label={t("summaryTitle")} className="hidden lg:block">
+            <div className="sticky top-24 rounded-2xl border border-line bg-surface p-6">
+              <h2 className="text-lg font-bold text-ink">{t("summaryTitle")}</h2>
+              <dl className="mt-4 space-y-4 text-[0.9375rem]">
+                <SummaryItem label={t("rowService")} value={serviceName} />
+                <SummaryItem label={t("rowDates")} value={describeWindow(draft.window, lang)} />
+                <SummaryItem label={t("rowName")} value={names || t("nameMissing")} dim={!names} />
+                {draft.email && <SummaryItem label={t("rowEmail")} value={draft.email} />}
+              </dl>
+              <div className="mt-5 flex items-baseline justify-between gap-3 border-t border-line pt-5">
+                <span className="text-muted">{t(plan === "autobook" ? "planAutoName" : "planNotifyName")}</span>
+                <span className="text-2xl font-bold text-ink tabular">{planPrice ? formatPrice(planPrice) : "…"}</span>
               </div>
-            )}
-            <p className="mt-3 flex items-start gap-1.5 text-xs text-muted">
-              <CreditCard className="mt-0.5 size-3.5 flex-none" aria-hidden="true" />
-              {plans?.demo ? t("demoPay") : t("securePay")}
-            </p>
-            <StepButtons
-              onBack={() => setStep(3)}
-              onNext={() => void pay()}
-              nextLabel={plans ? t(guest ? "payAccount" : plan === "autobook" ? "payAuto" : "payNotify", { price: formatPrice(plans.plans.find((p) => p.id === plan) ?? { amountCents: 0 }) }) : t("next")}
-              nextBusy={working}
-              nextDisabled={working || !plans}
-            />
-          </>
+            </div>
+          </aside>
         )}
       </div>
 
@@ -745,6 +701,15 @@ export function Console() {
           </p>
         )}
       </div>
+    </div>
+  );
+}
+
+function SummaryItem({ label, value, dim }: { label: string; value: string; dim?: boolean }) {
+  return (
+    <div>
+      <dt className="text-sm text-muted">{label}</dt>
+      <dd className={`mt-0.5 font-medium break-words ${dim ? "text-muted" : "text-ink"}`}>{value}</dd>
     </div>
   );
 }
@@ -775,12 +740,12 @@ function StepButtons({
   const label = nextLabel ?? t("next");
   return (
     // Fixed to the bottom of the screen so the next action is always in reach, like a native app.
-    <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-4px_16px_-8px_rgb(10_10_10/0.18)]">
-      <div className="mx-auto flex max-w-md gap-3">
-      <button type="button" className="btn btn-ghost flex-none border-accent-line px-6 text-accent-line" onClick={onBack}>
+    <div data-fixed-bar className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-4px_16px_-8px_rgb(10_10_10/0.18)] lg:static lg:mt-8 lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none">
+      <div className="mx-auto flex max-w-md gap-3 lg:mx-0 lg:max-w-none">
+      <button type="button" className="btn btn-ghost flex-none border-accent px-6 text-accent" onClick={onBack}>
         {t("back")}
       </button>
-      <button type="button" className="btn btn-primary group flex-1" disabled={nextDisabled} onClick={onNext}>
+      <button type="button" className="btn btn-primary group flex-1 lg:flex-none lg:px-8" disabled={nextDisabled} onClick={onNext}>
         {nextBusy && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
         {nextBusy ? t("queuing") : label}
         {!nextBusy && nextLabel === undefined && (
@@ -839,7 +804,7 @@ function StatusCard({
         </>
       ) : (
         <p className="mt-2 text-sm text-muted" aria-live="polite">
-          {ahead === 0 ? t("nobodyAhead") : ahead === 1 ? t("oneAhead") : t("manyAhead", { n: ahead })} {t("keepOpen")}
+          {ahead === 0 ? t("nobodyAhead") : ahead === 1 ? t("oneAhead") : t("manyAhead", { n: ahead })}
         </p>
       )}
 
@@ -913,8 +878,7 @@ function AlertCard({ alert, onAnother }: { alert: AlertSubscription; onAnother: 
   );
 }
 
-export function ConsoleFallback() {
-  usePasstidTheme();
+export function BookingFallback() {
   return (
     <div className="mx-auto w-full max-w-md px-4 pt-6 pb-16" aria-busy="true">
       <div className="rounded-2xl border border-line bg-surface p-5">

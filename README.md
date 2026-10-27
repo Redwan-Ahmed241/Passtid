@@ -25,8 +25,8 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 Everything runs in this Next.js app: the pages, the route handlers in `src/app/api/v1`, and the data layer in `src/server`.
 
 - **Database.** Postgres via `DATABASE_URL`. The tables (users, requests, slots, bookings, payments, alert subscriptions) are created on first use.
-- **Accounts.** Email and password (scrypt hashes). The session is an HMAC-signed HttpOnly cookie; `AUTH_SECRET` is required in production. Accounts are created at the last step of the booking console, right before payment.
-- **Payments.** The last console step sells two plans through Stripe Checkout: Telegram alerts (default $5) and automatic booking (default $25). Prices are placeholders until the client confirms a price list; change them with `PLAN_NOTIFY_CENTS` and `PLAN_AUTOBOOK_CENTS`. Set `STRIPE_SECRET_KEY`, and add a webhook endpoint at `/api/v1/stripe/webhook` (events `checkout.session.completed` and `checkout.session.async_payment_succeeded`) with its signing secret in `STRIPE_WEBHOOK_SECRET`. Fulfilment is idempotent, so the return redirect and the webhook can both run. In production, payments are refused without a Stripe key; elsewhere, without one, checkout runs in demo mode and nobody is charged.
+- **Accounts.** Email and password (scrypt hashes). The session is an HMAC-signed HttpOnly cookie; `AUTH_SECRET` is required in production. Accounts are created at the last step of the booking flow, right before payment.
+- **Payments.** The last booking step sells two plans through Stripe Checkout: Telegram alerts (default $5) and automatic booking (default $25). Prices are placeholders until the client confirms a price list; change them with `PLAN_NOTIFY_CENTS` and `PLAN_AUTOBOOK_CENTS`. Set `STRIPE_SECRET_KEY`, and add a webhook endpoint at `/api/v1/stripe/webhook` (events `checkout.session.completed` and `checkout.session.async_payment_succeeded`) with its signing secret in `STRIPE_WEBHOOK_SECRET`. Fulfilment is idempotent, so the return redirect and the webhook can both run. In production, payments are refused without a Stripe key; elsewhere, without one, checkout runs in demo mode and nobody is charged.
 - **Local setup.** Copy `.env.example` to `.env.local`, set `DATABASE_URL` and `AUTH_SECRET`, run `npm run dev`.
 
 ### Bot API
@@ -40,7 +40,7 @@ The booking bot talks to these endpoints with `Authorization: Bearer $BOT_API_KE
 | `POST /api/v1/bot/bookings/{id}` | Report progress: `{ "status": "pending" \| "booked" \| "released", "reference": "SE-...", "reason": "failed" \| "cancelled" \| "timed_out" \| "slot_gone" }`. A booking that reports nothing for 15 minutes is released. |
 | `POST /api/v1/bot/alerts/link` | Link a Telegram chat to an alert: `{ "code": "<24 hex from the deep link>", "chatId": "123" }`. |
 
-Until the bot pushes slots, the console has no slots to show, and paid users are placed on the watch list.
+Until the bot pushes slots, the booking page has no slots to show, and paid users are placed on the watch list.
 
 ## Learn More
 

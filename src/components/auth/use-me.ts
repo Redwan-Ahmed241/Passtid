@@ -63,6 +63,6 @@ export function useMe():{ loading: boolean; user: User | null } {
 
 /** Only allow same-site paths as a post-login destination. */
 export function safeNext(raw: string | null): string {
-  if (!raw || !raw.startsWith("/") || raw.startsWith("//") || raw.startsWith("/\\")) return "/console";
+  if (!raw || !raw.startsWith("/") || raw.startsWith("//") || raw.startsWith("/\\")) return "/booking";
   return raw;
 }

@@ -141,7 +141,7 @@ export function RulesView() {
 
         <div className="flex flex-col items-start justify-between gap-4 rounded-2xl border border-line bg-surface p-6 sm:flex-row sm:items-center">
           <p className="font-display text-2xl text-ink">{k.ctaTitle}</p>
-          <Link href="/console" className="btn btn-primary group">
+          <Link href="/booking" className="btn btn-primary group">
             {k.ctaButton}
             <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
           </Link>

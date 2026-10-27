@@ -22,7 +22,7 @@ export function HeaderActions() {
         <Link href="/login" className="btn btn-ghost hidden h-10 min-h-10 px-4 text-sm md:inline-flex">
           {t("signIn")}
         </Link>
-        <Link href="/console" className="btn btn-ink h-11 min-h-11 px-3 text-sm max-[359px]:hidden sm:px-4 md:h-10 md:min-h-10">
+        <Link href="/booking" className="btn btn-primary h-11 min-h-11 px-3 text-sm max-[359px]:hidden sm:px-4 md:h-10 md:min-h-10">
           <span className="md:hidden">{t("bookShort")}</span>
           <span className="hidden md:inline">{t("startBooking")}</span>
         </Link>
@@ -43,7 +43,7 @@ export function HeaderActions() {
         <LogOut className="size-4" aria-hidden="true" /> {t("signOut")}
       </button>
       {/* The nav already links to the console from tablet width up. */}
-      <Link href="/console" className="btn btn-ink h-11 min-h-11 px-3 text-sm max-[399px]:hidden sm:px-4 md:hidden">
+      <Link href="/booking" className="btn btn-primary h-11 min-h-11 px-3 text-sm max-[399px]:hidden sm:px-4 md:hidden">
         {t("navConsole")}
         <ArrowUpRight className="size-4" aria-hidden="true" />
       </Link>

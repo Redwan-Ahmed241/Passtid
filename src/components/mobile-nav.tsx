@@ -9,9 +9,11 @@ import type { TranslationKey } from "@/lib/i18n/translations";
 import { signOut, useMe } from "./auth/use-me";
 
 const links = [
-  { href: "/console", label: "navConsole" },
-  { href: "/rules", label: "navRules" },
+  { href: "/#how", label: "navHow" },
+  { href: "/#price", label: "navPrice" },
   { href: "/#faq", label: "navFaq" },
+  { href: "/rules", label: "navRules" },
+  { href: "/booking", label: "navConsole" },
 ] as const satisfies readonly { href: string; label: TranslationKey }[];
 
 export function MobileNav() {

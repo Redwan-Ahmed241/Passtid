@@ -1,6 +1,7 @@
 import { HomeView } from "@/components/home-view";
 import { JsonLd } from "@/components/json-ld";
 import { content } from "@/lib/i18n/content";
+import { formatPrice, planFor } from "@/lib/plans";
 import { site } from "@/lib/site";
 
 export default function Home() {
@@ -32,7 +33,7 @@ export default function Home() {
         }}
       />
 
-      <HomeView />
+      <HomeView prices={{ notify: formatPrice(planFor("notify")), autobook: formatPrice(planFor("autobook")) }} />
     </>
   );
 }
