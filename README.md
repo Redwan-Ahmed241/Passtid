@@ -35,7 +35,7 @@ The booking bot talks to these endpoints with `Authorization: Bearer $BOT_API_KE
 
 | Endpoint | Purpose |
 | --- | --- |
-| `PUT /api/v1/bot/slots/{system}` | Replace the free slots of `passport` or `migration`: `{ "slots": [{ "slot": "2026-10-23T09:30", "freeOnSite": 2 }] }`. Paid watchers whose window now matches are queued for booking. |
+| `PUT /api/v1/bot/slots/{system}` | Replace the free slots of `passport` or `coordination_number`: `{ "slots": [{ "slot": "2026-10-23T09:30", "freeOnSite": 2 }] }`. Paid watchers whose window now matches are queued for booking. |
 | `GET /api/v1/bot/jobs` | Bookings to make (`bookings`, with the stored applicant request), users still waiting for a slot (`watching`) and Telegram alerts to send (`alerts`). |
 | `POST /api/v1/bot/bookings/{id}` | Report progress: `{ "status": "pending" \| "booked" \| "released", "reference": "SE-...", "reason": "failed" \| "cancelled" \| "timed_out" \| "slot_gone" }`. A booking that reports nothing for 15 minutes is released. |
 | `POST /api/v1/bot/alerts/link` | Link a Telegram chat to an alert: `{ "code": "<24 hex from the deep link>", "chatId": "123" }`. |

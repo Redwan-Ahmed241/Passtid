@@ -8,7 +8,7 @@ export async function POST(request: Request) {
   return handle(async () => {
     const user = requireUser(request);
     const body = (await request.json()) as { system?: unknown; plan?: unknown; slot?: unknown };
-    if (!isSystemId(body.system)) return errorJson(422, "invalid_system", "`system` must be passport or migration.");
+    if (!isSystemId(body.system)) return errorJson(422, "invalid_system", "`system` must be passport or coordination_number.");
     if (!isPlanId(body.plan)) return errorJson(422, "invalid_plan", "`plan` must be notify or autobook.");
     const slot = typeof body.slot === "string" && SLOT_RE.test(body.slot) ? body.slot : null;
 
