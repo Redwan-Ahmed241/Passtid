@@ -4,7 +4,7 @@ import { translate } from "./i18n/translations";
 import { clockOf, dayOf, formatDayShort, minutesToClock } from "./time";
 
 /**
- * The booking-window rules, in one place, used by both the UI and the API
+ * The booking-window rules, in one place, used by both the UI and the mock API
  * so they can never disagree:
  *  - a window is a list of date ranges; a slot matches if it is inside ANY of them
  *  - each date range has its own optional time ranges (none = any time of day)

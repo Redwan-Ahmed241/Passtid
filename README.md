@@ -20,27 +20,12 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-## Backend
+## Payments
 
-Everything runs in this Next.js app: the pages, the route handlers in `src/app/api/v1`, and the data layer in `src/server`.
+The last step of the console sells two plans through Stripe Checkout: Telegram alerts (default $5) and automatic booking (default $25). Prices are placeholders until the client confirms a price list; change them with `PLAN_NOTIFY_CENTS` and `PLAN_AUTOBOOK_CENTS`. See `.env.example` for `STRIPE_SECRET_KEY` and `TELEGRAM_BOT_USERNAME`. Without a Stripe key checkout runs in demo mode and nobody is charged. When `NEXT_PUBLIC_API_BASE_URL` points at the real backend, that backend needs to implement `GET /plans`, `POST /checkout` and `POST /checkout/confirm` (see `src/lib/api.ts`).
 
-- **Database.** Postgres via `DATABASE_URL`. The tables (users, requests, slots, bookings, payments, alert subscriptions) are created on first use.
-- **Accounts.** Email and password (scrypt hashes). The session is an HMAC-signed HttpOnly cookie; `AUTH_SECRET` is required in production. Accounts are created at the last step of the booking flow, right before payment.
-- **Payments.** The last booking step sells two plans through Stripe Checkout: Telegram alerts (default $5) and automatic booking (default $25). Prices are placeholders until the client confirms a price list; change them with `PLAN_NOTIFY_CENTS` and `PLAN_AUTOBOOK_CENTS`. Set `STRIPE_SECRET_KEY`, and add a webhook endpoint at `/api/v1/stripe/webhook` (events `checkout.session.completed` and `checkout.session.async_payment_succeeded`) with its signing secret in `STRIPE_WEBHOOK_SECRET`. Fulfilment is idempotent, so the return redirect and the webhook can both run. In production, payments are refused without a Stripe key; elsewhere, without one, checkout runs in demo mode and nobody is charged.
-- **Local setup.** Copy `.env.example` to `.env.local`, set `DATABASE_URL` and `AUTH_SECRET`, run `npm run dev`.
-
-### Bot API
-
-The booking bot talks to these endpoints with `Authorization: Bearer $BOT_API_KEY`. Without `BOT_API_KEY` they answer 503.
-
-| Endpoint | Purpose |
-| --- | --- |
-| `PUT /api/v1/bot/slots/{system}` | Replace the free slots of `passport` or `migration`: `{ "slots": [{ "slot": "2026-10-23T09:30", "freeOnSite": 2 }] }`. Paid watchers whose window now matches are queued for booking. |
-| `GET /api/v1/bot/jobs` | Bookings to make (`bookings`, with the stored applicant request), users still waiting for a slot (`watching`) and Telegram alerts to send (`alerts`). |
-| `POST /api/v1/bot/bookings/{id}` | Report progress: `{ "status": "pending" \| "booked" \| "released", "reference": "SE-...", "reason": "failed" \| "cancelled" \| "timed_out" \| "slot_gone" }`. A booking that reports nothing for 15 minutes is released. |
-| `POST /api/v1/bot/alerts/link` | Link a Telegram chat to an alert: `{ "code": "<24 hex from the deep link>", "chatId": "123" }`. |
-
-Until the bot pushes slots, the booking page has no slots to show, and paid users are placed on the watch list.
+> **Backend.** This branch (main) runs on the bundled in-memory demo API in src/server/mock-backend.ts, so it needs no database and cannot fail for lack of one.
+> The real backend (Postgres via DATABASE_URL, email and password accounts, the Stripe webhook and the bot API) lives on the **ackend** branch. See docs/BACKEND_BRANCH.md for how it is kept apart and merged back.
 
 ## Learn More
 

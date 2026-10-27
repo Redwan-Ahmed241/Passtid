@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useId, useState } from "react";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
-import { api, ApiRequestError } from "@/lib/api";
+import { Eye, EyeOff, Info, Loader2 } from "lucide-react";
+import { api, ApiRequestError, isMockApi } from "@/lib/api";
 import { EMAIL_RE } from "@/lib/applicants";
 import { useI18n } from "@/lib/i18n";
 import type { TranslationKey } from "@/lib/i18n/translations";
@@ -170,6 +170,12 @@ export function AuthForm({ mode }: { mode: Mode }) {
         </Link>
       </p>
 
+      {isMockApi && (
+        <p className="mt-4 flex gap-2.5 rounded-xl border border-line bg-surface-2 p-3.5 text-[0.8125rem] text-muted">
+          <Info className="mt-0.5 size-4 flex-none text-accent" aria-hidden="true" />
+          <span>{t("demoNote")}</span>
+        </p>
+      )}
     </div>
   );
 }
