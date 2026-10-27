@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { site } from "@/lib/site";
 
@@ -16,13 +17,19 @@ export function LogoMark({ className = "size-7" }: { className?: string }) {
   );
 }
 
+/** The Passtid logo. Header and footer both use it; /logo.svg is the same artwork without the white box. */
 export function Wordmark() {
   return (
-    <Link href="/" className="group inline-flex min-h-11 items-center gap-2.5 rounded-md" aria-label={`${site.name} home`}>
-      <LogoMark className="size-7 sm:size-8" />
-      <span className="text-xl leading-none font-bold tracking-[-0.01em] text-ink sm:text-[1.375rem]">
-        Pass<span className="text-accent">tid</span>
-      </span>
+    <Link href="/" className="group inline-flex min-h-11 shrink-0 items-center rounded-md" aria-label={`${site.name} home`}>
+      <Image
+        src="/logo.svg"
+        alt={site.name}
+        width={641}
+        height={168}
+        priority
+        unoptimized
+        className="h-7 w-auto max-w-none shrink-0 sm:h-8"
+      />
     </Link>
   );
 }

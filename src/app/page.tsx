@@ -2,6 +2,7 @@ import { HomeView } from "@/components/home-view";
 import { JsonLd } from "@/components/json-ld";
 import { content } from "@/lib/i18n/content";
 import { formatPrice, planFor } from "@/lib/plans";
+import { ids, languages } from "@/lib/seo";
 import { site } from "@/lib/site";
 
 export default function Home() {
@@ -13,13 +14,17 @@ export default function Home() {
           "@graph": [
             {
               "@type": "WebApplication",
+              "@id": ids.app,
               name: site.name,
               url: site.url,
+              image: `${site.url}/logo.png`,
               description: site.description,
               applicationCategory: "UtilitiesApplication",
               creator: { "@type": "Organization", name: site.credit.name, url: site.credit.url },
+              publisher: { "@id": ids.organization },
+              isPartOf: { "@id": ids.website },
               operatingSystem: "Web",
-              inLanguage: "en-GB",
+              inLanguage: languages,
             },
             {
               "@type": "FAQPage",
