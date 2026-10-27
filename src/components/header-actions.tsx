@@ -3,33 +3,35 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowUpRight, LogOut } from "lucide-react";
+import { useI18n } from "@/lib/i18n";
 import { signOut, useMe } from "./auth/use-me";
 
 export function HeaderActions() {
   const router = useRouter();
   const { loading, user } = useMe();
+  const { t } = useI18n();
 
   if (loading) {
     // Reserve the space so the header doesn't jump when the session resolves.
-    return <div className="ml-auto h-11 w-28 md:ml-0 md:h-10 md:w-44" aria-hidden="true" />;
+    return <div className="h-11 w-28 md:ml-0 md:h-10 md:w-44" aria-hidden="true" />;
   }
 
   if (!user) {
     return (
-      <div className="ml-auto flex items-center gap-2 md:ml-0">
+      <div className="flex items-center gap-2 md:ml-0">
         <Link href="/login" className="btn btn-ghost hidden h-10 min-h-10 px-4 text-sm md:inline-flex">
-          Sign in
+          {t("signIn")}
         </Link>
-        <Link href="/register" className="btn btn-ink h-11 min-h-11 px-3 text-sm sm:px-4 md:h-10 md:min-h-10">
-          <span className="md:hidden">Sign in</span>
-          <span className="hidden md:inline">Create account</span>
+        <Link href="/booking" className="btn btn-primary h-11 min-h-11 px-3 text-sm max-[359px]:hidden sm:px-4 md:h-10 md:min-h-10">
+          <span className="md:hidden">{t("bookShort")}</span>
+          <span className="hidden md:inline">{t("startBooking")}</span>
         </Link>
       </div>
     );
   }
 
   return (
-    <div className="ml-auto flex items-center gap-2 md:ml-0">
+    <div className="flex items-center gap-2 md:ml-0">
       <span className="hidden max-w-[10rem] truncate text-sm text-muted xl:inline" title={user.email}>
         {user.name}
       </span>
@@ -38,11 +40,11 @@ export function HeaderActions() {
         onClick={() => void signOut().then(() => router.push("/"))}
         className="btn btn-ghost hidden h-10 min-h-10 px-3.5 text-sm md:inline-flex"
       >
-        <LogOut className="size-4" aria-hidden="true" /> Sign out
+        <LogOut className="size-4" aria-hidden="true" /> {t("signOut")}
       </button>
       {/* The nav already links to the console from tablet width up. */}
-      <Link href="/console" className="btn btn-ink h-11 min-h-11 px-3 text-sm sm:px-4 md:hidden">
-        Console
+      <Link href="/booking" className="btn btn-primary h-11 min-h-11 px-3 text-sm max-[399px]:hidden sm:px-4 md:hidden">
+        {t("navConsole")}
         <ArrowUpRight className="size-4" aria-hidden="true" />
       </Link>
     </div>

@@ -1,3 +1,7 @@
+"use client";
+
+import { useI18n } from "@/lib/i18n";
+
 /**
  * The "start included, end excluded" rule drawn on a clock strip: 08:00 → 13:00,
  * window 09:00–12:00, with sample slots marked bookable or not. Times are listed
@@ -18,17 +22,19 @@ const samples = [
 ];
 
 export function WindowTimeline() {
+  const { c } = useI18n();
+  const tl = c.timeline;
   return (
     <figure className="rounded-2xl border border-line bg-surface p-5 shadow-sm sm:p-6">
       <figcaption className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <span className="text-sm font-semibold text-ink">Window “09:00 – 12:00”</span>
-        <span className="font-mono text-xs text-muted">09:00 can be booked · 12:00 cannot</span>
+        <span className="text-sm font-semibold text-ink">{tl.caption}</span>
+        <span className="font-mono text-xs text-muted">{tl.legend}</span>
       </figcaption>
 
       <div
         className="relative mt-6 mb-3 h-12"
         role="img"
-        aria-label="Clock strip from 08:00 to 13:00. The window covers 09:00 up to, but not including, 12:00. 09:00, 10:30 and 11:45 are bookable; 08:45 and 12:00 are not."
+        aria-label={tl.aria}
       >
         <div className="absolute inset-0 rounded-lg bg-sunken" />
         {/* hour gridlines */}
@@ -67,7 +73,7 @@ export function WindowTimeline() {
         ))}
       </div>
 
-      <ul className="mt-4 flex flex-wrap gap-2" aria-label="Sample slots">
+      <ul className="mt-4 flex flex-wrap gap-2" aria-label={tl.samples}>
         {samples.map((s) => (
           <li
             key={s.t}
@@ -77,7 +83,7 @@ export function WindowTimeline() {
           >
             <span aria-hidden="true">{s.ok ? "✓" : "×"}</span>
             {s.t}
-            <span className="font-sans font-normal">{s.ok ? "bookable" : "not bookable"}</span>
+            <span className="font-sans font-normal">{s.ok ? tl.ok : tl.no}</span>
           </li>
         ))}
       </ul>

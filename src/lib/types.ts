@@ -1,7 +1,5 @@
 /**
- * Shared contract between this frontend and the booking backend.
- * The bundled mock API (src/app/api/v1) implements exactly these shapes, so
- * pointing NEXT_PUBLIC_API_BASE_URL at the real backend needs no UI changes.
+ * Shared contract between the UI and the route handlers in src/app/api/v1.
  */
 
 /** The two services one user can hold: passports / ID cards, and migration (coordination numbers). */
@@ -158,4 +156,53 @@ export interface SlotsResponse {
 
 export interface ApiErrorBody {
   error: { code: string; message: string };
+}
+
+/* ------------------------------ payments ------------------------------ */
+
+/** What a customer can buy. "notify" = Telegram alerts only; "autobook" = the bot books the slot for them. */
+export type PlanId = "notify" | "autobook";
+
+export const PLAN_IDS: readonly PlanId[] = ["notify", "autobook"] as const;
+
+export function isPlanId(value: unknown): value is PlanId {
+  return value === "notify" || value === "autobook";
+}
+
+export interface Plan {
+  id: PlanId;
+  /** Price in the smallest currency unit (cents). Set on the server, so the UI never hard-codes it. */
+  amountCents: number;
+  currency: "usd";
+}
+
+export interface PlansResponse {
+  plans: Plan[];
+  /** True when no Stripe key is configured, so checkout is simulated and nobody is charged. */
+  demo: boolean;
+}
+
+export interface CheckoutResponse {
+  /** Where to send the browser: Stripe Checkout, or straight back to the console in demo mode. */
+  url: string;
+  demo: boolean;
+}
+
+/** Telegram alerts for one service, active once the notification plan is paid. */
+export interface AlertSubscription {
+  id: string;
+  system: SystemId;
+  /** Deep link that connects this account to the Telegram bot, when the bot username is configured. */
+  telegramUrl: string | null;
+}
+
+export interface ConfirmResponse {
+  plan: PlanId;
+  system: SystemId;
+  /** Set for the auto-book plan: the booking that was started. */
+  booking: Booking | null;
+  /** Set for the notification plan. */
+  alert: AlertSubscription | null;
+  /** Auto-book was paid but no slot fits yet: the bot keeps watching and books when one opens. */
+  watching: boolean;
 }

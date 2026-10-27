@@ -1,27 +1,26 @@
 /**
- * Cookie session for the bundled mock API.
+ * Cookie session.
  *
- * The session is a stateless, HMAC-signed cookie, so it survives serverless cold
- * starts. The real backend replaces this entirely; the frontend only relies on
- * the cookie being sent (credentials: "include") and on /auth/me.
+ * The session is a stateless, HMAC-signed, HttpOnly cookie, so it survives serverless cold
+ * starts. /auth/me also checks that the account still exists.
  */
-import { createHash, createHmac, timingSafeEqual } from "node:crypto";
+import { createHmac, timingSafeEqual } from "node:crypto";
 import type { User } from "@/lib/types";
 
 export const SESSION_COOKIE = "tl_session";
 const MAX_AGE_S = 60 * 60 * 24 * 7;
 
 function secret(): string {
-  return process.env.AUTH_SECRET || "passtid-demo-secret-replace-with-AUTH_SECRET";
+  const value = process.env.AUTH_SECRET;
+  if (value) return value;
+  // A guessable fallback would let anyone forge a session, so production refuses to run without a real secret.
+  if (process.env.NODE_ENV === "production") throw new Error("AUTH_SECRET must be set in production.");
+  return "passtid-dev-secret-not-for-production";
 }
 
 const b64 = (s: string) => Buffer.from(s, "utf8").toString("base64url");
 const unb64 = (s: string) => Buffer.from(s, "base64url").toString("utf8");
 const mac = (body: string) => createHmac("sha256", secret()).update(body).digest("base64url");
-
-export function userIdFor(email: string): string {
-  return createHash("sha256").update(email.trim().toLowerCase()).digest("hex").slice(0, 16);
-}
 
 function sign(user: User): string {
   const body = b64(JSON.stringify({ ...user, exp: Math.floor(Date.now() / 1000) + MAX_AGE_S }));

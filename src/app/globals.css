@@ -1,99 +1,21 @@
 @import "tailwindcss";
 
 /*
- * Passtid design tokens.
- * Warm paper + cobalt ink, a civic-editorial base with an instrument-panel layer
- * (mono numerals, tick meters) for the data. Three signal colours only, each
- * always paired with a text label so meaning never rides on colour alone.
+ * Passtid design tokens, from the passtid-app brand sheet. Light only: near-black text on
+ * light surfaces, for readability and colour-blind users. Swedish blue is the one action
+ * colour, yellow marks focus, and red is kept for cancel and errors.
  */
 :root {
-  --paper: #f4f2ec;
-  --surface: #ffffff;
-  --surface-2: #faf9f5;
-  --sunken: #eceae3;
-  --ink: #14161b;
-  --ink-2: #3b4049;
-  --muted: #636a75;
-  --line: #e0ddd4;
-  --line-2: #ebe8e1;
-  --line-strong: #cbc7bc;
-
-  --accent: #1f45b5;
-  --accent-ink: #163389;
-  --accent-soft: #e7ecfa;
-  --accent-line: #bfccf0;
-  --on-accent: #ffffff;
-
-  --clear: #0b6b4c;
-  --clear-bg: #e2f1ea;
-  --clear-line: #b6dccb;
-  --busy: #8a5800;
-  --busy-bg: #faefd9;
-  --busy-line: #ecd3a0;
-  --hot: #a3261b;
-  --hot-bg: #fbe8e5;
-  --hot-line: #f0c2bb;
-
-  --tick-off: #d8d4ca;
-  --shadow-sm: 0 1px 0 rgb(20 22 27 / 0.04), 0 1px 2px rgb(20 22 27 / 0.05);
-  --shadow-md: 0 1px 2px rgb(20 22 27 / 0.05), 0 8px 24px -6px rgb(20 22 27 / 0.1);
-  --shadow-lg: 0 2px 4px rgb(20 22 27 / 0.05), 0 24px 48px -12px rgb(20 22 27 / 0.18);
-  --focus: 0 0 0 2px var(--paper), 0 0 0 4px var(--accent);
-  color-scheme: light;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --paper: #0e1014;
-    --surface: #15181e;
-    --surface-2: #191c23;
-    --sunken: #0b0d10;
-    --ink: #eceef1;
-    --ink-2: #c3c7ce;
-    --muted: #959ba6;
-    --line: #262a33;
-    --line-2: #1f232b;
-    --line-strong: #353a45;
-
-    --accent: #8aa6ff;
-    --accent-ink: #b3c4ff;
-    --accent-soft: rgb(138 166 255 / 0.12);
-    --accent-line: rgb(138 166 255 / 0.32);
-    --on-accent: #0b1430;
-
-    --clear: #5fd0a2;
-    --clear-bg: rgb(95 208 162 / 0.1);
-    --clear-line: rgb(95 208 162 / 0.3);
-    --busy: #f0b54d;
-    --busy-bg: rgb(240 181 77 / 0.1);
-    --busy-line: rgb(240 181 77 / 0.3);
-    --hot: #ff8a7d;
-    --hot-bg: rgb(255 138 125 / 0.1);
-    --hot-line: rgb(255 138 125 / 0.3);
-
-    --tick-off: #2c313b;
-    --shadow-sm: 0 1px 0 rgb(0 0 0 / 0.3);
-    --shadow-md: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px -6px rgb(0 0 0 / 0.5);
-    --shadow-lg: 0 2px 4px rgb(0 0 0 / 0.4), 0 24px 48px -12px rgb(0 0 0 / 0.6);
-    color-scheme: dark;
-  }
-}
-
-/*
- * Booking console palette, from the passtid-app brand sheet. Light by default, dark with the
- * system setting. Applied to <body> while the console is open, so the header and footer match.
- */
-body.passtid {
-  --paper: #eef3f7;
+  --paper: #f4f8fb;
   --surface: #ffffff;
   --surface-2: #ffffff;
   --sunken: #f1f5f8;
-  --ink: #0b2a3c;
-  --ink-2: #3d5566;
-  --muted: #3d5566;
+  --ink: #0a0a0a;
+  --ink-2: #1f2933;
+  --muted: #3a4752;
   --line: #c9d6df;
-  --line-2: #c9d6df;
-  --line-strong: #c9d6df;
+  --line-2: #dde7ee;
+  --line-strong: #9fb3c1;
 
   --accent: #006aa7;
   --accent-ink: #005283;
@@ -120,56 +42,7 @@ body.passtid {
   --shadow-md: 0 8px 24px -6px rgb(11 42 60 / 0.15);
   --shadow-lg: 0 24px 48px -12px rgb(11 42 60 / 0.25);
   --focus: 0 0 0 2px var(--paper), 0 0 0 4px var(--yellow);
-}
-@media (prefers-color-scheme: dark) {
-  body.passtid {
-    --paper: #0a1822;
-    --surface: #11293a;
-    --surface-2: #11293a;
-    --sunken: #0e2130;
-    --ink: #eaf2f8;
-    --ink-2: #a9bdcb;
-    --muted: #a9bdcb;
-    --line: #2e4a5e;
-    --line-2: #2e4a5e;
-    --line-strong: #2e4a5e;
-
-    --accent-soft: #17384f;
-    --accent-line: #5db4e6;
-
-    --clear: #5fd0a2;
-    --clear-bg: rgb(95 208 162 / 0.1);
-    --clear-line: rgb(95 208 162 / 0.3);
-    --busy: #f0b54d;
-    --busy-bg: rgb(240 181 77 / 0.1);
-    --busy-line: rgb(240 181 77 / 0.3);
-    --hot: #ff8a7e;
-    --hot-bg: rgb(255 138 126 / 0.1);
-    --hot-line: #ff8a7e;
-    /* White on the light dark-mode red is hard to read, so text on solid red turns navy. */
-    --on-hot: #0b2a3c;
-
-    --tick-off: #2e4a5e;
-    --shadow-md: 0 8px 24px -6px rgb(0 0 0 / 0.5);
-    --shadow-lg: 0 24px 48px -12px rgb(0 0 0 / 0.6);
-  }
-}
-body.passtid .field:focus {
-  border-color: var(--yellow);
-  box-shadow: 0 0 0 1px var(--yellow);
-}
-body.passtid .btn-primary:disabled {
-  background: var(--sunken);
-  color: var(--disabled-ink);
-  opacity: 1;
-}
-body.passtid .btn-danger-solid {
-  background: var(--hot);
-  color: var(--on-hot);
-  border: 1px solid var(--hot);
-}
-body.passtid .btn-danger-solid:hover:not(:disabled) {
-  filter: brightness(0.92);
+  color-scheme: light;
 }
 
 @theme inline {
@@ -304,14 +177,24 @@ body.passtid .btn-danger-solid:hover:not(:disabled) {
       box-shadow 150ms,
       background-color 150ms;
   }
+  /* iOS Safari sizes date inputs to their content, which pushed them out of their grid cell. */
+  .field[type="date"] {
+    min-width: 0;
+    max-width: 100%;
+    -webkit-appearance: none;
+    appearance: none;
+    text-align: left;
+  }
+  .field::-webkit-date-and-time-value {
+    text-align: left;
+  }
   .field:hover {
     border-color: var(--line-strong);
   }
   .field:focus {
     outline: none;
-    border-color: var(--accent);
-    background: var(--surface);
-    box-shadow: 0 0 0 3px var(--accent-soft);
+    border-color: var(--yellow);
+    box-shadow: 0 0 0 1px var(--yellow);
   }
   .field[aria-invalid="true"] {
     border-color: var(--hot);
@@ -320,11 +203,6 @@ body.passtid .btn-danger-solid:hover:not(:disabled) {
   .field::-webkit-calendar-picker-indicator {
     opacity: 0.6;
     cursor: pointer;
-  }
-  @media (prefers-color-scheme: dark) {
-    .field::-webkit-calendar-picker-indicator {
-      filter: invert(1);
-    }
   }
 
   .btn {
@@ -357,10 +235,25 @@ body.passtid .btn-danger-solid:hover:not(:disabled) {
   .btn-primary:hover:not(:disabled) {
     background: var(--accent-ink);
   }
-  @media (prefers-color-scheme: dark) {
-    .btn-primary:hover:not(:disabled) {
-      background: var(--accent-ink);
-    }
+  .btn-primary:disabled {
+    background: var(--sunken);
+    color: var(--disabled-ink);
+    opacity: 1;
+  }
+  .btn-yellow {
+    background: var(--yellow);
+    color: var(--navy);
+  }
+  .btn-yellow:hover:not(:disabled) {
+    filter: brightness(0.95);
+  }
+  .btn-danger-solid {
+    background: var(--hot);
+    color: var(--on-hot);
+    border: 1px solid var(--hot);
+  }
+  .btn-danger-solid:hover:not(:disabled) {
+    filter: brightness(0.92);
   }
   .btn-ink {
     background: var(--ink);
@@ -421,7 +314,7 @@ body.passtid .btn-danger-solid:hover:not(:disabled) {
   }
   .tile:disabled {
     background: var(--sunken);
-    color: #7a8d9a;
+    color: var(--disabled-ink);
     cursor: not-allowed;
   }
 
@@ -502,6 +395,9 @@ body.passtid .btn-danger-solid:hover:not(:disabled) {
   }
 }
 
-body.passtid .wordmark-tid {
-  color: var(--accent-line);
+/* Room for the fixed step buttons at the very end of the booking page on phones. */
+@media (max-width: 1023px) {
+  body:has([data-fixed-bar]) footer {
+    padding-bottom: 5.5rem;
+  }
 }

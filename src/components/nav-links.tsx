@@ -3,15 +3,22 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { features } from "@/lib/features";
+import { useI18n } from "@/lib/i18n";
+import type { TranslationKey } from "@/lib/i18n/translations";
+
+/** Hidden unless NEXT_PUBLIC_SHOW_RULES=true. */
+const RULES_LINK = { href: "/rules", label: "navRules" } as const;
 
 const links = [
-  { href: "/console", label: "Console" },
-  ...(features.rules ? [{ href: "/rules", label: "Booking rules" }] : []),
-  { href: "/#faq", label: "FAQ" },
-] as const;
+  { href: "/#how", label: "navHow" },
+  { href: "/#price", label: "navPrice" },
+  { href: "/#faq", label: "navFaq" },
+  ...(features.rules ? [RULES_LINK] : []),
+] as const satisfies readonly { href: string; label: TranslationKey }[];
 
 export function NavLinks() {
   const pathname = usePathname();
+  const { t } = useI18n();
   return (
     <nav aria-label="Main" className="ml-auto hidden items-center gap-1 md:flex">
       {links.map((l) => {
@@ -25,7 +32,7 @@ export function NavLinks() {
               active ? "text-ink font-medium" : "text-muted hover:text-ink"
             }`}
           >
-            {l.label}
+            {t(l.label)}
           </Link>
         );
       })}

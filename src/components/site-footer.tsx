@@ -1,54 +1,57 @@
+"use client";
+
 import Link from "next/link";
 import { Wordmark } from "./brand";
 import { features } from "@/lib/features";
+import { useI18n } from "@/lib/i18n";
+import type { TranslationKey } from "@/lib/i18n/translations";
 import { site } from "@/lib/site";
 
+/** Hidden unless NEXT_PUBLIC_SHOW_RULES=true. */
+const RULES_LINK = { href: "/rules", label: "navRules" } as const;
+
+const links = [
+  { href: "/#how", label: "navHow" },
+  { href: "/#price", label: "navPrice" },
+  { href: "/#faq", label: "navFaq" },
+  ...(features.rules ? [RULES_LINK] : []),
+  { href: "/privacy", label: "navPrivacy" },
+  { href: "/terms", label: "navTerms" },
+] as const satisfies readonly { href: string; label: TranslationKey }[];
+
 export function SiteFooter() {
+  const { t } = useI18n();
   return (
-    <footer className="mt-24 border-t border-line">
-      <div
-        className={`mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 lg:px-8 ${
-          features.rules ? "md:grid-cols-[1.4fr_1fr_1fr]" : "md:grid-cols-[1.4fr_1fr]"
-        }`}
-      >
+    <footer className="mt-8 border-t border-line">
+      <div className="mx-auto flex max-w-5xl flex-col gap-8 px-4 py-10 sm:px-6 md:flex-row md:justify-between lg:px-8">
         <div className="max-w-sm">
           <Wordmark />
-          <p className="mt-4 text-sm text-muted">{site.disclaimer}</p>
+          <p className="mt-3 text-sm text-muted">{t("disclaimer")}</p>
         </div>
-        <div>
-          <p className="label-mono">Product</p>
-          <ul className="mt-3 text-sm sm:space-y-2">
-            <li><Link className="inline-flex min-h-11 items-center text-ink-2 hover:text-ink sm:min-h-0" href="/console">Booking console</Link></li>
-            <li><Link className="inline-flex min-h-11 items-center text-ink-2 hover:text-ink sm:min-h-0" href="/console?system=migration">Migration</Link></li>
-            <li><Link className="inline-flex min-h-11 items-center text-ink-2 hover:text-ink sm:min-h-0" href="/#chat">Chat bot</Link></li>
+        <nav aria-label="Footer">
+          <ul className="grid grid-cols-2 gap-x-10 text-sm md:gap-y-1">
+            {links.map((l) => (
+              <li key={l.href}>
+                <Link className="inline-flex min-h-11 items-center text-ink-2 hover:text-ink md:min-h-9" href={l.href}>
+                  {t(l.label)}
+                </Link>
+              </li>
+            ))}
           </ul>
-        </div>
-        {features.rules && (
-          <div>
-            <p className="label-mono">Reference</p>
-            <ul className="mt-3 text-sm sm:space-y-2">
-              <li><Link className="inline-flex min-h-11 items-center text-ink-2 hover:text-ink sm:min-h-0" href="/rules">Matching rules</Link></li>
-              <li><Link className="inline-flex min-h-11 items-center text-ink-2 hover:text-ink sm:min-h-0" href="/rules#queue">Queue rules</Link></li>
-              <li><Link className="inline-flex min-h-11 items-center text-ink-2 hover:text-ink sm:min-h-0" href="/rules#edge-cases">When things go wrong</Link></li>
-            </ul>
-          </div>
-        )}
+        </nav>
       </div>
-      <div className="border-t border-line-2">
-        <div className="mx-auto flex max-w-7xl flex-col gap-1 px-4 py-5 font-mono text-xs text-muted sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
-          <p>All times are the embassy&rsquo;s local time (Europe/London).</p>
-          <p>
-            {site.credit.lead}{" "}
-            <a
-              href={site.credit.url}
-              target="_blank"
-              rel="noopener"
-              className="inline-flex min-h-11 items-center font-semibold text-ink-2 underline-offset-4 hover:text-ink hover:underline sm:min-h-0"
-            >
-              {site.credit.name}
-            </a>
-          </p>
-        </div>
+      <div className="border-t border-line">
+        <p className="mx-auto max-w-5xl px-4 py-5 font-mono text-xs text-muted sm:px-6 lg:px-8">
+          {t("builtBy")}{" "}
+          <a
+            href={site.credit.url}
+            target="_blank"
+            rel="noopener"
+            className="inline-flex min-h-11 items-center font-semibold text-ink-2 underline-offset-4 hover:text-ink hover:underline sm:min-h-0"
+          >
+            {site.credit.name}
+          </a>
+        </p>
       </div>
     </footer>
   );

@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Mono, IBM_Plex_Sans, Newsreader } from "next/font/google";
+import { LangProvider } from "@/lib/i18n";
+import { SkipLink } from "@/components/skip-link";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { site } from "@/lib/site";
@@ -63,27 +65,22 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f4f2ec" },
-    { media: "(prefers-color-scheme: dark)", color: "#0e1014" },
-  ],
+  themeColor: "#f8fafc",
+  colorScheme: "light",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en-GB" className={`${plexSans.variable} ${plexMono.variable} ${newsreader.variable}`}>
       <body className="flex min-h-dvh flex-col">
-        <a
-          href="#main"
-          className="sr-only z-50 rounded-md bg-ink px-4 py-2 text-paper focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
-        >
-          Skip to content
-        </a>
+        <LangProvider>
+        <SkipLink />
         <SiteHeader />
         <main id="main" className="flex-1">
           {children}
         </main>
         <SiteFooter />
+        </LangProvider>
       </body>
     </html>
   );

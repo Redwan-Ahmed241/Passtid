@@ -21,7 +21,7 @@ export function Wordmark() {
     <Link href="/" className="group inline-flex min-h-11 items-center gap-2.5 rounded-md" aria-label={`${site.name} home`}>
       <LogoMark className="size-7 sm:size-8" />
       <span className="text-xl leading-none font-bold tracking-[-0.01em] text-ink sm:text-[1.375rem]">
-        Pass<span className="wordmark-tid text-accent">tid</span>
+        Pass<span className="text-accent">tid</span>
       </span>
     </Link>
   );

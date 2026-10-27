@@ -5,18 +5,26 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Menu, X } from "lucide-react";
 import { features } from "@/lib/features";
+import { useI18n } from "@/lib/i18n";
+import type { TranslationKey } from "@/lib/i18n/translations";
 import { signOut, useMe } from "./auth/use-me";
 
+/** Hidden unless NEXT_PUBLIC_SHOW_RULES=true. */
+const RULES_LINK = { href: "/rules", label: "navRules" } as const;
+
 const links = [
-  { href: "/console", label: "Console" },
-  ...(features.rules ? [{ href: "/rules", label: "Booking rules" }] : []),
-  { href: "/#faq", label: "FAQ" },
-] as const;
+  { href: "/#how", label: "navHow" },
+  { href: "/#price", label: "navPrice" },
+  { href: "/#faq", label: "navFaq" },
+  ...(features.rules ? [RULES_LINK] : []),
+  { href: "/booking", label: "navConsole" },
+] as const satisfies readonly { href: string; label: TranslationKey }[];
 
 export function MobileNav() {
   const pathname = usePathname();
   const router = useRouter();
   const { user } = useMe();
+  const { t } = useI18n();
   // Remembering the path the menu was opened on closes it automatically on navigation.
   const [openPath, setOpenPath] = useState<string | null>(null);
   const open = openPath === pathname;
@@ -37,7 +45,7 @@ export function MobileNav() {
         type="button"
         aria-expanded={open}
         aria-controls="mobile-menu"
-        aria-label={open ? "Close menu" : "Open menu"}
+        aria-label={open ? t("closeMenu") : t("openMenu")}
         onClick={() => setOpenPath(open ? null : pathname)}
         className="grid size-11 place-items-center rounded-[0.625rem] border border-line bg-surface text-ink"
       >
@@ -59,7 +67,7 @@ export function MobileNav() {
                   aria-current={l.href === pathname ? "page" : undefined}
                   className={row}
                 >
-                  {l.label}
+                  {t(l.label)}
                 </Link>
               </li>
             ))}
@@ -73,12 +81,12 @@ export function MobileNav() {
                     void signOut().then(() => router.push("/"));
                   }}
                 >
-                  Sign out
+                  {t("signOut")}
                   <span className="ml-auto max-w-[10rem] truncate text-sm text-muted">{user.name}</span>
                 </button>
               ) : (
                 <Link href="/login" onClick={close} className={row}>
-                  Sign in
+                  {t("signIn")}
                 </Link>
               )}
             </li>

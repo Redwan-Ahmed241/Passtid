@@ -1,5 +1,6 @@
 import { Wordmark } from "./brand";
 import { HeaderActions } from "./header-actions";
+import { LangToggle } from "./lang-toggle";
 import { MobileNav } from "./mobile-nav";
 import { NavLinks } from "./nav-links";
 
@@ -9,6 +10,7 @@ export function SiteHeader() {
       <div className="relative mx-auto flex h-16 max-w-7xl items-center gap-2 px-4 sm:gap-6 sm:px-6 lg:px-8">
         <Wordmark />
         <NavLinks />
+        <LangToggle />
         <HeaderActions />
         <MobileNav />
       </div>

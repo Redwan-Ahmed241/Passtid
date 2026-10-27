@@ -48,8 +48,8 @@ function utcDate(day: string) {
 }
 
 /** "Thursday 22 October" */
-export function formatDayLong(dayOrIso: string): string {
-  return utcDate(dayOf(dayOrIso)).toLocaleDateString("en-GB", {
+export function formatDayLong(dayOrIso: string, locale = "en-GB"): string {
+  return utcDate(dayOf(dayOrIso)).toLocaleDateString(locale, {
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -58,8 +58,8 @@ export function formatDayLong(dayOrIso: string): string {
 }
 
 /** "Thu 22 Oct" */
-export function formatDayShort(dayOrIso: string): string {
-  return utcDate(dayOf(dayOrIso)).toLocaleDateString("en-GB", {
+export function formatDayShort(dayOrIso: string, locale = "en-GB"): string {
+  return utcDate(dayOf(dayOrIso)).toLocaleDateString(locale, {
     weekday: "short",
     day: "numeric",
     month: "short",
@@ -68,8 +68,8 @@ export function formatDayShort(dayOrIso: string): string {
 }
 
 /** "22 Oct" */
-export function formatDayCompact(dayOrIso: string): string {
-  return utcDate(dayOf(dayOrIso)).toLocaleDateString("en-GB", {
+export function formatDayCompact(dayOrIso: string, locale = "en-GB"): string {
+  return utcDate(dayOf(dayOrIso)).toLocaleDateString(locale, {
     day: "numeric",
     month: "short",
     timeZone: "UTC",
@@ -77,9 +77,9 @@ export function formatDayCompact(dayOrIso: string): string {
 }
 
 /** Human relative label for a day relative to today. */
-export function relativeDay(day: string, today: string): string | null {
-  if (day === today) return "Today";
-  if (day === addDays(today, 1)) return "Tomorrow";
+export function relativeDay(day: string, today: string): "today" | "tomorrow" | null {
+  if (day === today) return "today";
+  if (day === addDays(today, 1)) return "tomorrow";
   return null;
 }
 

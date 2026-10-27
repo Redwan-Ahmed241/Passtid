@@ -1,3 +1,7 @@
+"use client";
+
+import { useI18n } from "@/lib/i18n";
+
 export type QueueLevel = "clear" | "busy" | "hot";
 
 export function queueLevel(n: number): QueueLevel {
@@ -24,6 +28,7 @@ const TICKS = 6;
  * The number is always printed next to the ticks, so colour is never the only signal.
  */
 export function QueueMeter({ count, size = "md" }: { count: number; size?: "sm" | "md" }) {
+  const { t } = useI18n();
   const level = queueLevel(count);
   const lit = Math.min(count, TICKS);
   const h = size === "sm" ? [6, 8, 10, 12, 14, 16] : [8, 10, 12, 14, 16, 18];
@@ -31,7 +36,7 @@ export function QueueMeter({ count, size = "md" }: { count: number; size?: "sm" 
     <span
       className="inline-flex items-center gap-2.5"
       role="img"
-      aria-label={count === 0 ? "Nobody queued" : `${count} ${count === 1 ? "person" : "people"} queued`}
+      aria-label={count === 0 ? t("nobodyQueued") : t("queuedAria", { n: count, people: t(count === 1 ? "person" : "people") })}
     >
       <span className="flex items-end gap-[0.1875rem]" aria-hidden="true">
         {h.map((height, i) => (
@@ -53,7 +58,7 @@ export function QueueMeter({ count, size = "md" }: { count: number; size?: "sm" 
           {count}
           {count > TICKS ? "+" : ""}
         </span>
-        <span className="text-xs text-muted">queued</span>
+        <span className="text-xs text-muted">{t("queuedWord")}</span>
       </span>
     </span>
   );

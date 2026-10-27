@@ -1,20 +1,20 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { Console, ConsoleFallback } from "@/components/console/console";
+import { Booking, BookingFallback } from "@/components/booking/booking";
 
 export const metadata: Metadata = {
-  title: "Booking console",
+  title: "Booking",
   description:
     "Set the days and times you can attend, see every open Swedish embassy slot in London on a month calendar with its live queue count, and book the quiet one. Covers passports, ID cards and migration.",
   robots: { index: false, follow: false },
-  alternates: { canonical: "/console" },
-  openGraph: { url: "/console" },
+  alternates: { canonical: "/booking" },
+  openGraph: { url: "/booking" },
 };
 
-export default function ConsolePage() {
+export default function BookingPage() {
   return (
-    <Suspense fallback={<ConsoleFallback />}>
-      <Console />
+    <Suspense fallback={<BookingFallback />}>
+      <Booking />
     </Suspense>
   );
 }

@@ -1,6 +1,10 @@
 import type {
   ApiErrorBody,
   Booking,
+  CheckoutResponse,
+  ConfirmResponse,
+  PlanId,
+  PlansResponse,
   BookingRequest,
   RequestResponse,
   SlotsResponse,
@@ -8,18 +12,8 @@ import type {
   User,
 } from "./types";
 
-/**
- * Browser client for the booking backend.
- * Defaults to the bundled mock API; set NEXT_PUBLIC_API_BASE_URL to the real
- * service (e.g. https://api.example.com/v1) to switch over. Requests carry the
- * session cookie (credentials: "include"), so a separate backend origin must
- * allow credentialed CORS for this site.
- */
-const CONFIGURED_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
-const BASE = (CONFIGURED_BASE || "/api/v1").replace(/\/$/, "");
-
-/** True while the bundled demo API is in use, so the UI can say sign-in is a demo. */
-export const isMockApi = !CONFIGURED_BASE;
+/** Browser client for this app's own route handlers (src/app/api/v1). Requests carry the session cookie. */
+const BASE = "/api/v1";
 
 export function makeId(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
@@ -79,6 +73,11 @@ export const api = {
 
   book: (system: SystemId, slot: string) =>
     request<Booking>(`/bookings`, { method: "POST", body: JSON.stringify({ system, slot }) }),
+  plans: () => request<PlansResponse>(`/plans`),
+  checkout: (system: SystemId, plan: PlanId, slot: string | null) =>
+    request<CheckoutResponse>(`/checkout`, { method: "POST", body: JSON.stringify({ system, plan, slot }) }),
+  confirmCheckout: (sessionId: string) =>
+    request<ConfirmResponse>(`/checkout/confirm`, { method: "POST", body: JSON.stringify({ sessionId }) }),
   booking: (id: string) => request<Booking>(`/bookings/${encodeURIComponent(id)}`),
   cancel: (id: string) => request<Booking>(`/bookings/${encodeURIComponent(id)}`, { method: "DELETE" }),
 };
