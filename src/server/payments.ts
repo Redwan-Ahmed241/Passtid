@@ -67,7 +67,7 @@ export async function createCheckout(intent: CheckoutIntent, origin: string): Pr
   }
 
   const form = new URLSearchParams({
-    mode: "payment",
+    mode: plan.interval ? "subscription" : "payment",
     success_url: `${back}&checkout=success&session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${back}&checkout=cancel`,
     client_reference_id: intent.userId,
@@ -81,6 +81,7 @@ export async function createCheckout(intent: CheckoutIntent, origin: string): Pr
     "metadata[plan]": intent.plan,
     "metadata[slot]": intent.slot ?? "",
   });
+  if (plan.interval) form.set("line_items[0][price_data][recurring][interval]", plan.interval);
   const session = await stripe<{ url?: string }>("/v1/checkout/sessions", { method: "POST", form });
   if (!session.url) throw new ApiError(502, "payments_failed", "The payment provider did not return a checkout page.");
   return { url: session.url, demo: false };
@@ -121,6 +122,6 @@ export async function verifyCheckout(sessionParam: string, userId: string): Prom
   const plan = m.plan === "notify" || m.plan === "autobook" ? m.plan : null;
   const system = m.system === "passport" || m.system === "coordination_number" ? m.system : null;
   if (s.payment_status !== "paid" || m.user_id !== userId || !plan || !system) throw invalid();
-  if (s.amount_total !== planFor(plan).amountCents || s.currency !== "usd") throw invalid();
+  if (s.amount_total !== planFor(plan).amountCents || s.currency !== "gbp") throw invalid();
   return { sessionId: s.id, userId, email: s.customer_email ?? "", system, plan, slot: m.slot || null };
 }
