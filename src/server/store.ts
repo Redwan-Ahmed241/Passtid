@@ -59,11 +59,29 @@ const BOOKING_COLUMNS = "id, user_id, system, slot, status, reason, reference, c
 
 /** Pending entries with no progress stop holding their slot. Called before every read of the queue. */
 async function releaseStale() {
-  await query(
-    `update bookings set status = 'released', reason = 'timed_out', updated_at = now()
-     where status = 'pending' and heartbeat < now() - ($1 || ' milliseconds')::interval`,
-    [String(STALE_AFTER_MS)],
-  );
+  await transaction(async (client) => {
+    const stale = await client.query<{ id: string; system: SystemId }>(
+      `update bookings set status = 'released', reason = 'timed_out', updated_at = now()
+       where status = 'pending' and heartbeat < now() - ($1 || ' milliseconds')::interval
+       returning id, system`,
+      [String(STALE_AFTER_MS)],
+    );
+    if (stale.rows.length === 0) return;
+
+    for (const b of stale.rows) {
+      await client.query(
+        `update payments
+            set result = jsonb_set(jsonb_set(result, '{watching}', 'true'::jsonb), '{booking}', 'null'::jsonb)
+          where result->'booking'->>'id' = $1`,
+        [b.id],
+      );
+    }
+
+    const systems = [...new Set(stale.rows.map((r) => r.system))];
+    for (const sys of systems) {
+      await client.query("select pg_notify('match_needed', $1)", [sys]);
+    }
+  });
 }
 
 /* ------------------------------ slots ------------------------------ */
@@ -168,6 +186,7 @@ export async function getBooking(id: string, userId: string): Promise<Booking> {
   return toBooking(row);
 }
 
+/** Cancelling by the user leaves the line on purpose, so the payment stays watching: false. */
 export async function cancelBooking(id: string, userId: string): Promise<Booking> {
   const [row] = await query<BookingRow>(
     `update bookings set status = 'released', reason = 'cancelled', updated_at = now()
@@ -230,7 +249,6 @@ interface PaidInfo {
   plan: PlanId;
 }
 
-
 /**
  * Turn a verified payment into what was bought. Idempotent per checkout session, and safe when the
  * browser return and Stripe's webhook arrive at the same moment.
@@ -272,7 +290,6 @@ export function fulfilPayment(paid: PaidInfo, userId: string): Promise<ConfirmRe
     return result;
   });
 }
-
 
 /* ---------------------------- bot support --------------------------- */
 
