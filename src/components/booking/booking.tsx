@@ -42,7 +42,7 @@ export function Booking() {
   const pathname = usePathname();
   const params = useSearchParams();
   const requested = params.get("system");
-  const system: SystemId = requested === "coordination" ? "migration" : isSystemId(requested) ? requested : "passport";
+  const system: SystemId = requested === "coordination" ? "coordination_number" : isSystemId(requested) ? requested : "passport";
   const { loading: authLoading, user } = useMe();
   const { t, lang } = useI18n();
   const locale = LOCALES[lang];
@@ -403,7 +403,7 @@ export function Booking() {
   const inFlow = ready && !showStatus && !showAlert && !showWatching;
   const names = draft?.persons.map((p) => `${p.firstName} ${p.lastName}`.trim()).filter(Boolean).join(", ") ?? "";
   const planPrice = plans?.plans.find((p) => p.id === plan);
-  const serviceName = t(system === "passport" ? "svcPassport" : "svcMigrationShort");
+  const serviceName = t(system === "passport" ? "svcPassport" : "svcCoordShort");
   const heading = "text-2xl font-bold text-ink sm:text-3xl";
 
   return (
@@ -809,7 +809,7 @@ function StatusCard({
       )}
 
       <dl className="mt-5 divide-y divide-line-2 text-left text-sm">
-        <Row label={t("rowService")} value={t(system === "passport" ? "svcPassport" : "svcMigrationShort")} />
+        <Row label={t("rowService")} value={t(system === "passport" ? "svcPassport" : "svcCoordShort")} />
         <Row label={t("dateLabel")} value={formatDayLong(dayOf(slot.slot), LOCALES[lang])} />
         <Row label={t("timeLabel")} value={clockOf(slot.slot)} />
         <Row label={t("rowApplicants")} value={String(people)} />

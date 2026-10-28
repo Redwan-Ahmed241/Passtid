@@ -27,7 +27,7 @@ const en: Record<LegalId, LegalDoc> = {
       {
         h: "What we collect",
         p: [
-          "For each person on a booking: first and last name, and a personal (security) number for passports and ID cards or a phone number for migration. For the booking as a whole: a contact email, the dates and times you can attend, and the status of your booking.",
+          "For each person on a booking: first and last name, and a personal (security) number for passports and ID cards or a phone number for coordination numbers. For the booking as a whole: a contact email, the dates and times you can attend, and the status of your booking.",
           "For your account: your name, your email and a password, which we store only as a one-way hash.",
           "We do not see or store your card number. Payments are handled by Stripe, and we only receive confirmation that a payment was made.",
         ],
@@ -133,7 +133,7 @@ const sv: Record<LegalId, LegalDoc> = {
       {
         h: "Vad vi samlar in",
         p: [
-          "För varje person i en bokning: förnamn och efternamn samt personnummer för pass och ID-kort eller telefonnummer för migration. För bokningen som helhet: en kontaktmejl, vilka datum och tider du kan komma och bokningens status.",
+          "För varje person i en bokning: förnamn och efternamn samt personnummer för pass och ID-kort eller telefonnummer för samordningsnummer. För bokningen som helhet: en kontaktmejl, vilka datum och tider du kan komma och bokningens status.",
           "För ditt konto: ditt namn, din e-postadress och ett lösenord som vi bara lagrar som en envägs-hash.",
           "Vi ser eller lagrar aldrig ditt kortnummer. Betalningar hanteras av Stripe, och vi får bara en bekräftelse på att en betalning gjorts.",
         ],

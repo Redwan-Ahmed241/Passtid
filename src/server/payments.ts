@@ -119,7 +119,7 @@ export async function verifyCheckout(sessionParam: string, userId: string): Prom
 
   const m = s.metadata ?? {};
   const plan = m.plan === "notify" || m.plan === "autobook" ? m.plan : null;
-  const system = m.system === "passport" || m.system === "migration" ? m.system : null;
+  const system = m.system === "passport" || m.system === "coordination_number" ? m.system : null;
   if (s.payment_status !== "paid" || m.user_id !== userId || !plan || !system) throw invalid();
   if (s.amount_total !== planFor(plan).amountCents || s.currency !== "usd") throw invalid();
   return { sessionId: s.id, userId, email: s.customer_email ?? "", system, plan, slot: m.slot || null };
