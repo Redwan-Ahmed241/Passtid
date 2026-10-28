@@ -60,6 +60,9 @@ create table if not exists alert_subscriptions (
   telegram_chat_id text,
   created_at timestamptz not null default now()
 );
+alter table alert_subscriptions add column if not exists stripe_subscription_id text;
+alter table alert_subscriptions add column if not exists active boolean not null default true;
+create index if not exists alert_subscriptions_stripe_subscription on alert_subscriptions (stripe_subscription_id);
 `;
 
 const g = globalThis as unknown as { __pool?: Pool; __schema?: Promise<void> };

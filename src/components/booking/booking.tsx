@@ -598,7 +598,7 @@ export function Booking() {
                             )}
                             {t(id === "autobook" ? "planAutoName" : "planNotifyName")}
                           </span>
-                          <span className="font-mono text-sm font-semibold text-ink tabular">{price ? formatPrice(price) : "…"}</span>
+                          <span className="font-mono text-sm font-semibold text-ink tabular">{price ? formatPrice(price, t("perMonth")) : "…"}</span>
                         </span>
                         <span className="mt-1 block text-[0.8125rem] text-muted">
                           {t(id === "autobook" ? "planAutoDesc" : "planNotifyDesc")}
@@ -661,7 +661,7 @@ export function Booking() {
               <StepButtons
                 onBack={() => setStep(3)}
                 onNext={() => void pay()}
-                nextLabel={plans ? t(guest ? "payAccount" : plan === "autobook" ? "payAuto" : "payNotify", { price: formatPrice(plans.plans.find((p) => p.id === plan) ?? { amountCents: 0 }) }) : t("next")}
+                nextLabel={plans ? t(guest ? "payAccount" : plan === "autobook" ? "payAuto" : "payNotify", { price: formatPrice(plans.plans.find((p) => p.id === plan) ?? { amountCents: 0 }, t("perMonth")) }) : t("next")}
                 nextBusy={working}
                 nextDisabled={working || !plans}
               />
@@ -682,7 +682,7 @@ export function Booking() {
               </dl>
               <div className="mt-5 flex items-baseline justify-between gap-3 border-t border-line pt-5">
                 <span className="text-muted">{t(plan === "autobook" ? "planAutoName" : "planNotifyName")}</span>
-                <span className="text-2xl font-bold text-ink tabular">{planPrice ? formatPrice(planPrice) : "…"}</span>
+                <span className="text-2xl font-bold text-ink tabular">{planPrice ? formatPrice(planPrice, t("perMonth")) : "…"}</span>
               </div>
             </div>
           </aside>

@@ -14,7 +14,7 @@ const MRZ: Record<PlanId, [string, string]> = {
   autobook: ["P<SWE<<PASSTID<<AUTOBOOK<<<<<<<", "00102627SWE2610272<3010273<<<<<<08"],
 };
 
-export function HomeView({ prices }: { prices: Record<PlanId, string> }) {
+export function HomeView({ prices, monthly }: { prices: Record<PlanId, string>; monthly: Record<PlanId, boolean> }) {
   const { c } = useI18n();
   const h = c.home;
   return (
@@ -63,7 +63,7 @@ export function HomeView({ prices }: { prices: Record<PlanId, string> }) {
         <h2 id="price-h" className="text-2xl font-bold text-ink sm:text-3xl">{h.priceTitle}</h2>
         <div className="mt-8 grid max-w-3xl gap-6">
           {(["notify", "autobook"] as const).map((id) => (
-            <PassportCard key={id} id={id} price={prices[id]} featured={id === "autobook"} />
+            <PassportCard key={id} id={id} price={prices[id]} monthly={monthly[id]} featured={id === "autobook"} />
           ))}
         </div>
       </section>
@@ -105,8 +105,8 @@ export function HomeView({ prices }: { prices: Record<PlanId, string> }) {
  * One plan as an open passport: the details page on the left, a stitched spine, and the price,
  * machine-readable strip and button on the right. The featured plan is the blue cover.
  */
-function PassportCard({ id, price, featured }: { id: PlanId; price: string; featured: boolean }) {
-  const { c } = useI18n();
+function PassportCard({ id, price, monthly, featured }: { id: PlanId; price: string; monthly: boolean; featured: boolean }) {
+  const { c, t } = useI18n();
   const h = c.home;
   const p = h.plans[id];
   const [mrz1, mrz2] = MRZ[id];
@@ -150,7 +150,10 @@ function PassportCard({ id, price, featured }: { id: PlanId; price: string; feat
 
       <div className="flex flex-col p-6 sm:w-64 sm:flex-none sm:p-8">
         <p className={`text-sm ${featured ? "text-on-accent/85" : "text-muted"}`}>{h.priceLabel}</p>
-        <p className="mt-1 text-5xl font-bold tracking-tight tabular">{price}</p>
+        <p className="mt-1 text-5xl font-bold tracking-tight tabular">
+          {price}
+          {monthly && <span className="ml-1.5 text-base font-medium tracking-normal opacity-85">{t("perMonth")}</span>}
+        </p>
         <p
           aria-hidden="true"
           className={`mt-6 overflow-hidden font-mono text-[0.5rem] leading-[1.4] tracking-[0.05em] whitespace-nowrap sm:mt-auto sm:pt-8 ${

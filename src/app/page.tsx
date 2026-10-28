@@ -38,7 +38,10 @@ export default function Home() {
         }}
       />
 
-      <HomeView prices={{ notify: formatPrice(planFor("notify")), autobook: formatPrice(planFor("autobook")) }} />
+      <HomeView
+        prices={{ notify: formatPrice(planFor("notify")), autobook: formatPrice(planFor("autobook")) }}
+        monthly={{ notify: planFor("notify").interval === "month", autobook: planFor("autobook").interval === "month" }}
+      />
     </>
   );
 }

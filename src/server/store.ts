@@ -227,6 +227,7 @@ export async function saveRequest(userId: string, system: SystemId, request: Boo
 
 interface PaidInfo {
   sessionId: string;
+  subscriptionId?: string | null;
   system: SystemId;
   plan: PlanId;
 }
@@ -255,7 +256,10 @@ export function fulfilPayment(paid: PaidInfo, userId: string): Promise<ConfirmRe
     let result: ConfirmResponse;
     if (paid.plan === "notify") {
       const code = randomBytes(12).toString("hex");
-      await query("insert into alert_subscriptions (user_id, system, telegram_code) values ($1, $2, $3)", [userId, paid.system, code]);
+      await query(
+        "insert into alert_subscriptions (user_id, system, telegram_code, stripe_subscription_id) values ($1, $2, $3, $4)",
+        [userId, paid.system, code, paid.subscriptionId ?? null],
+      );
       const bot = process.env.TELEGRAM_BOT_USERNAME?.replace(/^@/, "");
       const alert: AlertSubscription = {
         id: code,
@@ -328,13 +332,19 @@ export async function botJobs() {
   );
   const alerts = await query<{ code: string; user_id: string; system: SystemId; chat_id: string | null; request: BookingRequest | null }>(
     `select a.telegram_code as code, a.user_id, a.system, a.telegram_chat_id as chat_id, r.request
-       from alert_subscriptions a left join booking_requests r on r.user_id = a.user_id and r.system = a.system`,
+       from alert_subscriptions a left join booking_requests r on r.user_id = a.user_id and r.system = a.system
+      where a.active`,
   );
   return {
     bookings: bookings.map((b) => ({ id: b.id, userId: b.user_id, system: b.system, slot: b.slot, request: b.request })),
     watching: watching.map((w) => ({ paymentId: w.session_id, userId: w.user_id, system: w.system, request: w.request })),
     alerts: alerts.map((a) => ({ code: a.code, userId: a.user_id, system: a.system, telegramChatId: a.chat_id, request: a.request })),
   };
+}
+
+/** The monthly alerts subscription ended in Stripe: the bot stops sending those alerts. */
+export async function endSubscription(subscriptionId: string): Promise<void> {
+  await query("update alert_subscriptions set active = false where stripe_subscription_id = $1", [subscriptionId]);
 }
 
 /** Connect a Telegram chat to the alert link the customer opened. */

@@ -25,8 +25,8 @@ const en = {
     coverageLabel: "Coverage",
     select: "Select",
     plans: {
-      notify: { name: "Alerts", desc: "A Telegram message the moment a slot matches your dates. You book it yourself.", applicants: "1–6 people", payment: "Once", coverage: "Around the clock" },
-      autobook: { name: "Automatic booking", desc: "The bot books the earliest slot that fits your dates, and tells you when it is done.", applicants: "1–6 people", payment: "Once", coverage: "Around the clock" },
+      notify: { name: "Alerts", desc: "A Telegram message the moment a slot matches your dates. You book it yourself.", applicants: "1–10 people", payment: "Every month", coverage: "Around the clock" },
+      autobook: { name: "Automatic booking", desc: "The bot books the earliest slot that fits your dates, and tells you when it is done.", applicants: "1–10 people", payment: "Once", coverage: "Around the clock" },
     },
     rulesLink: "Read the booking rules",
     faqTitle: "Questions",
@@ -35,7 +35,7 @@ const en = {
   },
   faq: [
     { q: "Do I need an account?", a: "Not to start. You choose your dates and add your details first, and create the account at the end, right before paying." },
-    { q: "What do I pay for?", a: "Either Telegram alerts, where we message you when a slot matches and you book it yourself, or automatic booking, where the bot books the earliest matching slot for you. Both are a single payment." },
+    { q: "What do I pay for?", a: "Either Telegram alerts, where we message you when a slot matches and you book it yourself, or automatic booking, where the bot books the earliest matching slot for you. Telegram alerts are £4 a month and you can cancel any time; automatic booking is a single payment of £30." },
     { q: "What details do I need?", a: "For every person a first name, a last name, and a personal (security) number for passports and ID cards or a phone number for coordination numbers. One email covers the whole booking." },
     { q: "How do my dates work?", a: "Pick a date range and when in the day you can attend, or switch on “As soon as possible” to take the first slot that appears. Both the first and the last day of a range count, and the start of a time range is bookable while its end is not." },
     { q: "Which clock are the times in?", a: "Always the embassy's local time in London, whatever timezone you are in." },
@@ -148,8 +148,8 @@ const sv: Content = {
     coverageLabel: "Bevakning",
     select: "Välj",
     plans: {
-      notify: { name: "Larm", desc: "Ett Telegram-meddelande i samma stund en tid matchar dina datum. Du bokar själv.", applicants: "1–6 personer", payment: "En gång", coverage: "Dygnet runt" },
-      autobook: { name: "Automatisk bokning", desc: "Boten bokar den tidigaste tiden som passar dina datum och säger till när det är klart.", applicants: "1–6 personer", payment: "En gång", coverage: "Dygnet runt" },
+      notify: { name: "Larm", desc: "Ett Telegram-meddelande i samma stund en tid matchar dina datum. Du bokar själv.", applicants: "1–10 personer", payment: "Varje månad", coverage: "Dygnet runt" },
+      autobook: { name: "Automatisk bokning", desc: "Boten bokar den tidigaste tiden som passar dina datum och säger till när det är klart.", applicants: "1–10 personer", payment: "En gång", coverage: "Dygnet runt" },
     },
     rulesLink: "Läs bokningsreglerna",
     faqTitle: "Frågor",
@@ -158,7 +158,7 @@ const sv: Content = {
   },
   faq: [
     { q: "Behöver jag ett konto?", a: "Inte för att börja. Du väljer datum och fyller i dina uppgifter först, och skapar kontot i slutet, precis innan du betalar." },
-    { q: "Vad betalar jag för?", a: "Antingen Telegram-larm, där vi skickar ett meddelande när en tid matchar och du bokar själv, eller automatisk bokning, där boten bokar den tidigaste matchande tiden åt dig. Båda är en enda betalning." },
+    { q: "Vad betalar jag för?", a: "Antingen Telegram-larm, där vi skickar ett meddelande när en tid matchar och du bokar själv, eller automatisk bokning, där boten bokar den tidigaste matchande tiden åt dig. Telegram-larm kostar 4 £ i månaden och kan sägas upp när som helst; automatisk bokning är en enda betalning på 30 £." },
     { q: "Vilka uppgifter behöver jag?", a: "För varje person förnamn, efternamn och personnummer för pass och ID-kort eller telefonnummer för samordningsnummer. En e-postadress gäller hela bokningen." },
     { q: "Hur fungerar mina datum?", a: "Välj ett datumintervall och vilken del av dagen du kan komma, eller slå på ”Så snart som möjligt” för att ta den första tiden som dyker upp. Både första och sista dagen i ett intervall räknas, och början av ett tidsintervall går att boka medan slutet inte gör det." },
     { q: "Vilken klocka gäller tiderna?", a: "Alltid ambassadens lokala tid i London, oavsett vilken tidszon du befinner dig i." },

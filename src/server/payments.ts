@@ -69,7 +69,7 @@ export async function createCheckout(intent: CheckoutIntent, origin: string): Pr
   }
 
   const form = new URLSearchParams({
-    mode: "payment",
+    mode: plan.interval ? "subscription" : "payment",
     success_url: `${back}&checkout=success&session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${back}&checkout=cancel`,
     client_reference_id: intent.userId,
@@ -83,6 +83,7 @@ export async function createCheckout(intent: CheckoutIntent, origin: string): Pr
     "metadata[plan]": intent.plan,
     "metadata[slot]": intent.slot ?? "",
   });
+  if (plan.interval) form.set("line_items[0][price_data][recurring][interval]", plan.interval);
   const session = await stripe<{ url?: string }>("/v1/checkout/sessions", { method: "POST", form });
   if (!session.url) throw new ApiError(502, "payments_failed", "The payment provider did not return a checkout page.");
   return { url: session.url, demo: false };
@@ -91,10 +92,13 @@ export async function createCheckout(intent: CheckoutIntent, origin: string): Pr
 export interface PaidSession extends CheckoutIntent {
   /** The id that identifies this payment, so a page reload never starts a second booking. */
   sessionId: string;
+  /** Stripe subscription behind the monthly alerts plan, so cancelling it can switch the alerts off. */
+  subscriptionId?: string | null;
 }
 
 interface StripeSession {
   id: string;
+  subscription?: string | null;
   payment_status: string;
   amount_total: number | null;
   currency: string | null;
@@ -111,8 +115,8 @@ function paidFromSession(s: StripeSession, expectedUserId: string | null): PaidS
   const system = m.system === "passport" || m.system === "coordination_number" ? m.system : null;
   if (s.payment_status !== "paid" || !m.user_id || !plan || !system) throw invalid();
   if (expectedUserId && m.user_id !== expectedUserId) throw invalid();
-  if (s.amount_total !== planFor(plan).amountCents || s.currency !== "usd") throw invalid();
-  return { sessionId: s.id, userId: m.user_id, email: s.customer_email ?? "", system, plan, slot: m.slot || null };
+  if (s.amount_total !== planFor(plan).amountCents || s.currency !== "gbp") throw invalid();
+  return { sessionId: s.id, userId: m.user_id, email: s.customer_email ?? "", system, plan, slot: m.slot || null, subscriptionId: s.subscription ?? null };
 }
 
 /** Check that a returned session really was paid by this user, for this plan, at the current price. */
@@ -133,11 +137,18 @@ export async function verifyCheckout(sessionParam: string, userId: string): Prom
   return paidFromSession(await stripe<StripeSession>(`/v1/checkout/sessions/${sessionParam}`), userId);
 }
 
+export interface WebhookOutcome {
+  /** A newly paid checkout session to fulfil. */
+  paid: PaidSession | null;
+  /** A subscription Stripe says has ended (cancelled by the customer or after failed renewals). */
+  endedSubscription: string | null;
+}
+
 /**
- * Verify a webhook from Stripe (signature over the raw body, 5 minute tolerance) and return the paid
- * session it carries, or null for events we do not act on.
+ * Verify a webhook from Stripe (signature over the raw body, 5 minute tolerance) and say what it
+ * means for us. Events we do not act on come back empty.
  */
-export function paidFromWebhook(rawBody: string, signatureHeader: string | null): PaidSession | null {
+export function readWebhook(rawBody: string, signatureHeader: string | null): WebhookOutcome {
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
   if (!secret) throw new ApiError(503, "webhook_unavailable", "Webhooks are not configured.");
   const parts = Object.fromEntries((signatureHeader ?? "").split(",").map((kv) => kv.split("=") as [string, string]));
@@ -151,7 +162,11 @@ export function paidFromWebhook(rawBody: string, signatureHeader: string | null)
     throw new ApiError(400, "bad_signature", "Invalid webhook signature.");
   }
   const event = JSON.parse(rawBody) as { type?: string; data?: { object?: StripeSession } };
-  if (event.type !== "checkout.session.completed" && event.type !== "checkout.session.async_payment_succeeded") return null;
-  if (!event.data?.object) return null;
-  return paidFromSession(event.data.object, null);
+  const object = event.data?.object;
+  if (!object) return { paid: null, endedSubscription: null };
+  if (event.type === "customer.subscription.deleted") return { paid: null, endedSubscription: object.id };
+  if (event.type !== "checkout.session.completed" && event.type !== "checkout.session.async_payment_succeeded") {
+    return { paid: null, endedSubscription: null };
+  }
+  return { paid: paidFromSession(object, null), endedSubscription: null };
 }

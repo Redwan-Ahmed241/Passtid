@@ -95,7 +95,7 @@ export interface Person {
   phone: string;
 }
 
-export const MAX_PERSONS = 6;
+export const MAX_PERSONS = 10;
 
 /** Everything needed to submit a booking for one service. */
 export interface BookingRequest {
@@ -171,9 +171,11 @@ export function isPlanId(value: unknown): value is PlanId {
 
 export interface Plan {
   id: PlanId;
-  /** Price in the smallest currency unit (cents). Set on the server, so the UI never hard-codes it. */
+  /** Price in pence. Set on the server, so the UI never hard-codes it. */
   amountCents: number;
-  currency: "usd";
+  currency: "gbp";
+  /** "month" = billed every month until cancelled; null = a single payment. */
+  interval: "month" | null;
 }
 
 export interface PlansResponse {
