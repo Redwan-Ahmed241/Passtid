@@ -23,7 +23,6 @@ import {
 } from "@/lib/types";
 import { isComplete } from "@/lib/applicants";
 import { defaultRequest } from "@/lib/defaults";
-import { matchesWindow } from "@/lib/window";
 import { EMBASSY_TZ, addDays, embassyClock, embassyToday } from "@/lib/time";
 import { isUniqueViolation, query, transaction, withLock } from "./db";
 import { ApiError } from "./errors";
@@ -117,7 +116,6 @@ export async function replaceSlots(system: SystemId, slots: { slot: string; free
       [system],
     );
   });
-  await matchWatching(system);
 }
 
 /* ---------------------------- bookings ----------------------------- */
@@ -232,15 +230,6 @@ interface PaidInfo {
   plan: PlanId;
 }
 
-async function earliestMatch(system: SystemId, userId: string): Promise<string | null> {
-  const nowDate = new Date();
-  const { request } = await getRequest(userId, system, "");
-  const open = await query<{ slot: string }>("select slot from slots where system = $1 and slot > $2 order by slot", [
-    system,
-    `${embassyToday(nowDate)}T${embassyClock(nowDate)}`,
-  ]);
-  return open.find((s) => matchesWindow(s.slot, request.window))?.slot ?? null;
-}
 
 /**
  * Turn a verified payment into what was bought. Idempotent per checkout session, and safe when the
@@ -268,19 +257,7 @@ export function fulfilPayment(paid: PaidInfo, userId: string): Promise<ConfirmRe
       };
       result = { plan: "notify", system: paid.system, booking: null, alert, watching: false };
     } else {
-      const slot = await earliestMatch(paid.system, userId);
-      if (slot) {
-        let booking: Booking | null = null;
-        try {
-          booking = await createBooking(paid.system, slot, userId);
-        } catch (err) {
-          // Another booking is already active for this service: keep the paid job watching instead of failing the payment.
-          if (!(err instanceof ApiError) || err.code !== "active_booking_exists") throw err;
-        }
-        result = { plan: "autobook", system: paid.system, booking, alert: null, watching: !booking };
-      } else {
-        result = { plan: "autobook", system: paid.system, booking: null, alert: null, watching: true };
-      }
+      result = { plan: "autobook", system: paid.system, booking: null, alert: null, watching: true };
     }
     await query("insert into payments (session_id, user_id, system, plan, result) values ($1, $2, $3, $4, $5)", [
       paid.sessionId,
@@ -289,31 +266,13 @@ export function fulfilPayment(paid: PaidInfo, userId: string): Promise<ConfirmRe
       paid.plan,
       JSON.stringify(result),
     ]);
+    if (paid.plan === "autobook") {
+      await query("select pg_notify('match_needed', $1)", [paid.system]);
+    }
     return result;
   });
 }
 
-/** After the bot publishes slots: queue a booking for every paid auto-book job that now has a matching slot. */
-async function matchWatching(system: SystemId) {
-  const jobs = await query<{ session_id: string; user_id: string; result: ConfirmResponse }>(
-    `select p.session_id, p.user_id, p.result from payments p
-      where p.system = $1 and p.plan = 'autobook' and (p.result->>'watching')::boolean = true`,
-    [system],
-  );
-  for (const job of jobs) {
-    await withLock(`payment:${job.session_id}`, async () => {
-      const slot = await earliestMatch(system, job.user_id);
-      if (!slot) return;
-      try {
-        const booking = await createBooking(system, slot, job.user_id);
-        const result: ConfirmResponse = { ...job.result, booking, watching: false };
-        await query("update payments set result = $2 where session_id = $1", [job.session_id, JSON.stringify(result)]);
-      } catch (err) {
-        if (!(err instanceof ApiError)) throw err; // not bookable right now (e.g. another active booking): try again next sync
-      }
-    });
-  }
-}
 
 /* ---------------------------- bot support --------------------------- */
 
