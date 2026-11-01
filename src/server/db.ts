@@ -63,6 +63,22 @@ create table if not exists alert_subscriptions (
 alter table alert_subscriptions add column if not exists stripe_subscription_id text;
 alter table alert_subscriptions add column if not exists active boolean not null default true;
 create index if not exists alert_subscriptions_stripe_subscription on alert_subscriptions (stripe_subscription_id);
+create table if not exists notifications (
+  id uuid primary key default gen_random_uuid(),
+  user_id text references users(id) on delete cascade,  -- null = admin
+  kind text not null,          -- slot_alert | booked | needs_attention
+  dedupe_key text not null unique,
+  channel text not null,       -- telegram (later: email, sms)
+  address text not null,       -- chat id / email / phone for that channel
+  message text not null,
+  status text not null default 'pending',  -- pending | sent | failed
+  attempts int not null default 0,
+  last_error text,
+  next_attempt_at timestamptz not null default now(),
+  created_at timestamptz not null default now(),
+  sent_at timestamptz
+);
+create index if not exists notifications_due on notifications (next_attempt_at) where status = 'pending';
 `;
 
 const g = globalThis as unknown as { __pool?: Pool; __schema?: Promise<void> };
