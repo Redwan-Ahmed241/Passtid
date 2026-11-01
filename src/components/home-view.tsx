@@ -8,12 +8,6 @@ import type { PlanId } from "@/lib/types";
 import { BottomCta, HeroActions } from "./home-cta";
 import { LogoMark } from "./brand";
 
-/** Machine-readable strip along the bottom of each passport card, in place of a barcode. */
-const MRZ: Record<PlanId, [string, string]> = {
-  notify: ["P<SWE<<PASSTID<<ALERTS<<<<<<<<<<", "00102627SWE2610272<3010273<<<<<<04"],
-  autobook: ["P<SWE<<PASSTID<<AUTOBOOK<<<<<<<", "00102627SWE2610272<3010273<<<<<<08"],
-};
-
 export function HomeView({ prices, monthly }: { prices: Record<PlanId, string>; monthly: Record<PlanId, boolean> }) {
   const { c } = useI18n();
   const h = c.home;
@@ -102,14 +96,13 @@ export function HomeView({ prices, monthly }: { prices: Record<PlanId, string>; 
 }
 
 /**
- * One plan as an open passport: the details page on the left, a stitched spine, and the price,
- * machine-readable strip and button on the right. The featured plan is the blue cover.
+ * One plan as an open passport: the details page on the left, a stitched spine, and the price
+ * and button on the right. The featured plan is the blue cover.
  */
 function PassportCard({ id, price, monthly, featured }: { id: PlanId; price: string; monthly: boolean; featured: boolean }) {
   const { c, t } = useI18n();
   const h = c.home;
   const p = h.plans[id];
-  const [mrz1, mrz2] = MRZ[id];
   const facts: [string, string][] = [
     [h.applicantLabel, p.applicants],
     [h.paymentLabel, p.payment],
@@ -154,19 +147,9 @@ function PassportCard({ id, price, monthly, featured }: { id: PlanId; price: str
           {price}
           {monthly && <span className="ml-1.5 text-base font-medium tracking-normal opacity-85">{t("perMonth")}</span>}
         </p>
-        <p
-          aria-hidden="true"
-          className={`mt-6 overflow-hidden font-mono text-[0.5rem] leading-[1.4] tracking-[0.05em] whitespace-nowrap sm:mt-auto sm:pt-8 ${
-            featured ? "text-on-accent/65" : "text-line-strong"
-          }`}
-        >
-          {mrz1}
-          <br />
-          {mrz2}
-        </p>
         <Link
           href={`/booking?plan=${id}`}
-          className={`btn mt-4 h-12 text-base ${featured ? "btn-yellow" : "btn-primary"}`}
+          className={`btn mt-6 h-12 text-base sm:mt-auto ${featured ? "btn-yellow" : "btn-primary"}`}
         >
           {h.select}
         </Link>
