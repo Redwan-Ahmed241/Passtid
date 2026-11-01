@@ -82,7 +82,7 @@ export function MobileNav() {
                   }}
                 >
                   {t("signOut")}
-                  <span className="ml-auto max-w-[10rem] truncate text-sm text-muted">{user.name}</span>
+                  <span className="ml-auto max-w-[10rem] truncate text-sm text-muted">{user.email}</span>
                 </button>
               ) : (
                 <Link href="/login" onClick={close} className={row}>

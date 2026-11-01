@@ -8,11 +8,12 @@ import { ApiError } from "./errors";
 const SCHEMA = `
 create table if not exists users (
   id text primary key,
-  name text not null,
+  name text not null default '',
   email text not null unique,
   password_hash text not null,
   created_at timestamptz not null default now()
 );
+alter table users alter column name set default '';
 create table if not exists booking_requests (
   user_id text not null references users(id) on delete cascade,
   system text not null,

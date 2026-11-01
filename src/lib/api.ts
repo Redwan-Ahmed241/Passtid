@@ -61,8 +61,8 @@ export const api = {
   me: () => request<User>(`/auth/me`),
   login: (email: string, password: string) =>
     request<User>(`/auth/login`, { method: "POST", body: JSON.stringify({ email, password }) }),
-  register: (name: string, email: string, password: string) =>
-    request<User>(`/auth/register`, { method: "POST", body: JSON.stringify({ name, email, password }) }),
+  register: (email: string, password: string) =>
+    request<User>(`/auth/register`, { method: "POST", body: JSON.stringify({ email, password }) }),
   logout: () => request<{ ok: true }>(`/auth/logout`, { method: "POST" }),
 
   slots: (system: SystemId, signal?: AbortSignal) =>
