@@ -8,7 +8,7 @@ import { api, ApiRequestError } from "@/lib/api";
 import { formatPrice } from "@/lib/plans";
 import { LOCALES, useI18n } from "@/lib/i18n";
 import type { TranslationKey } from "@/lib/i18n/translations";
-import { isComplete } from "@/lib/applicants";
+import { EMAIL_RE, isComplete } from "@/lib/applicants";
 import { defaultRequest } from "@/lib/defaults";
 import {
   SYSTEMS,
@@ -63,6 +63,8 @@ export function Booking() {
   const [alertSub, setAlertSub] = useState<AlertSubscription | null>(null);
   const [watching, setWatching] = useState(false);
   const [accountName, setAccountName] = useState("");
+  // null = follow the contact email from the details step; a string = the customer chose another one.
+  const [accountEmailInput, setAccountEmailInput] = useState<string | null>(null);
   const [accountPassword, setAccountPassword] = useState("");
   const [showAccountErrors, setShowAccountErrors] = useState(false);
   const [showDetailErrors, setShowDetailErrors] = useState(false);
@@ -149,6 +151,7 @@ export function Booking() {
   const savedReq = saved[system] ?? null;
   const windowValid = draft ? validateWindow(draft.window).length === 0 : true;
   const detailsReady = draft ? isComplete(system, draft) : false;
+  const accountEmail = accountEmailInput ?? draft?.email ?? "";
 
   // Autosave once the window is valid and something changed. People and email may still be a draft.
   useEffect(() => {
@@ -349,14 +352,14 @@ export function Booking() {
       setShowDetailErrors(true);
       return;
     }
-    if (!user && (!accountName.trim() || accountPassword.length < 8)) {
+    if (!user && (!accountName.trim() || !EMAIL_RE.test(accountEmail.trim()) || accountPassword.length < 8)) {
       setShowAccountErrors(true);
       return;
     }
     setWorking(true);
     try {
-      // Guests create their account now, with the contact email they already gave.
-      if (!user) announceAuthChange(await api.register(accountName.trim(), draft.email, accountPassword));
+      // Guests create their account now, with the contact email they already gave unless they chose another.
+      if (!user) announceAuthChange(await api.register(accountName.trim(), accountEmail.trim(), accountPassword));
       const req: BookingRequest = windowValid ? draft : { ...draft, window: effectiveWindow };
       if (!savedReq || !sameRequest(req, savedReq)) {
         await api.saveRequest(system, req);
@@ -625,6 +628,26 @@ export function Booking() {
                       />
                       {showAccountErrors && !accountName.trim() && (
                         <p role="alert" className="mt-1.5 text-[0.8125rem] text-hot">{t("errEnterName")}</p>
+                      )}
+                    </div>
+                    <div>
+                      <label htmlFor="acct-email" className="mb-1.5 block text-sm font-medium text-ink-2">{t("accountEmail")}</label>
+                      <input
+                        id="acct-email"
+                        className="field"
+                        type="email"
+                        inputMode="email"
+                        autoComplete="email"
+                        autoCapitalize="none"
+                        spellCheck={false}
+                        value={accountEmail}
+                        onChange={(e) => setAccountEmailInput(e.target.value)}
+                        aria-invalid={showAccountErrors && !EMAIL_RE.test(accountEmail.trim())}
+                        aria-describedby="acct-email-hint"
+                      />
+                      <p id="acct-email-hint" className="mt-1.5 text-[0.8125rem] text-muted">{t("accountEmailHint")}</p>
+                      {showAccountErrors && !EMAIL_RE.test(accountEmail.trim()) && (
+                        <p role="alert" className="mt-1.5 text-[0.8125rem] text-hot">{t(accountEmail.trim() ? "errEmailInvalid" : "errEmail")}</p>
                       )}
                     </div>
                     <div>
