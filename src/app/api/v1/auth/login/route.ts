@@ -11,9 +11,7 @@ export async function POST(request: Request) {
     const password = typeof body.password === "string" ? body.password : "";
     if (!EMAIL_RE.test(email) || email.length > 200) return errorJson(422, "invalid_email", "Enter a valid email address.");
     if (password.length < 8) return errorJson(401, "invalid_credentials", "Email or password is incorrect.");
-    const local = email.split("@")[0].replace(/[._-]+/g, " ").trim();
-    const name = local.replace(/\b\p{L}/gu, (c) => c.toUpperCase()) || email;
-    const user: User = { id: userIdFor(email), name, email };
+    const user: User = { id: userIdFor(email), email };
     return json(user, 200, { "Set-Cookie": sessionCookie(user) });
   });
 }

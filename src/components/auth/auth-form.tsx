@@ -35,7 +35,6 @@ export function AuthForm({ mode }: { mode: Mode }) {
   const { t } = useI18n();
   const { user } = useMe();
 
-  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
@@ -51,7 +50,6 @@ export function AuthForm({ mode }: { mode: Mode }) {
   }, [user, next]);
 
   const errors: Record<string, string> = {};
-  if (mode === "register" && !name.trim()) errors.name = t("errEnterName");
   if (!email.trim()) errors.email = t("errEnterEmail");
   else if (!EMAIL_RE.test(email.trim())) errors.email = t("errEmailInvalid");
   if (!password) errors.password = t("errEnterPassword");
@@ -62,10 +60,10 @@ export function AuthForm({ mode }: { mode: Mode }) {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    setTouched({ name: true, email: true, password: true });
+    setTouched({ email: true, password: true });
     setFormError(null);
     if (Object.keys(errors).length) {
-      const first = (["name", "email", "password"] as const).find((f) => errors[f]);
+      const first = (["email", "password"] as const).find((f) => errors[f]);
       if (first) document.getElementById(`${uid}-${first}`)?.focus();
       return;
     }
@@ -74,7 +72,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
       const u =
         mode === "login"
           ? await api.login(email.trim(), password)
-          : await api.register(name.trim(), email.trim(), password);
+          : await api.register(email.trim(), password);
       announceAuthChange(u);
       window.location.assign(next);
     } catch (err) {
@@ -89,20 +87,6 @@ export function AuthForm({ mode }: { mode: Mode }) {
       <p className="mt-3 text-ink-2">{t(copy.lead)}</p>
 
       <form onSubmit={submit} noValidate className="mt-8 space-y-4">
-        {mode === "register" && (
-          <Field id={`${uid}-name`} label={t("fullName")} error={shown("name")}>
-            <input
-              id={`${uid}-name`}
-              className="field"
-              autoComplete="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              onBlur={() => touch("name")}
-              aria-invalid={!!shown("name")}
-              aria-describedby={shown("name") ? `${uid}-name-err` : undefined}
-            />
-          </Field>
-        )}
         <Field id={`${uid}-email`} label={t("email")} error={shown("email")}>
           <input
             id={`${uid}-email`}
