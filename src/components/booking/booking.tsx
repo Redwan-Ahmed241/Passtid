@@ -628,9 +628,7 @@ export function Booking() {
                         value={accountEmail}
                         onChange={(e) => setAccountEmailInput(e.target.value)}
                         aria-invalid={showAccountErrors && !EMAIL_RE.test(accountEmail.trim())}
-                        aria-describedby="acct-email-hint"
                       />
-                      <p id="acct-email-hint" className="mt-1.5 text-[0.8125rem] text-muted">{t("accountEmailHint")}</p>
                       {showAccountErrors && !EMAIL_RE.test(accountEmail.trim()) && (
                         <p role="alert" className="mt-1.5 text-[0.8125rem] text-hot">{t(accountEmail.trim() ? "errEmailInvalid" : "errAccountEmail")}</p>
                       )}
@@ -662,10 +660,12 @@ export function Booking() {
                   </p>
                 </div>
               )}
-              <p className="mt-3 flex items-start gap-1.5 text-xs text-muted">
-                <CreditCard className="mt-0.5 size-3.5 flex-none" aria-hidden="true" />
-                {plans?.demo ? t("demoPay") : t("securePay")}
-              </p>
+              {plans && !plans.demo && (
+                <p className="mt-3 flex items-start gap-1.5 text-xs text-muted">
+                  <CreditCard className="mt-0.5 size-3.5 flex-none" aria-hidden="true" />
+                  {t("securePay")}
+                </p>
+              )}
               <StepButtons
                 onBack={() => setStep(3)}
                 onNext={() => void pay()}

@@ -145,7 +145,7 @@ function PassportCard({ id, price, monthly, featured }: { id: PlanId; price: str
         <p className={`text-sm ${featured ? "text-on-accent/85" : "text-muted"}`}>{h.priceLabel}</p>
         <p className="mt-1 text-5xl font-bold tracking-tight tabular">
           {price}
-          {monthly && <span className="ml-1.5 text-base font-medium tracking-normal opacity-85">{t("perMonth")}</span>}
+          {monthly && <span className="ml-0.5 text-base font-medium tracking-normal opacity-85">{t("perMonth")}</span>}
         </p>
         <Link
           href={`/booking?plan=${id}`}
