@@ -35,6 +35,14 @@ const POLL_BOOKING_MS = 1_500;
 type Step = 1 | 2 | 3 | 4;
 const STEP_KEYS: Record<Step, TranslationKey> = { 1: "stepService", 2: "stepDateTime", 3: "stepDetails", 4: "stepConfirm" };
 
+/** A new request starts with the account holder as the first applicant, so they do not type their name twice. */
+function withAccountName(request: BookingRequest, accountName: string): BookingRequest {
+  const [first, ...rest] = request.persons;
+  const [firstName, ...others] = accountName.trim().split(/\s+/);
+  if (!first || !firstName || first.firstName.trim() || first.lastName.trim()) return request;
+  return { ...request, persons: [{ ...first, firstName, lastName: others.join(" ") }, ...rest] };
+}
+
 const sameRequest = (a: BookingRequest, b: BookingRequest) => JSON.stringify(a) === JSON.stringify(b);
 
 export function Booking() {
@@ -116,7 +124,7 @@ export function Booking() {
     requestedFor.current.add(system);
     api.getRequest(system).then(
       (r) => {
-        setDrafts((d) => ({ ...d, [system]: r.request }));
+        setDrafts((d) => ({ ...d, [system]: withAccountName(r.request, user.name) }));
         setSaved((s) => ({ ...s, [system]: r.request }));
       },
       (err: unknown) => {
