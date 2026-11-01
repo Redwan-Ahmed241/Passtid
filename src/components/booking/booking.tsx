@@ -70,8 +70,6 @@ export function Booking() {
   const [plan, setPlan] = useState<PlanId>(params.get("plan") === "notify" ? "notify" : "autobook");
   const [alertSub, setAlertSub] = useState<AlertSubscription | null>(null);
   const [watching, setWatching] = useState(false);
-  // null = follow the first applicant's name from the details step; a string = the customer typed their own.
-  const [accountNameInput, setAccountNameInput] = useState<string | null>(null);
   // null = follow the contact email from the details step; a string = the customer chose another one.
   const [accountEmailInput, setAccountEmailInput] = useState<string | null>(null);
   const [accountPassword, setAccountPassword] = useState("");
@@ -161,7 +159,8 @@ export function Booking() {
   const windowValid = draft ? validateWindow(draft.window).length === 0 : true;
   const detailsReady = draft ? isComplete(system, draft) : false;
   const first = draft?.persons[0];
-  const accountName = accountNameInput ?? (first ? `${first.firstName} ${first.lastName}`.trim() : "");
+  // The account takes its name from the first applicant, so there is no separate name field.
+  const accountName = first ? `${first.firstName} ${first.lastName}`.trim() : "";
   const accountEmail = accountEmailInput ?? draft?.email ?? "";
 
   // Autosave once the window is valid and something changed. People and email may still be a draft.
@@ -363,7 +362,7 @@ export function Booking() {
       setShowDetailErrors(true);
       return;
     }
-    if (!user && (!accountName.trim() || !EMAIL_RE.test(accountEmail.trim()) || accountPassword.length < 8)) {
+    if (!user && (!EMAIL_RE.test(accountEmail.trim()) || accountPassword.length < 8)) {
       setShowAccountErrors(true);
       return;
     }
@@ -627,20 +626,6 @@ export function Booking() {
                 <div className="mt-6">
                   <p className="font-semibold text-ink">{t("accountTitle")}</p>
                   <div className="mt-3 space-y-3">
-                    <div>
-                      <label htmlFor="acct-name" className="mb-1.5 block text-sm font-medium text-ink-2">{t("fullName")}</label>
-                      <input
-                        id="acct-name"
-                        className="field"
-                        autoComplete="name"
-                        value={accountName}
-                        onChange={(e) => setAccountNameInput(e.target.value)}
-                        aria-invalid={showAccountErrors && !accountName.trim()}
-                      />
-                      {showAccountErrors && !accountName.trim() && (
-                        <p role="alert" className="mt-1.5 text-[0.8125rem] text-hot">{t("errEnterName")}</p>
-                      )}
-                    </div>
                     <div>
                       <label htmlFor="acct-email" className="mb-1.5 block text-sm font-medium text-ink-2">{t("accountEmail")}</label>
                       <input
