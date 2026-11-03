@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Mono, IBM_Plex_Sans, Newsreader } from "next/font/google";
 import { LangProvider } from "@/lib/i18n";
 import { JsonLd } from "@/components/json-ld";
-import { siteGraph } from "@/lib/seo";
+import { baseOpenGraph, siteGraph } from "@/lib/seo";
 import { SkipLink } from "@/components/skip-link";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
@@ -34,7 +34,7 @@ const newsreader = Newsreader({
 export const metadata: Metadata = {
   metadataBase: new URL(site.url),
   title: {
-    default: `${site.name}: ${site.tagline}`,
+    default: "Swedish Embassy Appointment Alerts in London · Passtid",
     template: `%s · ${site.name}`,
   },
   description: site.description,
@@ -50,25 +50,14 @@ export const metadata: Metadata = {
     "coordination number appointment",
     "samordningsnummer",
     "embassy slot booking",
-    "appointment queue",
     "boka tid ambassaden London",
     "pass ambassaden London",
   ],
   alternates: { canonical: "/" },
-  openGraph: {
-    type: "website",
-    siteName: site.name,
-    locale: site.locale,
-    alternateLocale: ["sv_SE"],
-    url: "/",
-    title: `${site.name}: ${site.tagline}`,
-    description: site.description,
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: `${site.name}: ${site.tagline}`,
-    description: site.description,
-  },
+  // No title or description here: Next fills og:title, og:description and the Twitter card's
+  // from each page's own title and description. Setting them here would leak to every page.
+  openGraph: { ...baseOpenGraph, url: "/" },
+  twitter: { card: "summary_large_image" },
   robots: {
     index: true,
     follow: true,
