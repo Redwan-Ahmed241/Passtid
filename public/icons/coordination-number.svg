@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-label="Swedish coordination number (samordningsnummer), 10 digits"><title>Swedish coordination number (samordningsnummer)</title>
+  <rect x="8" y="22" width="112" height="84" rx="11" fill="#006AA7"/>
+  <!-- Photo -->
+  <rect x="20" y="34" width="30" height="36" rx="5" fill="#FFFFFF"/>
+  <circle cx="35" cy="47" r="6" fill="#006AA7"/>
+  <path d="M24 66c0-7 5-11 11-11s11 4 11 11z" fill="#006AA7"/>
+  <!-- Text lines -->
+  <rect x="58" y="38" width="48" height="5" rx="2.5" fill="#FFFFFF"/>
+  <rect x="58" y="49" width="38" height="5" rx="2.5" fill="#9DC6DD"/>
+  <rect x="58" y="60" width="44" height="5" rx="2.5" fill="#9DC6DD"/>
+  <!-- Number band: 10 characters = ÅÅMM + 6 digits -->
+  <path d="M8 78h112v18a11 11 0 0 1-11 11H19A11 11 0 0 1 8 96z" fill="#FECC02"/>
+  <text x="64" y="98" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="700" fill="#004F7C" letter-spacing="1">ÅÅMM<tspan fill-opacity="0.55">XXXXXX</tspan></text>
+  <!-- Corner badge -->
+  <circle cx="108" cy="22" r="14" fill="#FECC02" stroke="#FFFFFF" stroke-width="3"/>
+  <text x="108" y="28" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="700" fill="#004F7C">#</text>
+</svg>

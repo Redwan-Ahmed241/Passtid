@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { AlertTriangle, ArrowRight, BellRing, Bot, Check, CreditCard, Globe2, Loader2 } from "lucide-react";
+import { AlertTriangle, ArrowRight, BellRing, Bot, Check, CreditCard, Loader2 } from "lucide-react";
 import { api, ApiRequestError } from "@/lib/api";
 import { formatPrice } from "@/lib/plans";
 import { LOCALES, useI18n } from "@/lib/i18n";
@@ -490,9 +491,15 @@ export function Booking() {
                     onClick={() => chooseSystem(id)}
                     className="flex min-h-20 items-center gap-4 rounded-xl border border-line-strong bg-surface p-4 text-left transition-colors hover:border-accent hover:bg-accent-soft aria-pressed:border-accent aria-pressed:bg-accent-soft"
                   >
-                    <span className="grid size-11 flex-none place-items-center rounded-lg bg-accent-soft text-accent">
-                      {id === "passport" ? <CreditCard className="size-5" aria-hidden="true" /> : <Globe2 className="size-5" aria-hidden="true" />}
-                    </span>
+                    {/* The artwork already has its own colours and shape, so it sits on the card without a box. */}
+                    <Image
+                      src={id === "passport" ? "/icons/passport-id.svg" : "/icons/coordination-number.svg"}
+                      alt=""
+                      width={56}
+                      height={56}
+                      unoptimized
+                      className="size-14 flex-none"
+                    />
                     <span className="min-w-0">
                       <span className="block font-semibold text-ink">{t(id === "passport" ? "svcPassport" : "svcCoord")}</span>
                       <span className="mt-0.5 block text-sm text-muted">{t(id === "passport" ? "passportDesc" : "coordDesc")}</span>
