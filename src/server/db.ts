@@ -79,6 +79,7 @@ create table if not exists notifications (
   sent_at timestamptz
 );
 create index if not exists notifications_due on notifications (next_attempt_at) where status = 'pending';
+alter table users add column if not exists telegram_code text unique, add column if not exists telegram_chat_id text;
 `;
 
 const g = globalThis as unknown as { __pool?: Pool; __schema?: Promise<void> };

@@ -62,6 +62,7 @@ export function Booking() {
   const [plan, setPlan] = useState<PlanId>(params.get("plan") === "notify" ? "notify" : "autobook");
   const [alertSub, setAlertSub] = useState<AlertSubscription | null>(null);
   const [watching, setWatching] = useState(false);
+  const [telegramUrl, setTelegramUrl] = useState<string | null>(null);
   const [accountName, setAccountName] = useState("");
   const [accountPassword, setAccountPassword] = useState("");
   const [showAccountErrors, setShowAccountErrors] = useState(false);
@@ -303,6 +304,24 @@ export function Booking() {
   const showAlert = !showStatus && !!alertSub && alertSub.system === system && !startNew;
   const showWatching = !showStatus && !showAlert && watching && !startNew;
 
+  // Email is always sent. Telegram is optional, so fetch the stable link when a
+  // booking status is on screen; failure simply hides the optional link.
+  useEffect(() => {
+    if (!user || (!showStatus && !showWatching)) return;
+    let alive = true;
+    api.telegramLink().then(
+      (res) => {
+        if (alive) setTelegramUrl(res.url);
+      },
+      () => {
+        /* optional link: leave it hidden */
+      },
+    );
+    return () => {
+      alive = false;
+    };
+  }, [user, showStatus, showWatching]);
+
   /* ----------------------------- actions ----------------------------- */
 
   const chooseSystem = (next: SystemId) => {
@@ -443,6 +462,7 @@ export function Booking() {
               slot={mineSlot}
               people={draft.persons.length}
               email={draft.email}
+              telegramUrl={telegramUrl}
               working={working}
               confirming={confirmingCancel}
               onAskCancel={() => setConfirmingCancel(true)}
@@ -468,6 +488,7 @@ export function Booking() {
 
           {ready && showWatching && (
             <WatchingCard
+              telegramUrl={telegramUrl}
               onAnother={() => {
                 setStartNew(true);
                 setWatching(false);
@@ -763,6 +784,7 @@ function StatusCard({
   slot,
   people,
   email,
+  telegramUrl,
   working,
   confirming,
   onAskCancel,
@@ -774,6 +796,7 @@ function StatusCard({
   slot: ViewSlot;
   people: number;
   email: string;
+  telegramUrl: string | null;
   working: boolean;
   confirming: boolean;
   onAskCancel: () => void;
@@ -816,6 +839,20 @@ function StatusCard({
         <Row label={t("rowEmail")} value={email} />
       </dl>
 
+      {telegramUrl && (
+        <p className="mt-5 text-sm text-muted">
+          {t("emailAlways")}{" "}
+          <a
+            href={telegramUrl}
+            target="_blank"
+            rel="noopener"
+            className="font-semibold text-accent-line underline underline-offset-2"
+          >
+            {t("telegramAlso")}
+          </a>
+        </p>
+      )}
+
       {confirming ? (
         <div className="mt-6 flex gap-3">
           <button type="button" className="btn btn-ghost flex-1 border-accent-line text-accent-line" onClick={onKeep}>
@@ -840,7 +877,7 @@ function StatusCard({
 }
 
 /** Shown after automatic booking is paid but no slot fits yet. */
-function WatchingCard({ onAnother }: { onAnother: () => void }) {
+function WatchingCard({ onAnother, telegramUrl }: { onAnother: () => void; telegramUrl: string | null }) {
   const { t } = useI18n();
   return (
     <div className="text-center">
@@ -849,6 +886,19 @@ function WatchingCard({ onAnother }: { onAnother: () => void }) {
       </span>
       <h1 className="mt-4 text-2xl font-semibold text-ink">{t("watchingTitle")}</h1>
       <p className="mt-2 text-sm text-muted">{t("watchingBody")}</p>
+      {telegramUrl && (
+        <p className="mt-4 text-sm text-muted">
+          {t("emailAlways")}{" "}
+          <a
+            href={telegramUrl}
+            target="_blank"
+            rel="noopener"
+            className="font-semibold text-accent-line underline underline-offset-2"
+          >
+            {t("telegramAlso")}
+          </a>
+        </p>
+      )}
       <button type="button" className="btn btn-ghost mt-6 w-full border-accent-line text-accent-line" onClick={onAnother}>
         {t("bookAnother")}
       </button>

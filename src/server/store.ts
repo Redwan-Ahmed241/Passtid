@@ -328,3 +328,29 @@ export async function linkTelegram(code: string, chatId: string): Promise<boolea
   const rows = await query("update alert_subscriptions set telegram_chat_id = $2 where telegram_code = $1 returning id", [code, chatId]);
   return rows.length > 0;
 }
+
+/** A stable per-user code so autobook customers can optionally link Telegram later. */
+export async function getOrCreateTelegramCode(userId: string): Promise<string> {
+  const [existing] = await query<{ code: string | null }>("select telegram_code as code from users where id = $1", [userId]);
+  if (!existing) throw new ApiError(404, "user_not_found", "No such user.");
+  if (existing.code) return existing.code;
+
+  const code = randomBytes(12).toString("hex");
+  const [updated] = await query<{ code: string }>(
+    "update users set telegram_code = $2 where id = $1 and telegram_code is null returning telegram_code as code",
+    [userId, code],
+  );
+  if (updated) return updated.code;
+
+  // Another request won the race; use the code it stored.
+  const [again] = await query<{ code: string }>("select telegram_code as code from users where id = $1", [userId]);
+  if (!again) throw new ApiError(404, "user_not_found", "No such user.");
+  return again.code;
+}
+
+/** The optional "get updates on Telegram too" link for automatic-booking customers. */
+export async function getTelegramLink(userId: string): Promise<string | null> {
+  const code = await getOrCreateTelegramCode(userId);
+  const bot = process.env.TELEGRAM_BOT_USERNAME?.replace(/^@/, "");
+  return bot ? `https://t.me/${bot}?start=${code}` : null;
+}

@@ -80,4 +80,5 @@ export const api = {
     request<ConfirmResponse>(`/checkout/confirm`, { method: "POST", body: JSON.stringify({ sessionId }) }),
   booking: (id: string) => request<Booking>(`/bookings/${encodeURIComponent(id)}`),
   cancel: (id: string) => request<Booking>(`/bookings/${encodeURIComponent(id)}`, { method: "DELETE" }),
+  telegramLink: () => request<{ url: string | null }>(`/telegram/link`),
 };

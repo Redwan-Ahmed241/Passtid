@@ -213,6 +213,8 @@ const en = {
   alertsBody: "Open our Telegram bot to link this account. We will message you as soon as a slot matches your dates.",
   alertsNoBot: "Your payment is registered. The Telegram link is not set up yet, so contact support to connect your account.",
   openTelegram: "Open Telegram",
+  emailAlways: "Email updates are always sent.",
+  telegramAlso: "Get updates on Telegram too (optional)",
   home: "Home",
   openConsole: "Start booking",
 } as const;
@@ -421,6 +423,8 @@ const sv: Record<TranslationKey, string> = {
   alertsBody: "Öppna vår Telegram-bot för att koppla kontot. Vi skickar ett meddelande så fort en tid matchar dina datum.",
   alertsNoBot: "Din betalning är registrerad. Telegram-länken är inte konfigurerad än, så kontakta supporten för att koppla ditt konto.",
   openTelegram: "Öppna Telegram",
+  emailAlways: "E-postuppdateringar skickas alltid.",
+  telegramAlso: "Få uppdateringar även på Telegram (valfritt)",
   home: "Hem",
   openConsole: "Starta bokning",
 };
