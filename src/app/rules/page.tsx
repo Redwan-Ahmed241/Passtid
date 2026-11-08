@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { baseOpenGraph } from "@/lib/seo";
 import { notFound } from "next/navigation";
 import { JsonLd } from "@/components/json-ld";
 import { RulesView } from "@/components/rules-view";
@@ -6,11 +7,11 @@ import { features } from "@/lib/features";
 import { site } from "@/lib/site";
 
 export const metadata: Metadata = {
-  title: "Booking rules: windows, queue counts and edge cases",
+  title: "How slots are matched to your booking window",
   description:
-    "Exactly how Passtid matches Swedish embassy slots to your booking window, what counts as being in the queue, and what happens when a booking fails, with the same rules for passports, ID cards and coordination numbers.",
+    "How Passtid matches Swedish embassy slots in London to your booking window, what happens when a booking fails, and why the rules are the same for every service.",
   alternates: { canonical: "/rules" },
-  openGraph: { url: "/rules" },
+  openGraph: { ...baseOpenGraph, url: "/rules" },
 };
 
 export default function RulesPage() {

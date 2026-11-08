@@ -1,3 +1,4 @@
+import { OG_ALT, OG_SIZE, OG_TYPE } from "@/lib/og";
 import { site } from "@/lib/site";
 
 /**
@@ -11,7 +12,25 @@ export const ids = {
   app: `${site.url}/#app`,
 } as const;
 
-export const languages = ["en-GB", "sv-SE"] as const;
+/**
+ * Languages search engines can index. Swedish is switched on the client on the same URL, so
+ * crawlers only ever see English. Add "sv-SE" here once Swedish has its own URLs.
+ */
+export const languages = ["en-GB"] as const;
+
+/**
+ * Open Graph fields every page shares. A page's `openGraph` replaces the layout's whole object
+ * (metadata merges shallowly), so pages spread this in next to their own `url`. It carries no
+ * title or description on purpose: Next fills those, and the Twitter card's, from the page.
+ * The share image is listed here because the root `opengraph-image` file only reaches pages that
+ * don't set their own `openGraph`.
+ */
+export const baseOpenGraph = {
+  type: "website",
+  siteName: site.name,
+  locale: site.locale,
+  images: [{ url: "/opengraph-image", ...OG_SIZE, type: OG_TYPE, alt: OG_ALT }],
+};
 
 export const siteGraph = {
   "@context": "https://schema.org",
