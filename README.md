@@ -31,18 +31,9 @@ Everything runs in this Next.js app: the pages, the route handlers in `src/app/a
 - **Payments.** The last booking step sells two plans through Stripe Checkout: Telegram alerts (default £4 a month, a Stripe subscription) and automatic booking (default £30, paid once). Up to 10 people can be added to one booking. Prices are in GBP; change them (in pence) with `PLAN_NOTIFY_CENTS` and `PLAN_AUTOBOOK_CENTS`. Set `STRIPE_SECRET_KEY`, and add a webhook endpoint at `/api/v1/stripe/webhook` (events `checkout.session.completed`, `checkout.session.async_payment_succeeded` and `customer.subscription.deleted`, which switches the alerts off when a customer cancels) with its signing secret in `STRIPE_WEBHOOK_SECRET`. Fulfilment is idempotent, so the return redirect and the webhook can both run. In production, payments are refused without a Stripe key; elsewhere, without one, checkout runs in demo mode and nobody is charged.
 - **Local setup.** Copy `.env.example` to `.env.local`, set `DATABASE_URL` and `AUTH_SECRET`, run `npm run dev`.
 
-### Bot API
+### Booking bots
 
-The booking bot talks to these endpoints with `Authorization: Bearer $BOT_API_KEY`. Without `BOT_API_KEY` they answer 503.
-
-| Endpoint | Purpose |
-| --- | --- |
-| `PUT /api/v1/bot/slots/{system}` | Replace the free slots of `passport` or `coordination_number`: `{ "slots": [{ "slot": "2026-10-23T09:30", "freeOnSite": 2 }] }`. Paid watchers whose window now matches are queued for booking. |
-| `GET /api/v1/bot/jobs` | Bookings to make (`bookings`, with the stored applicant request), users still waiting for a slot (`watching`) and Telegram alerts to send (`alerts`). |
-| `POST /api/v1/bot/bookings/{id}` | Report progress: `{ "status": "pending" \| "booked" \| "released", "reference": "SE-...", "reason": "failed" \| "cancelled" \| "timed_out" \| "slot_gone" }`. A booking that reports nothing for 15 minutes is released. |
-| `POST /api/v1/bot/alerts/link` | Link a Telegram chat to an alert: `{ "code": "<24 hex from the deep link>", "chatId": "123" }`. |
-
-Until the bot pushes slots, the booking page has no slots to show, and paid users are placed on the watch list.
+The Python bots (separate `sweden` repo) share this app's Postgres database: they write free slots and booking results to the tables directly. There is no HTTP bot API.
 
 ## Plans
 

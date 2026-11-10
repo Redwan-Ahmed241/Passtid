@@ -2,8 +2,8 @@
  * Everything the API reads and writes in Postgres: booking requests, slots, queue entries,
  * paid plans and Telegram alert links. Implements the contract in src/lib/types.ts.
  *
- * Slots are not invented here. The booking bot publishes what it sees on the embassy sites with
- * PUT /api/v1/bot/slots/{system}; until it does, the console shows no open slots.
+ * Slots are not invented here. The Python booking bots write what they see on the embassy sites
+ * straight into the slots table; until they do, the console shows no open slots.
  */
 import { randomBytes } from "node:crypto";
 import type { QueryResultRow } from "pg";
@@ -149,20 +149,6 @@ export async function listSlots(system: SystemId, userId: string): Promise<Slots
   };
 }
 
-/** The bot publishes the open slots it currently sees. They replace the previous list for that service. */
-export async function replaceSlots(system: SystemId, slots: { slot: string; freeOnSite: number | null }[]): Promise<void> {
-  await transaction(async (c) => {
-    await c.query("delete from slots where system = $1", [system]);
-    for (const s of slots) {
-      await c.query("insert into slots (system, slot, free_on_site) values ($1, $2, $3) on conflict do nothing", [system, s.slot, s.freeOnSite]);
-    }
-    await c.query(
-      "insert into slot_sync (system, synced_at) values ($1, now()) on conflict (system) do update set synced_at = now()",
-      [system],
-    );
-  });
-}
-
 /* ---------------------------- bookings ----------------------------- */
 
 export async function createBooking(system: SystemId, slot: string, userId: string): Promise<Booking> {
@@ -224,22 +210,6 @@ export async function cancelBooking(id: string, userId: string): Promise<Booking
   const [existing] = await query<BookingRow>(`select ${BOOKING_COLUMNS} from bookings where id::text = $1 and user_id = $2`, [id, userId]);
   if (!existing) throw new ApiError(404, "booking_not_found", "No such booking.");
   return toBooking(existing);
-}
-
-/** The bot reports how a booking attempt ended. */
-export async function recordBookingResult(
-  id: string,
-  result: { status: "pending" | "booked" | "released"; reason?: ReleaseReason | null; reference?: string | null },
-): Promise<Booking> {
-  const [row] = await query<BookingRow>(
-    `update bookings
-        set status = $2, reason = $3, reference = coalesce($4, reference), updated_at = now(),
-            heartbeat = case when $2 = 'pending' then now() else heartbeat end
-      where id::text = $1 and status in ('pending', 'booked') returning ${BOOKING_COLUMNS}`,
-    [id, result.status, result.status === "released" ? (result.reason ?? "failed") : null, result.reference ?? null],
-  );
-  if (!row) throw new ApiError(404, "booking_not_found", "No such active booking.");
-  return toBooking(row);
 }
 
 /* ------------------------ booking requests ------------------------- */
@@ -320,40 +290,9 @@ export function fulfilPayment(paid: PaidInfo, userId: string): Promise<ConfirmRe
 
 /* ---------------------------- bot support --------------------------- */
 
-/** What the bot needs to act on: queued bookings with their people, paid jobs still watching, and alert links. */
-export async function botJobs() {
-  await releaseStale();
-  const bookings = await query<{ id: string; user_id: string; system: SystemId; slot: string; request: BookingRequest | null }>(
-    `select b.id, b.user_id, b.system, b.slot, r.request
-       from bookings b left join booking_requests r on r.user_id = b.user_id and r.system = b.system
-      where b.status = 'pending' order by b.created_at`,
-  );
-  const watching = await query<{ session_id: string; user_id: string; system: SystemId; request: BookingRequest | null }>(
-    `select p.session_id, p.user_id, p.system, r.request
-       from payments p left join booking_requests r on r.user_id = p.user_id and r.system = p.system
-      where p.plan = 'autobook' and (p.result->>'watching')::boolean = true`,
-  );
-  const alerts = await query<{ code: string; user_id: string; system: SystemId; chat_id: string | null; request: BookingRequest | null }>(
-    `select a.telegram_code as code, a.user_id, a.system, a.telegram_chat_id as chat_id, r.request
-       from alert_subscriptions a left join booking_requests r on r.user_id = a.user_id and r.system = a.system
-      where a.active`,
-  );
-  return {
-    bookings: bookings.map((b) => ({ id: b.id, userId: b.user_id, system: b.system, slot: b.slot, request: b.request })),
-    watching: watching.map((w) => ({ paymentId: w.session_id, userId: w.user_id, system: w.system, request: w.request })),
-    alerts: alerts.map((a) => ({ code: a.code, userId: a.user_id, system: a.system, telegramChatId: a.chat_id, request: a.request })),
-  };
-}
-
 /** The monthly alerts subscription ended in Stripe: the bot stops sending those alerts. */
 export async function endSubscription(subscriptionId: string): Promise<void> {
   await query("update alert_subscriptions set active = false where stripe_subscription_id = $1", [subscriptionId]);
-}
-
-/** Connect a Telegram chat to the alert link the customer opened. */
-export async function linkTelegram(code: string, chatId: string): Promise<boolean> {
-  const rows = await query("update alert_subscriptions set telegram_chat_id = $2 where telegram_code = $1 returning id", [code, chatId]);
-  return rows.length > 0;
 }
 
 /** A stable per-user code so autobook customers can optionally link Telegram later. */
