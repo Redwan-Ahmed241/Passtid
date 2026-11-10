@@ -141,7 +141,7 @@ const sv: Record<LegalId, LegalDoc> = {
       {
         h: "Varför vi använder dem",
         p: [
-          "För att utföra tjänsten du ber om: bevaka kalendern, larma dig eller göra bokningen och berätta resultatet. Det är grunden för nästan allt vi gör med dina uppgifter.",
+          "För att utföra tjänsten du ber om: bevaka kalendern, Aviseringa dig eller göra bokningen och berätta resultatet. Det är grunden för nästan allt vi gör med dina uppgifter.",
           "För att hålla tjänsten säker och för att spara sådant vi enligt lag måste spara, till exempel betalningsunderlag.",
           "Om du anger uppgifter för andra, till exempel familjemedlemmar, intygar du att du får göra det å deras vägnar.",
         ],
@@ -149,7 +149,7 @@ const sv: Record<LegalId, LegalDoc> = {
       {
         h: "Vilka vi delar dem med",
         p: [
-          "Ambassadens bokningssida, bara de uppgifter som behövs för att göra din bokning. Stripe, för att ta emot betalning. Telegram, om du väljer Telegram-larm. Våra leverantörer av drift och databas, som behandlar uppgifter för vår räkning.",
+          "Ambassadens bokningssida, bara de uppgifter som behövs för att göra din bokning. Stripe, för att ta emot betalning. Telegram, om du väljer Telegram-Avisering. Våra leverantörer av drift och databas, som behandlar uppgifter för vår räkning.",
           "Vi säljer inte dina uppgifter och använder dem inte för reklam.",
         ],
       },
@@ -182,7 +182,7 @@ const sv: Record<LegalId, LegalDoc> = {
       {
         h: "Tjänsten",
         p: [
-          "Passtid bevakar Sveriges ambassads öppna tidskalender i London. Beroende på tjänsten du väljer skickar vi antingen ett larm när en tid matchar dina datum, eller bokar den tidigaste matchande tiden åt dig.",
+          "Passtid bevakar Sveriges ambassads öppna tidskalender i London. Beroende på tjänsten du väljer skickar vi antingen ett Avisering när en tid matchar dina datum, eller bokar den tidigaste matchande tiden åt dig.",
           "Passtid är oberoende. Vi är inte ambassaden och har ingen koppling till Sveriges ambassad eller Migrationsverket.",
         ],
       },
