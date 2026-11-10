@@ -167,6 +167,23 @@ export function Booking() {
     return () => clearTimeout(t);
   }, [draft, savedReq, system, handleAuthLoss]);
 
+  // Prefill the optional Telegram phone once the account is known.
+  useEffect(() => {
+    if (!user) return;
+    let alive = true;
+    api.loadPhone().then(
+      (r) => {
+        if (alive && r.phone) setAccountPhone(r.phone);
+      },
+      () => {
+        /* optional field */
+      },
+    );
+    return () => {
+      alive = false;
+    };
+  }, [user]);
+
   // Follow every pending booking until it succeeds, fails or is cancelled.
   const pending = useMemo(() => {
     const out: { id: string; system: SystemId; slot: string }[] = [];
@@ -846,8 +863,25 @@ function StepButtons({
 /** Optional phone field used by the Telegram bot to link a paying customer's chat. */
 function TelegramPhoneField() {
   const { t } = useI18n();
+  const { user } = useMe();
   const [phone, setPhone] = useState("");
   const [state, setState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+
+  useEffect(() => {
+    if (!user) return;
+    let alive = true;
+    api.loadPhone().then(
+      (r) => {
+        if (alive && r.phone) setPhone(r.phone);
+      },
+      () => {
+        /* optional field */
+      },
+    );
+    return () => {
+      alive = false;
+    };
+  }, [user]);
 
   const save = async () => {
     setState("saving");

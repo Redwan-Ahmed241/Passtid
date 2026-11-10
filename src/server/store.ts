@@ -394,3 +394,9 @@ export async function setUserPhone(userId: string, phone: string | null): Promis
   }
   return phone;
 }
+
+/** Read the optional stored phone for prefill. */
+export async function getUserPhone(userId: string): Promise<string | null> {
+  const [row] = await query<{ phone: string | null }>("select phone from users where id = $1", [userId]);
+  return row?.phone ?? null;
+}

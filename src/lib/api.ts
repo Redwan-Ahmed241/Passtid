@@ -82,6 +82,7 @@ export const api = {
   booking: (id: string) => request<Booking>(`/bookings/${encodeURIComponent(id)}`),
   cancel: (id: string) => request<Booking>(`/bookings/${encodeURIComponent(id)}`, { method: "DELETE" }),
   telegramLink: () => request<{ url: string | null }>(`/telegram/link`),
+  loadPhone: () => request<PhoneResponse>(`/account/phone`),
   savePhone: (phone: string | null) =>
     request<PhoneResponse>(`/account/phone`, { method: "PUT", body: JSON.stringify({ phone }) }),
 };

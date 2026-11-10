@@ -1,6 +1,13 @@
 import { normalizePhone } from "@/lib/phone";
+import { connection } from "next/server";
 import { errorJson, handle, json, requireUser } from "@/server/http";
-import { setUserPhone } from "@/server/store";
+import { getUserPhone, setUserPhone } from "@/server/store";
+
+/** Read the optional phone for prefill. */
+export async function GET(request: Request) {
+  await connection();
+  return handle(async () => json({ phone: await getUserPhone(requireUser(request).id) }));
+}
 
 /** Save or clear the optional phone used to link a Telegram chat. */
 export async function PUT(request: Request) {
