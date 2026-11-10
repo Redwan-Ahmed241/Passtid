@@ -4,10 +4,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { AlertTriangle, ArrowRight, BellRing, Bot, Check, CreditCard, Loader2 } from "lucide-react";
+import { AlertTriangle, ArrowRight, BellRing, Bot, Check, CreditCard, Info, Loader2 } from "lucide-react";
 import { api, ApiRequestError } from "@/lib/api";
 import { formatPrice } from "@/lib/plans";
 import { LOCALES, useI18n } from "@/lib/i18n";
+import { site } from "@/lib/site";
 import type { TranslationKey } from "@/lib/i18n/translations";
 import { EMAIL_RE, isComplete } from "@/lib/applicants";
 import { defaultRequest } from "@/lib/defaults";
@@ -831,8 +832,10 @@ function StatusCard({
         <Row label={t("rowEmail")} value={email} />
       </dl>
 
+      <EmbassyNotice />
+
       {confirming ? (
-        <div className="mt-6 flex gap-3">
+        <div className="mt-5 flex gap-3">
           <button type="button" className="btn btn-ghost flex-1 border-accent-line text-accent-line" onClick={onKeep}>
             {t("keepIt")}
           </button>
@@ -841,7 +844,7 @@ function StatusCard({
           </button>
         </div>
       ) : (
-        <div className="mt-6 flex gap-3">
+        <div className="mt-5 flex gap-3">
           <button type="button" className="btn btn-ghost flex-1 border-accent-line text-accent-line" onClick={onAnother}>
             {t("bookAnother")}
           </button>
@@ -851,6 +854,28 @@ function StatusCard({
         </div>
       )}
     </div>
+  );
+}
+
+/** Shown on every confirmation screen: the embassy's own page has the current visiting information. */
+function EmbassyNotice() {
+  const { t } = useI18n();
+  return (
+    <p className="mt-5 flex items-start gap-2 border-t border-line pt-5 text-left text-sm text-ink-2">
+      <Info className="mt-0.5 size-4 flex-none text-accent" aria-hidden="true" />
+      <span>
+        {t("embassyBefore")}
+        <a
+          href={site.embassyUrl}
+          target="_blank"
+          rel="noopener"
+          className="font-semibold text-accent underline underline-offset-2 hover:text-accent-ink"
+        >
+          {t("embassyLink")}
+        </a>
+        {t("embassyAfter")}
+      </span>
+    </p>
   );
 }
 
@@ -864,7 +889,8 @@ function WatchingCard({ onAnother }: { onAnother: () => void }) {
       </span>
       <h1 className="mt-4 text-2xl font-semibold text-ink">{t("watchingTitle")}</h1>
       <p className="mt-2 text-sm text-muted">{t("watchingBody")}</p>
-      <button type="button" className="btn btn-ghost mt-6 w-full border-accent-line text-accent-line" onClick={onAnother}>
+      <EmbassyNotice />
+      <button type="button" className="btn btn-ghost mt-5 w-full border-accent-line text-accent-line" onClick={onAnother}>
         {t("bookAnother")}
       </button>
     </div>
@@ -886,7 +912,8 @@ function AlertCard({ alert, onAnother }: { alert: AlertSubscription; onAnother: 
           {t("openTelegram")} <ArrowRight className="size-4" aria-hidden="true" />
         </a>
       )}
-      <button type="button" className="btn btn-ghost mt-3 w-full border-accent-line text-accent-line" onClick={onAnother}>
+      <EmbassyNotice />
+      <button type="button" className="btn btn-ghost mt-5 w-full border-accent-line text-accent-line" onClick={onAnother}>
         {t("bookAnother")}
       </button>
     </div>
