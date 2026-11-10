@@ -1,7 +1,7 @@
 import type { User } from "@/lib/types";
 import { EMAIL_RE } from "@/lib/applicants";
 import { errorJson, handle, json } from "@/server/http";
-import { sessionCookie, userIdFor } from "@/server/session";
+import { sessionCookie, userIdFor, withRole } from "@/server/session";
 
 /** Demo sign-in: any valid email with a password of 8+ characters. The real backend checks credentials. */
 export async function POST(request: Request) {
@@ -12,6 +12,6 @@ export async function POST(request: Request) {
     if (!EMAIL_RE.test(email) || email.length > 200) return errorJson(422, "invalid_email", "Enter a valid email address.");
     if (password.length < 8) return errorJson(401, "invalid_credentials", "Email or password is incorrect.");
     const user: User = { id: userIdFor(email), email };
-    return json(user, 200, { "Set-Cookie": sessionCookie(user) });
+    return json(withRole(user), 200, { "Set-Cookie": sessionCookie(user) });
   });
 }

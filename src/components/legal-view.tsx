@@ -1,13 +1,13 @@
 "use client";
 
 import { useI18n } from "@/lib/i18n";
-import { legal, type LegalId } from "@/lib/i18n/legal";
+import type { LegalId } from "@/lib/i18n/legal";
 import { site } from "@/lib/site";
 
 /** A plain, flat reading page: no cards, just headings and paragraphs. */
 export function LegalView({ id }: { id: LegalId }) {
-  const { lang } = useI18n();
-  const doc = legal[lang][id];
+  const { l } = useI18n();
+  const doc = l[id];
   const fill = (text: string) => text.replaceAll("{email}", site.contactEmail);
   return (
     <article className="mx-auto max-w-3xl px-4 py-12 sm:px-6 md:py-16 lg:px-8">

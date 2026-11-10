@@ -24,8 +24,23 @@ export function userIdFor(email: string): string {
 }
 
 function sign(user: User): string {
-  const body = b64(JSON.stringify({ ...user, exp: Math.floor(Date.now() / 1000) + MAX_AGE_S }));
+  // The role is never stored in the cookie: it is looked up again on every request.
+  const body = b64(JSON.stringify({ id: user.id, email: user.email, exp: Math.floor(Date.now() / 1000) + MAX_AGE_S }));
   return `${body}.${mac(body)}`;
+}
+
+/**
+ * Administrators are named in ADMIN_EMAILS (comma-separated). The real backend keeps the role
+ * in its database; the mock reads it from the environment so no page ever has to offer it.
+ */
+export function isAdminEmail(email: string): boolean {
+  const list = (process.env.ADMIN_EMAILS ?? "").split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
+  return list.includes(email.trim().toLowerCase());
+}
+
+/** The user as the API returns it: the admin flag is added for administrators only. */
+export function withRole(user: User): User {
+  return isAdminEmail(user.email) ? { id: user.id, email: user.email, admin: true } : { id: user.id, email: user.email };
 }
 
 function verify(token: string): User | null {
@@ -38,7 +53,7 @@ function verify(token: string): User | null {
     const data = JSON.parse(unb64(body)) as User & { exp: number };
     if (typeof data.exp !== "number" || data.exp < Date.now() / 1000) return null;
     if (typeof data.id !== "string" || typeof data.email !== "string") return null;
-    return { id: data.id, email: data.email };
+    return withRole({ id: data.id, email: data.email });
   } catch {
     return null;
   }

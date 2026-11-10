@@ -29,6 +29,7 @@ import { describeWindow, matchesWindow, validateWindow } from "@/lib/window";
 import { announceAuthChange, useMe } from "../auth/use-me";
 import { ApplicantsEditor } from "./applicants-editor";
 import { SlotListSkeleton, type ViewSlot } from "./slot-list";
+import { SupportBox } from "./support-box";
 import { WindowEditor } from "./window-editor";
 
 const POLL_SLOTS_MS = 15_000;
@@ -683,6 +684,8 @@ export function Booking() {
               />
             </>
           )}
+
+          {user && <SupportBox system={system} />}
         </div>
 
         {/* The summary beside the form, like a receipt that fills in as you go. */}

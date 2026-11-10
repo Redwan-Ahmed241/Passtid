@@ -215,6 +215,24 @@ const en = {
   alertsBody: "Open our Telegram bot to link this account. We will message you as soon as a slot matches your dates.",
   alertsNoBot: "Your payment is registered. The Telegram link is not set up yet, so contact support to connect your account.",
   openTelegram: "Open Telegram",
+  reportProblem: "Problem with your booking? Report it",
+  reportTitle: "Report a problem",
+  reportCategory: "What is it about?",
+  catBooking: "Booking",
+  catPayment: "Payment",
+  catAccount: "Account",
+  catOther: "Something else",
+  reportMessage: "Describe the problem",
+  reportSend: "Send report",
+  reportSending: "Sending…",
+  reportSent: "Report sent. Our team has been notified. Your token:",
+  reportFail: "Couldn't send the report. Try again.",
+  errReportShort: "Describe the problem in a few words.",
+  yourReports: "Your reports",
+  ticketOpen: "Open",
+  ticketResolved: "Resolved",
+  supportReply: "Answer from support",
+  close: "Close",
   home: "Home",
   openConsole: "Start booking",
 } as const;
@@ -425,14 +443,36 @@ const sv: Record<TranslationKey, string> = {
   alertsBody: "Öppna vår Telegram-bot för att koppla kontot. Vi skickar ett meddelande så fort en tid matchar dina datum.",
   alertsNoBot: "Din betalning är registrerad. Telegram-länken är inte konfigurerad än, så kontakta supporten för att koppla ditt konto.",
   openTelegram: "Öppna Telegram",
+  reportProblem: "Problem med din bokning? Rapportera det",
+  reportTitle: "Rapportera ett problem",
+  reportCategory: "Vad gäller det?",
+  catBooking: "Bokning",
+  catPayment: "Betalning",
+  catAccount: "Konto",
+  catOther: "Något annat",
+  reportMessage: "Beskriv problemet",
+  reportSend: "Skicka rapport",
+  reportSending: "Skickar…",
+  reportSent: "Rapporten är skickad. Vårt team har fått ett meddelande. Din kod:",
+  reportFail: "Kunde inte skicka rapporten. Försök igen.",
+  errReportShort: "Beskriv problemet med några ord.",
+  yourReports: "Dina rapporter",
+  ticketOpen: "Öppen",
+  ticketResolved: "Löst",
+  supportReply: "Svar från supporten",
+  close: "Stäng",
   home: "Hem",
   openConsole: "Starta bokning",
 };
 
 export const translations: Record<Lang, Record<TranslationKey, string>> = { en, sv };
 
-export function translate(lang: Lang, key: TranslationKey, vars?: Record<string, string | number>): string {
-  let text = translations[lang][key];
+/** Replaces {name} placeholders. */
+export function fill(text: string, vars?: Record<string, string | number>): string {
   if (vars) for (const [k, v] of Object.entries(vars)) text = text.replaceAll(`{${k}}`, String(v));
   return text;
+}
+
+export function translate(lang: Lang, key: TranslationKey, vars?: Record<string, string | number>): string {
+  return fill(translations[lang][key], vars);
 }

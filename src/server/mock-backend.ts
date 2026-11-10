@@ -8,6 +8,7 @@
  */
 import { randomUUID } from "node:crypto";
 import {
+  SYSTEMS,
   SYSTEM_INFO,
   type AlertSubscription,
   type Booking,
@@ -19,6 +20,13 @@ import {
   type Slot,
   type SlotsResponse,
   type SystemId,
+  type AdminBookingPatch,
+  type AdminCustomer,
+  type AdminOverview,
+  type TextOverrides,
+  type Ticket,
+  type TicketCategory,
+  type TicketStatus,
 } from "@/lib/types";
 import { isComplete } from "@/lib/applicants";
 import { defaultRequest } from "@/lib/defaults";
@@ -42,7 +50,12 @@ interface Store {
   /** Seats taken on the migration site by successful bookings, per slot key. */
   taken: Map<string, number>;
   /** What each paid checkout session produced, so a page reload never fulfils it twice. */
-  fulfilled: Map<string, ConfirmResponse>;
+  fulfilled: Map<string, ConfirmResponse>;  /** Problems users reported, by token. */
+  tickets: Map<string, Ticket & { clientId: string }>;
+  /** Site texts an administrator changed. */
+  texts: TextOverrides;
+  /** Every account that signed in, so the admin panel can list people who have not booked yet. */
+  accounts: Map<string, string>;
 }
 
 const globalForStore = globalThis as unknown as { __slotStore?: Store };
@@ -51,6 +64,9 @@ const store: Store = (globalForStore.__slotStore ??= {
   requests: new Map(),
   taken: new Map(),
   fulfilled: new Map(),
+  tickets: new Map(),
+  texts: { en: {}, sv: {} },
+  accounts: new Map(),
 });
 
 const key = (system: SystemId, slot: string) => `${system}|${slot}`;
@@ -301,6 +317,11 @@ function toResponse(system: SystemId, request: BookingRequest, updatedAt: string
   return { request, updatedAt, complete: isComplete(system, request) };
 }
 
+/** Called by /auth/me, login and register so the admin panel knows who exists. */
+export function noteAccount(clientId: string, email: string) {
+  store.accounts.set(clientId, email);
+}
+
 export function getRequest(userId: string, system: SystemId, email: string): RequestResponse {
   const saved = store.requests.get(requestKey(userId, system));
   if (saved) return toResponse(system, saved.request, saved.updatedAt);
@@ -363,4 +384,147 @@ export function fulfilPayment(
   }
   store.fulfilled.set(paid.sessionId, result);
   return result;
+}
+
+/* ------------------------------------------------------------------ */
+/* Support tickets                                                     */
+/* ------------------------------------------------------------------ */
+
+const TOKEN_ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
+
+function newToken(): string {
+  for (;;) {
+    let t = "PT-";
+    for (let i = 0; i < 6; i++) t += TOKEN_ALPHABET[Math.floor(Math.random() * TOKEN_ALPHABET.length)];
+    if (!store.tickets.has(t)) return t;
+  }
+}
+
+const publicTicket = (t: Ticket & { clientId: string }): Ticket => {
+  const { clientId: _clientId, ...rest } = t;
+  void _clientId;
+  return rest;
+};
+
+export function createTicket(
+  clientId: string,
+  email: string,
+  input: { category: TicketCategory; system: SystemId | null; message: string },
+): Ticket {
+  const open = [...store.tickets.values()].filter((t) => t.clientId === clientId && t.status === "open").length;
+  if (open >= 5) {
+    throw new ApiError(429, "too_many_tickets", "You already have 5 open reports. Wait for an answer before sending another.");
+  }
+  const iso = new Date().toISOString();
+  const ticket = {
+    token: newToken(),
+    email,
+    category: input.category,
+    system: input.system,
+    message: input.message,
+    status: "open" as TicketStatus,
+    reply: null,
+    createdAt: iso,
+    updatedAt: iso,
+    clientId,
+  };
+  store.tickets.set(ticket.token, ticket);
+  return publicTicket(ticket);
+}
+
+export function listMyTickets(clientId: string): Ticket[] {
+  return [...store.tickets.values()]
+    .filter((t) => t.clientId === clientId)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .map(publicTicket);
+}
+
+export function adminUpdateTicket(token: string, patch: { status: TicketStatus; reply: string | null }): Ticket {
+  const t = store.tickets.get(token);
+  if (!t) throw new ApiError(404, "ticket_not_found", "No such ticket.");
+  t.status = patch.status;
+  t.reply = patch.reply;
+  t.updatedAt = new Date().toISOString();
+  return publicTicket(t);
+}
+
+/* ------------------------------------------------------------------ */
+/* Admin: everything at once, and edits on a customer's behalf         */
+/* ------------------------------------------------------------------ */
+
+export function adminOverview(): AdminOverview {
+  advance(Date.now());
+  const ids = new Set<string>([...store.accounts.keys()]);
+  for (const k of store.requests.keys()) ids.add(k.split("|")[0]);
+  for (const e of store.entries.values()) ids.add(e.clientId);
+  for (const t of store.tickets.values()) ids.add(t.clientId);
+  const customers: AdminCustomer[] = [...ids].map((clientId) => {
+    const requests: AdminCustomer["requests"] = {};
+    const ticketEmail = [...store.tickets.values()].find((t) => t.clientId === clientId)?.email;
+    const email = store.accounts.get(clientId) ?? ticketEmail ?? "";
+    // Every service is listed, saved or not, so the admin can fill in a request on the customer's behalf.
+    for (const system of SYSTEMS) requests[system] = getRequest(clientId, system, email);
+    return {
+      clientId,
+      email,
+      requests,
+      bookings: [...store.entries.values()].filter((e) => e.clientId === clientId).sort((a, b) => b.createdAt.localeCompare(a.createdAt)).map(toBooking),
+    };
+  });
+  customers.sort((a, b) => a.email.localeCompare(b.email));
+  const tickets = [...store.tickets.values()].map(publicTicket).sort((a, b) => (a.status === b.status ? b.createdAt.localeCompare(a.createdAt) : a.status === "open" ? -1 : 1));
+  return { customers, tickets };
+}
+
+export function adminSaveRequest(clientId: string, system: SystemId, request: BookingRequest): RequestResponse {
+  if (!store.accounts.has(clientId) && ![...store.requests.keys()].some((k) => k.startsWith(clientId + "|"))) {
+    throw new ApiError(404, "customer_not_found", "No such customer.");
+  }
+  return saveRequest(clientId, system, request);
+}
+
+export function adminUpdateBooking(id: string, patch: AdminBookingPatch): Booking {
+  const e = store.entries.get(id);
+  if (!e) throw new ApiError(404, "booking_not_found", "No such booking.");
+  const now = Date.now();
+  if (patch.status === "booked") {
+    const ref = (patch.reference ?? "").trim();
+    if (!ref) throw new ApiError(422, "missing_reference", "Enter the booking number to mark it booked.");
+    if (e.status !== "booked" && SYSTEM_INFO[e.system].showsFreeCount) {
+      const k = key(e.system, e.slot);
+      store.taken.set(k, (store.taken.get(k) ?? 0) + 1);
+    }
+    e.status = "booked";
+    e.reference = ref.slice(0, 40);
+    e.reason = null;
+  } else if (patch.status === "released") {
+    return cancelBooking(id, e.clientId);
+  } else {
+    if (e.status === "booked" && SYSTEM_INFO[e.system].showsFreeCount) {
+      const k = key(e.system, e.slot);
+      store.taken.set(k, Math.max(0, (store.taken.get(k) ?? 0) - 1));
+    }
+    e.status = "pending";
+    e.reference = null;
+    e.reason = null;
+    e.heartbeat = now;
+  }
+  e.updatedAt = new Date(now).toISOString();
+  return toBooking(e);
+}
+
+export function getTexts(): TextOverrides {
+  return store.texts;
+}
+
+/** A null value removes that override, so the built-in text shows again. */
+export function adminSetTexts(patch: Record<"en" | "sv", Record<string, string | null>>): TextOverrides {
+  for (const lang of ["en", "sv"] as const) {
+    for (const [k, v] of Object.entries(patch[lang] ?? {})) {
+      if (!/^[tcl]\.[\w.-]{1,120}$/.test(k)) throw new ApiError(422, "invalid_text_key", `Unknown text key “${k}”.`);
+      if (v === null || v === "") delete store.texts[lang][k];
+      else store.texts[lang][k] = String(v).slice(0, 5000);
+    }
+  }
+  return store.texts;
 }
