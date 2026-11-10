@@ -20,7 +20,6 @@ export default function Home() {
               image: `${site.url}/logo.png`,
               description: site.description,
               applicationCategory: "UtilitiesApplication",
-              creator: { "@type": "Organization", name: site.credit.name, url: site.credit.url },
               publisher: { "@id": ids.organization },
               isPartOf: { "@id": ids.website },
               operatingSystem: "Web",

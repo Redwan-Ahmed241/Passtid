@@ -28,7 +28,6 @@ const en = {
   language: "Language",
   disclaimer:
     "Passtid is an independent booking assistant. It is not affiliated with, endorsed by or operated by the Embassy of Sweden or the Swedish Migration Agency.",
-  builtBy: "Built by",
 
   // save badge
   saving: "Saving",
@@ -260,7 +259,6 @@ const sv: Record<TranslationKey, string> = {
   language: "Språk",
   disclaimer:
     "Passtid är en oberoende bokningsassistent. Den är inte ansluten till, godkänd av eller driven av Sveriges ambassad eller Migrationsverket.",
-  builtBy: "Byggd av",
 
   saving: "Sparar",
   saved: "Sparat",

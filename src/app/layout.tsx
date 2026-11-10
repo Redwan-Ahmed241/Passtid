@@ -48,8 +48,6 @@ export const metadata: Metadata = {
   },
   description: site.description,
   applicationName: site.name,
-  authors: [{ name: site.credit.name, url: site.credit.url }],
-  creator: site.credit.name,
   publisher: site.name,
   keywords: [
     "Passtid",
