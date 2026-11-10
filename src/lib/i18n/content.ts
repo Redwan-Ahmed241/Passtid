@@ -158,7 +158,7 @@ const sv: Content = {
   },
   faq: [
     { q: "Behöver jag ett konto?", a: "Inte för att börja. Du väljer datum och fyller i dina uppgifter först, och skapar kontot i slutet, precis innan du betalar." },
-    { q: "Vad betalar jag för?", a: "Antingen Telegram-Avisering, där vi skickar ett meddelande när en tid matchar och du bokar själv, eller automatisk bokning, där boten bokar den tidigaste matchande tiden åt dig. Telegram-Avisering kostar 4 £ i månaden och kan sägas upp när som helst; automatisk bokning är en enda betalning på 30 £." },
+    { q: "Vad betalar jag för?", a: "Antingen Telegram-Avisering, där vi skickar ett meddelande när en tid matchar och du bokar själv, eller automatisk bokning, där boten bokar den tidigaste matchande tiden åt dig. Telegram-Avisering kostar £4 i månaden och kan sägas upp när som helst; automatisk bokning är en enda betalning på £30." },
     { q: "Vilka uppgifter behöver jag?", a: "För varje person förnamn, efternamn och personnummer för pass och ID-kort eller telefonnummer för samordningsnummer. En e-postadress gäller hela bokningen." },
     { q: "Hur fungerar mina datum?", a: "Välj ett datumintervall och vilken del av dagen du kan komma, eller slå på ”Så snart som möjligt” för att ta den första tiden som dyker upp. Både första och sista dagen i ett intervall räknas, och början av ett tidsintervall går att boka medan slutet inte gör det." },
     { q: "Vilken klocka gäller tiderna?", a: "Alltid ambassadens lokala tid i London, oavsett vilken tidszon du befinner dig i." },
