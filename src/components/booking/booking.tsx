@@ -8,7 +8,7 @@ import { api, ApiRequestError } from "@/lib/api";
 import { formatPrice } from "@/lib/plans";
 import { LOCALES, useI18n } from "@/lib/i18n";
 import type { TranslationKey } from "@/lib/i18n/translations";
-import { isComplete } from "@/lib/applicants";
+import { EMAIL_RE, isComplete } from "@/lib/applicants";
 import { defaultRequest } from "@/lib/defaults";
 import {
   SYSTEMS,
@@ -63,7 +63,8 @@ export function Booking() {
   const [alertSub, setAlertSub] = useState<AlertSubscription | null>(null);
   const [watching, setWatching] = useState(false);
   const [telegramUrl, setTelegramUrl] = useState<string | null>(null);
-  const [accountName, setAccountName] = useState("");
+  // null = follow the contact email from the details step; a string = the customer chose another one.
+  const [accountEmailInput, setAccountEmailInput] = useState<string | null>(null);
   const [accountPassword, setAccountPassword] = useState("");
   const [showAccountErrors, setShowAccountErrors] = useState(false);
   const [showDetailErrors, setShowDetailErrors] = useState(false);
@@ -150,6 +151,7 @@ export function Booking() {
   const savedReq = saved[system] ?? null;
   const windowValid = draft ? validateWindow(draft.window).length === 0 : true;
   const detailsReady = draft ? isComplete(system, draft) : false;
+  const accountEmail = accountEmailInput ?? draft?.email ?? "";
 
   // Autosave once the window is valid and something changed. People and email may still be a draft.
   useEffect(() => {
@@ -368,14 +370,14 @@ export function Booking() {
       setShowDetailErrors(true);
       return;
     }
-    if (!user && (!accountName.trim() || accountPassword.length < 8)) {
+    if (!user && (!EMAIL_RE.test(accountEmail.trim()) || accountPassword.length < 8)) {
       setShowAccountErrors(true);
       return;
     }
     setWorking(true);
     try {
-      // Guests create their account now, with the contact email they already gave.
-      if (!user) announceAuthChange(await api.register(accountName.trim(), draft.email, accountPassword));
+      // Guests create their account now, with the contact email they already gave unless they chose another.
+      if (!user) announceAuthChange(await api.register(accountEmail.trim(), accountPassword));
       const req: BookingRequest = windowValid ? draft : { ...draft, window: effectiveWindow };
       if (!savedReq || !sameRequest(req, savedReq)) {
         await api.saveRequest(system, req);
@@ -635,17 +637,21 @@ export function Booking() {
                   <p className="font-semibold text-ink">{t("accountTitle")}</p>
                   <div className="mt-3 space-y-3">
                     <div>
-                      <label htmlFor="acct-name" className="mb-1.5 block text-sm font-medium text-ink-2">{t("fullName")}</label>
+                      <label htmlFor="acct-email" className="mb-1.5 block text-sm font-medium text-ink-2">{t("accountEmail")}</label>
                       <input
-                        id="acct-name"
+                        id="acct-email"
                         className="field"
-                        autoComplete="name"
-                        value={accountName}
-                        onChange={(e) => setAccountName(e.target.value)}
-                        aria-invalid={showAccountErrors && !accountName.trim()}
+                        type="email"
+                        inputMode="email"
+                        autoComplete="email"
+                        autoCapitalize="none"
+                        spellCheck={false}
+                        value={accountEmail}
+                        onChange={(e) => setAccountEmailInput(e.target.value)}
+                        aria-invalid={showAccountErrors && !EMAIL_RE.test(accountEmail.trim())}
                       />
-                      {showAccountErrors && !accountName.trim() && (
-                        <p role="alert" className="mt-1.5 text-[0.8125rem] text-hot">{t("errEnterName")}</p>
+                      {showAccountErrors && !EMAIL_RE.test(accountEmail.trim()) && (
+                        <p role="alert" className="mt-1.5 text-[0.8125rem] text-hot">{t(accountEmail.trim() ? "errEmailInvalid" : "errAccountEmail")}</p>
                       )}
                     </div>
                     <div>
@@ -675,10 +681,12 @@ export function Booking() {
                   </p>
                 </div>
               )}
-              <p className="mt-3 flex items-start gap-1.5 text-xs text-muted">
-                <CreditCard className="mt-0.5 size-3.5 flex-none" aria-hidden="true" />
-                {plans?.demo ? t("demoPay") : t("securePay")}
-              </p>
+              {plans && !plans.demo && (
+                <p className="mt-3 flex items-start gap-1.5 text-xs text-muted">
+                  <CreditCard className="mt-0.5 size-3.5 flex-none" aria-hidden="true" />
+                  {t("securePay")}
+                </p>
+              )}
               <StepButtons
                 onBack={() => setStep(3)}
                 onNext={() => void pay()}

@@ -30,25 +30,24 @@ let dummy: Promise<string> | null = null;
 
 interface UserRow {
   id: string;
-  name: string;
   email: string;
   password_hash: string;
 }
 
-const toUser = (r: UserRow): User => ({ id: r.id, name: r.name, email: r.email });
+const toUser = (r: UserRow): User => ({ id: r.id, email: r.email });
 
-export async function registerUser(name: string, email: string, password: string): Promise<User> {
+export async function registerUser(email: string, password: string): Promise<User> {
   const id = randomUUID();
   const passwordHash = await hashPassword(password);
   try {
-    await query("insert into users (id, name, email, password_hash) values ($1, $2, $3, $4)", [id, name, email, passwordHash]);
+    await query("insert into users (id, email, password_hash) values ($1, $2, $3)", [id, email, passwordHash]);
   } catch (err) {
     if (isUniqueViolation(err)) {
       throw new ApiError(409, "email_taken", "An account with this email already exists. Sign in instead.");
     }
     throw err;
   }
-  return { id, name, email };
+  return { id, email };
 }
 
 /** At most this many failed sign-ins per email in the window, per server instance. */
@@ -61,7 +60,7 @@ export async function authenticate(email: string, password: string): Promise<Use
   if (f && Date.now() - f.first < WINDOW_MS && f.count >= MAX_FAILURES) {
     throw new ApiError(429, "too_many_attempts", "Too many failed sign-ins. Try again in a few minutes.");
   }
-  const [row] = await query<UserRow>("select id, name, email, password_hash from users where email = $1", [email]);
+  const [row] = await query<UserRow>("select id, email, password_hash from users where email = $1", [email]);
   const hash = row?.password_hash ?? (await (dummy ??= hashPassword("passtid-dummy-password")));
   const ok = await verifyPassword(password, hash);
   if (!row || !ok) {

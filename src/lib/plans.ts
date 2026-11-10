@@ -16,9 +16,9 @@ export function planFor(id: PlanId): Plan {
   return { id, amountCents, currency: "gbp", interval: INTERVALS[id] };
 }
 
-/** "£4", or "£4 / month" when the plan renews and a localised suffix is given. */
+/** "£4", or "£4/mo" when the plan renews and a localised suffix is given. */
 export function formatPrice(plan: Pick<Plan, "amountCents"> & { interval?: Plan["interval"] }, perMonth?: string): string {
   const pounds = plan.amountCents / 100;
   const amount = `£${Number.isInteger(pounds) ? pounds : pounds.toFixed(2)}`;
-  return plan.interval === "month" && perMonth ? `${amount} ${perMonth}` : amount;
+  return plan.interval === "month" && perMonth ? `${amount}${perMonth}` : amount;
 }

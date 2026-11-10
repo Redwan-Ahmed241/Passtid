@@ -46,7 +46,6 @@ export function isSystemId(value: unknown): value is SystemId {
 
 export interface User {
   id: string;
-  name: string;
   email: string;
 }
 

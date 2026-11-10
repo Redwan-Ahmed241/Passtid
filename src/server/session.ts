@@ -36,8 +36,8 @@ function verify(token: string): User | null {
   try {
     const data = JSON.parse(unb64(body)) as User & { exp: number };
     if (typeof data.exp !== "number" || data.exp < Date.now() / 1000) return null;
-    if (typeof data.id !== "string" || typeof data.email !== "string" || typeof data.name !== "string") return null;
-    return { id: data.id, name: data.name, email: data.email };
+    if (typeof data.id !== "string" || typeof data.email !== "string") return null;
+    return { id: data.id, email: data.email };
   } catch {
     return null;
   }

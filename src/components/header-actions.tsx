@@ -33,7 +33,7 @@ export function HeaderActions() {
   return (
     <div className="flex items-center gap-2 md:ml-0">
       <span className="hidden max-w-[10rem] truncate text-sm text-muted xl:inline" title={user.email}>
-        {user.name}
+        {user.email}
       </span>
       <button
         type="button"
