@@ -93,10 +93,14 @@ export async function listSlots(system: SystemId, userId: string): Promise<Slots
   const info = SYSTEM_INFO[system];
   const earliest = `${today}T${embassyClock(nowDate)}`;
 
-  const rows = await query<{ slot: string; free_on_site: number | null; queued: string; mine_id: string | null; mine_status: string | null; mine_ref: string | null }>(
+  const rows = await query<{ slot: string; free_on_site: number | null; queued: string; mine_id: string | null; mine_status: string | null; mine_ref: string | null; mine_autobook: boolean }>(
     `select s.slot, s.free_on_site,
             (select count(*) from bookings b where b.system = s.system and b.slot = s.slot and b.status in ('pending', 'booked')) as queued,
-            m.id as mine_id, m.status as mine_status, m.reference as mine_ref
+            m.id as mine_id, m.status as mine_status, m.reference as mine_ref,
+            exists (
+              select 1 from payments p
+               where p.user_id = m.user_id and p.system = m.system and p.plan = 'autobook'
+            ) as mine_autobook
        from slots s
        left join bookings m on m.system = s.system and m.slot = s.slot and m.user_id = $2 and m.status in ('pending', 'booked')
       where s.system = $1 and s.slot > $3
@@ -108,7 +112,7 @@ export async function listSlots(system: SystemId, userId: string): Promise<Slots
     slot: r.slot,
     freeOnSite: info.showsFreeCount ? r.free_on_site : null,
     queued: Number(r.queued),
-    mine: r.mine_id ? { bookingId: r.mine_id, status: r.mine_status as "pending" | "booked", reference: r.mine_ref } : null,
+    mine: r.mine_id ? { bookingId: r.mine_id, status: r.mine_status as "pending" | "booked", reference: r.mine_ref, autobook: r.mine_autobook } : null,
   }));
 
   return {

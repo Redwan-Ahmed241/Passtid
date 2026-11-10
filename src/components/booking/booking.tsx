@@ -306,11 +306,12 @@ export function Booking() {
   const showStatus = !!mineSlot && !startNew;
   const showAlert = !showStatus && !!alertSub && alertSub.system === system && !startNew;
   const showWatching = !showStatus && !showAlert && watching && !startNew;
+  const autobook = !!mineSlot?.mine?.autobook || showWatching;
 
-  // Email is always sent. Telegram is optional, so fetch the stable link when a
-  // booking status is on screen; failure simply hides the optional link.
+  // Email is always sent. Telegram is optional, so fetch the stable link when an
+  // automatic-booking status is on screen; failure simply hides the optional link.
   useEffect(() => {
-    if (!user || (!showStatus && !showWatching)) return;
+    if (!user || !autobook || (!showStatus && !showWatching)) return;
     let alive = true;
     api.telegramLink().then(
       (res) => {
@@ -323,7 +324,7 @@ export function Booking() {
     return () => {
       alive = false;
     };
-  }, [user, showStatus, showWatching]);
+  }, [user, autobook, showStatus, showWatching]);
 
   /* ----------------------------- actions ----------------------------- */
 
@@ -466,6 +467,7 @@ export function Booking() {
               people={draft.persons.length}
               email={draft.email}
               telegramUrl={telegramUrl}
+              autobook={!!mineSlot.mine?.autobook}
               working={working}
               confirming={confirmingCancel}
               onAskCancel={() => setConfirmingCancel(true)}
@@ -492,6 +494,7 @@ export function Booking() {
           {ready && showWatching && (
             <WatchingCard
               telegramUrl={telegramUrl}
+              autobook={watching}
               onAnother={() => {
                 setStartNew(true);
                 setWatching(false);
@@ -800,6 +803,7 @@ function StatusCard({
   people,
   email,
   telegramUrl,
+  autobook,
   working,
   confirming,
   onAskCancel,
@@ -812,6 +816,7 @@ function StatusCard({
   people: number;
   email: string;
   telegramUrl: string | null;
+  autobook: boolean;
   working: boolean;
   confirming: boolean;
   onAskCancel: () => void;
@@ -854,7 +859,7 @@ function StatusCard({
         <Row label={t("rowEmail")} value={email} />
       </dl>
 
-      {telegramUrl && (
+      {autobook && telegramUrl && (
         <p className="mt-5 text-sm text-muted">
           {t("emailAlways")}{" "}
           <a
@@ -892,7 +897,7 @@ function StatusCard({
 }
 
 /** Shown after automatic booking is paid but no slot fits yet. */
-function WatchingCard({ onAnother, telegramUrl }: { onAnother: () => void; telegramUrl: string | null }) {
+function WatchingCard({ onAnother, telegramUrl, autobook }: { onAnother: () => void; telegramUrl: string | null; autobook: boolean }) {
   const { t } = useI18n();
   return (
     <div className="text-center">
@@ -901,7 +906,7 @@ function WatchingCard({ onAnother, telegramUrl }: { onAnother: () => void; teleg
       </span>
       <h1 className="mt-4 text-2xl font-semibold text-ink">{t("watchingTitle")}</h1>
       <p className="mt-2 text-sm text-muted">{t("watchingBody")}</p>
-      {telegramUrl && (
+      {autobook && telegramUrl && (
         <p className="mt-4 text-sm text-muted">
           {t("emailAlways")}{" "}
           <a
