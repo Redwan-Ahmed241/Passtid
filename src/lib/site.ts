@@ -29,8 +29,6 @@ export const site = {
   embassyUrl: "https://www.swedenabroad.se/en/embassies/united-kingdom-london/",
   contactEmail: process.env.NEXT_PUBLIC_CONTACT_EMAIL || "support@passtid.com",
   locale: "en_GB",
-  /** Every FazeSoft project carries this credit in its footer. */
-  credit: { lead: "Built by", name: "FazeSoft", url: "https://www.fazesoft.com/" },
   disclaimer:
     "Passtid is an independent booking assistant. It is not affiliated with, endorsed by or operated by the Embassy of Sweden or the Swedish Migration Agency.",
 } as const;
