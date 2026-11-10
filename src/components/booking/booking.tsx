@@ -170,8 +170,14 @@ export function Booking() {
   const pending = useMemo(() => {
     const out: { id: string; system: SystemId; slot: string }[] = [];
     for (const sys of SYSTEMS) {
-      for (const s of slotsBy[sys]?.slots ?? []) {
+      const response = slotsBy[sys];
+      for (const s of response?.slots ?? []) {
         if (s.mine?.status === "pending") out.push({ id: s.mine.bookingId, system: sys, slot: s.slot });
+      }
+      // A pending booking can outlive its slot row, so follow myBooking too.
+      const mine = response?.myBooking;
+      if (mine?.status === "pending" && !out.some((p) => p.id === mine.bookingId)) {
+        out.push({ id: mine.bookingId, system: sys, slot: mine.slot });
       }
     }
     return out;
@@ -288,6 +294,7 @@ export function Booking() {
       scanWeeks: weeks,
       generatedAt: new Date().toISOString(),
       slots: [],
+      myBooking: null,
     };
   }, [system]);
   const data = slotsBy[system] ?? (guest ? guestData : undefined);
@@ -302,11 +309,27 @@ export function Booking() {
     () => view.filter((s) => s.inWindow).sort((x, y) => x.slot.localeCompare(y.slot))[0] ?? null,
     [view],
   );
-  const mineSlot = view.find((s) => s.mine) ?? null;
-  const showStatus = !!mineSlot && !startNew;
+  const mySlot = useMemo<ViewSlot | null>(() => {
+    const mine = data?.myBooking;
+    if (!mine) return null;
+    const found = data?.slots.find((s) => s.slot === mine.slot);
+    return {
+      slot: mine.slot,
+      freeOnSite: found?.freeOnSite ?? null,
+      queued: found?.queued ?? 0,
+      mine: {
+        bookingId: mine.bookingId,
+        status: mine.status,
+        reference: mine.reference,
+        autobook: mine.autobook,
+      },
+      inWindow: true,
+    };
+  }, [data]);
+  const showStatus = !!mySlot && !startNew;
   const showAlert = !showStatus && !!alertSub && alertSub.system === system && !startNew;
   const showWatching = !showStatus && !showAlert && watching && !startNew;
-  const autobook = !!mineSlot?.mine?.autobook || showWatching;
+  const autobook = !!mySlot?.mine?.autobook || showWatching;
 
   // Email is always sent. Telegram is optional, so fetch the stable link when an
   // automatic-booking status is on screen; failure simply hides the optional link.
@@ -460,19 +483,19 @@ export function Booking() {
 
           {!ready && !loadError && <SlotListSkeleton />}
 
-          {ready && showStatus && mineSlot && draft && (
+          {ready && showStatus && mySlot && draft && (
             <StatusCard
               system={system}
-              slot={mineSlot}
+              slot={mySlot}
               people={draft.persons.length}
               email={draft.email}
               telegramUrl={telegramUrl}
-              autobook={!!mineSlot.mine?.autobook}
+              autobook={!!mySlot.mine?.autobook}
               working={working}
               confirming={confirmingCancel}
               onAskCancel={() => setConfirmingCancel(true)}
               onKeep={() => setConfirmingCancel(false)}
-              onCancel={() => mineSlot.mine && void cancel(mineSlot.mine.bookingId)}
+              onCancel={() => mySlot.mine && void cancel(mySlot.mine.bookingId)}
               onAnother={() => {
                 setStartNew(true);
                 setStep(1);

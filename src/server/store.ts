@@ -115,6 +115,28 @@ export async function listSlots(system: SystemId, userId: string): Promise<Slots
     mine: r.mine_id ? { bookingId: r.mine_id, status: r.mine_status as "pending" | "booked", reference: r.mine_ref, autobook: r.mine_autobook } : null,
   }));
 
+  const [myBookingRow] = await query<{ id: string; slot: string; status: string; reference: string | null; autobook: boolean }>(
+    `select b.id, b.slot, b.status, b.reference,
+            exists (
+              select 1 from payments p
+               where p.user_id = b.user_id and p.system = b.system and p.plan = 'autobook'
+            ) as autobook
+       from bookings b
+      where b.user_id = $2 and b.system = $1 and b.status in ('pending', 'booked')
+      order by b.updated_at desc, b.created_at desc
+      limit 1`,
+    [system, userId],
+  );
+  const myBooking = myBookingRow
+    ? {
+        bookingId: myBookingRow.id,
+        slot: myBookingRow.slot,
+        status: myBookingRow.status as "pending" | "booked",
+        reference: myBookingRow.reference,
+        autobook: myBookingRow.autobook,
+      }
+    : null;
+
   return {
     system,
     timezone: EMBASSY_TZ,
@@ -123,6 +145,7 @@ export async function listSlots(system: SystemId, userId: string): Promise<Slots
     scanWeeks: info.scanWeeks,
     generatedAt: nowDate.toISOString(),
     slots,
+    myBooking,
   };
 }
 

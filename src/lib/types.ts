@@ -151,6 +151,15 @@ export interface SlotsResponse {
   scanWeeks: number;
   generatedAt: string;
   slots: Slot[];
+  /** The caller's newest pending or booked booking, independent of the current slots table. */
+  myBooking: {
+    bookingId: string;
+    /** Embassy-local ISO date-time, e.g. 2026-10-23T09:30 */
+    slot: string;
+    status: Exclude<BookingStatus, "released">;
+    reference: string | null;
+    autobook: boolean;
+  } | null;
 }
 
 export interface ApiErrorBody {
