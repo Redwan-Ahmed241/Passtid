@@ -424,7 +424,8 @@ export function Booking() {
         announceAuthChange(await api.register(accountEmail.trim(), accountPassword));
         if (accountPhone.trim()) {
           try {
-            await api.savePhone(accountPhone.trim());
+            const saved = await api.savePhone(accountPhone.trim());
+            setAccountPhone(saved.phone ?? "");
           } catch {
             /* optional field: never block the payment */
           }
@@ -518,6 +519,8 @@ export function Booking() {
               email={draft.email}
               telegramUrl={telegramUrl}
               autobook={!!mySlot.mine?.autobook}
+              phone={accountPhone}
+              onPhoneChange={setAccountPhone}
               working={working}
               confirming={confirmingCancel}
               onAskCancel={() => setConfirmingCancel(true)}
@@ -545,6 +548,8 @@ export function Booking() {
             <WatchingCard
               telegramUrl={telegramUrl}
               autobook={watching}
+              phone={accountPhone}
+              onPhoneChange={setAccountPhone}
               onAnother={() => {
                 setStartNew(true);
                 setWatching(false);
@@ -861,32 +866,15 @@ function StepButtons({
 }
 
 /** Optional phone field used by the Telegram bot to link a paying customer's chat. */
-function TelegramPhoneField() {
+function TelegramPhoneField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
   const { t } = useI18n();
-  const { user } = useMe();
-  const [phone, setPhone] = useState("");
   const [state, setState] = useState<"idle" | "saving" | "saved" | "error">("idle");
-
-  useEffect(() => {
-    if (!user) return;
-    let alive = true;
-    api.loadPhone().then(
-      (r) => {
-        if (alive && r.phone) setPhone(r.phone);
-      },
-      () => {
-        /* optional field */
-      },
-    );
-    return () => {
-      alive = false;
-    };
-  }, [user]);
 
   const save = async () => {
     setState("saving");
     try {
-      await api.savePhone(phone.trim() || null);
+      const res = await api.savePhone(value.trim() || null);
+      onChange(res.phone ?? "");
       setState("saved");
     } catch {
       setState("error");
@@ -905,9 +893,9 @@ function TelegramPhoneField() {
           type="tel"
           inputMode="tel"
           autoComplete="tel"
-          value={phone}
+          value={value}
           onChange={(e) => {
-            setPhone(e.target.value);
+            onChange(e.target.value);
             setState("idle");
           }}
           placeholder="+46 70 123 45 67"
@@ -940,6 +928,8 @@ function StatusCard({
   email,
   telegramUrl,
   autobook,
+  phone,
+  onPhoneChange,
   working,
   confirming,
   onAskCancel,
@@ -953,6 +943,8 @@ function StatusCard({
   email: string;
   telegramUrl: string | null;
   autobook: boolean;
+  phone: string;
+  onPhoneChange: (value: string) => void;
   working: boolean;
   confirming: boolean;
   onAskCancel: () => void;
@@ -1009,7 +1001,7 @@ function StatusCard({
         </p>
       )}
 
-      <TelegramPhoneField />
+      <TelegramPhoneField value={phone} onChange={onPhoneChange} />
 
       {confirming ? (
         <div className="mt-6 flex gap-3">
@@ -1035,7 +1027,19 @@ function StatusCard({
 }
 
 /** Shown after automatic booking is paid but no slot fits yet. */
-function WatchingCard({ onAnother, telegramUrl, autobook }: { onAnother: () => void; telegramUrl: string | null; autobook: boolean }) {
+function WatchingCard({
+  onAnother,
+  telegramUrl,
+  autobook,
+  phone,
+  onPhoneChange,
+}: {
+  onAnother: () => void;
+  telegramUrl: string | null;
+  autobook: boolean;
+  phone: string;
+  onPhoneChange: (value: string) => void;
+}) {
   const { t } = useI18n();
   return (
     <div className="text-center">
@@ -1057,7 +1061,7 @@ function WatchingCard({ onAnother, telegramUrl, autobook }: { onAnother: () => v
           </a>
         </p>
       )}
-      <TelegramPhoneField />
+      <TelegramPhoneField value={phone} onChange={onPhoneChange} />
       <button type="button" className="btn btn-ghost mt-6 w-full border-accent-line text-accent-line" onClick={onAnother}>
         {t("bookAnother")}
       </button>
