@@ -66,6 +66,7 @@ export function Booking() {
   const [telegramUrl, setTelegramUrl] = useState<string | null>(null);
   // null = follow the contact email from the details step; a string = the customer chose another one.
   const [accountEmailInput, setAccountEmailInput] = useState<string | null>(null);
+  const [accountPhone, setAccountPhone] = useState("");
   const [accountPassword, setAccountPassword] = useState("");
   const [showAccountErrors, setShowAccountErrors] = useState(false);
   const [showDetailErrors, setShowDetailErrors] = useState(false);
@@ -402,7 +403,16 @@ export function Booking() {
     setWorking(true);
     try {
       // Guests create their account now, with the contact email they already gave unless they chose another.
-      if (!user) announceAuthChange(await api.register(accountEmail.trim(), accountPassword));
+      if (!user) {
+        announceAuthChange(await api.register(accountEmail.trim(), accountPassword));
+        if (accountPhone.trim()) {
+          try {
+            await api.savePhone(accountPhone.trim());
+          } catch {
+            /* optional field: never block the payment */
+          }
+        }
+      }
       const req: BookingRequest = windowValid ? draft : { ...draft, window: effectiveWindow };
       if (!savedReq || !sameRequest(req, savedReq)) {
         await api.saveRequest(system, req);
@@ -688,6 +698,20 @@ export function Booking() {
                       )}
                     </div>
                     <div>
+                      <label htmlFor="acct-phone" className="mb-1.5 block text-sm font-medium text-ink-2">{t("phoneOptional")}</label>
+                      <input
+                        id="acct-phone"
+                        className="field"
+                        type="tel"
+                        inputMode="tel"
+                        autoComplete="tel"
+                        value={accountPhone}
+                        onChange={(e) => setAccountPhone(e.target.value)}
+                        placeholder="+46 70 123 45 67"
+                      />
+                      <p className="mt-1.5 text-[0.8125rem] text-muted">{t("telegramPhoneHint")}</p>
+                    </div>
+                    <div>
                       <label htmlFor="acct-pass" className="mb-1.5 block text-sm font-medium text-ink-2">{t("password")}</label>
                       <input
                         id="acct-pass"
@@ -819,6 +843,61 @@ function StepButtons({
   );
 }
 
+/** Optional phone field used by the Telegram bot to link a paying customer's chat. */
+function TelegramPhoneField() {
+  const { t } = useI18n();
+  const [phone, setPhone] = useState("");
+  const [state, setState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+
+  const save = async () => {
+    setState("saving");
+    try {
+      await api.savePhone(phone.trim() || null);
+      setState("saved");
+    } catch {
+      setState("error");
+    }
+  };
+
+  return (
+    <div className="mt-5 text-left">
+      <label htmlFor="tg-phone" className="mb-1.5 block text-sm font-medium text-ink-2">
+        {t("phoneOptional")}
+      </label>
+      <div className="flex gap-2">
+        <input
+          id="tg-phone"
+          className="field"
+          type="tel"
+          inputMode="tel"
+          autoComplete="tel"
+          value={phone}
+          onChange={(e) => {
+            setPhone(e.target.value);
+            setState("idle");
+          }}
+          placeholder="+46 70 123 45 67"
+        />
+        <button
+          type="button"
+          className="btn btn-ghost flex-none border-accent-line px-4 text-accent-line"
+          disabled={state === "saving"}
+          onClick={() => void save()}
+        >
+          {t("savePhone")}
+        </button>
+      </div>
+      <p className="mt-1.5 text-[0.8125rem] text-muted">{t("telegramPhoneHint")}</p>
+      {state === "saved" && <p className="mt-1.5 text-[0.8125rem] text-accent-line">{t("phoneSaved")}</p>}
+      {state === "error" && (
+        <p role="alert" className="mt-1.5 text-[0.8125rem] text-hot">
+          {t("phoneError")}
+        </p>
+      )}
+    </div>
+  );
+}
+
 /** What the person sees once they hold a place: in the queue, or booked. */
 function StatusCard({
   system,
@@ -896,6 +975,8 @@ function StatusCard({
         </p>
       )}
 
+      <TelegramPhoneField />
+
       {confirming ? (
         <div className="mt-6 flex gap-3">
           <button type="button" className="btn btn-ghost flex-1 border-accent-line text-accent-line" onClick={onKeep}>
@@ -942,6 +1023,7 @@ function WatchingCard({ onAnother, telegramUrl, autobook }: { onAnother: () => v
           </a>
         </p>
       )}
+      <TelegramPhoneField />
       <button type="button" className="btn btn-ghost mt-6 w-full border-accent-line text-accent-line" onClick={onAnother}>
         {t("bookAnother")}
       </button>

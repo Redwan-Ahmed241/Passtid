@@ -214,6 +214,11 @@ const en = {
   openTelegram: "Open Telegram",
   emailAlways: "Email updates are always sent.",
   telegramAlso: "Get updates on Telegram too (optional)",
+  phoneOptional: "Telegram phone number (optional)",
+  telegramPhoneHint: "Only if you also want updates on Telegram. Email is always sent.",
+  savePhone: "Save number",
+  phoneSaved: "Number saved.",
+  phoneError: "That number cannot be used.",
   home: "Home",
   openConsole: "Start booking",
 } as const;
@@ -423,6 +428,11 @@ const sv: Record<TranslationKey, string> = {
   openTelegram: "Öppna Telegram",
   emailAlways: "E-postuppdateringar skickas alltid.",
   telegramAlso: "Få uppdateringar även på Telegram (valfritt)",
+  phoneOptional: "Telegram-telefonnummer (valfritt)",
+  telegramPhoneHint: "Endast om du även vill ha uppdateringar på Telegram. E-post skickas alltid.",
+  savePhone: "Spara nummer",
+  phoneSaved: "Numret sparat.",
+  phoneError: "Det numret kan inte användas.",
   home: "Hem",
   openConsole: "Starta bokning",
 };

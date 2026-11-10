@@ -198,6 +198,11 @@ export interface CheckoutResponse {
   demo: boolean;
 }
 
+export interface PhoneResponse {
+  /** Stored E.164 value, or null when cleared. */
+  phone: string | null;
+}
+
 /** Telegram alerts for one service, active once the notification plan is paid. */
 export interface AlertSubscription {
   id: string;

@@ -381,3 +381,16 @@ export async function getTelegramLink(userId: string): Promise<string | null> {
   const bot = process.env.TELEGRAM_BOT_USERNAME?.replace(/^@/, "");
   return bot ? `https://t.me/${bot}?start=${code}` : null;
 }
+
+/** Save or clear the optional E.164 phone used for Telegram linking. */
+export async function setUserPhone(userId: string, phone: string | null): Promise<string | null> {
+  try {
+    await query("update users set phone = $2 where id = $1", [userId, phone]);
+  } catch (err) {
+    if (isUniqueViolation(err)) {
+      throw new ApiError(409, "phone_taken", "That phone number cannot be used.");
+    }
+    throw err;
+  }
+  return phone;
+}
