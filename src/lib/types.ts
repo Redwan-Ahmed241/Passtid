@@ -47,6 +47,8 @@ export function isSystemId(value: unknown): value is SystemId {
 export interface User {
   id: string;
   email: string;
+  /** Set only for administrators. The role lives in the backend; nothing in the UI offers it. */
+  admin?: boolean;
 }
 
 /* ------------------------- booking window ------------------------ */
@@ -151,6 +153,60 @@ export interface SlotsResponse {
   scanWeeks: number;
   generatedAt: string;
   slots: Slot[];
+}
+
+/* ------------------------- support tickets ----------------------- */
+
+export type TicketStatus = "open" | "resolved";
+
+export const TICKET_CATEGORIES = ["booking", "payment", "account", "other"] as const;
+export type TicketCategory = (typeof TICKET_CATEGORIES)[number];
+
+export const MAX_TICKET_MESSAGE = 2000;
+
+/** A problem a user reported. The token is what they quote when they talk to support. */
+export interface Ticket {
+  /** e.g. PT-4F2K9Q */
+  token: string;
+  email: string;
+  category: TicketCategory;
+  /** The service the user was booking when they reported it, if any. */
+  system: SystemId | null;
+  message: string;
+  status: TicketStatus;
+  /** The administrator's answer, shown to the user. */
+  reply: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/* --------------------------- site texts -------------------------- */
+
+/**
+ * Texts an administrator has changed, per language. Keys are paths into the built-in copy:
+ * "t.<key>" (interface strings), "c.<path>" (page content), "l.<path>" (privacy and terms).
+ */
+export type TextOverrides = Record<"en" | "sv", Record<string, string>>;
+
+/* ------------------------------ admin ---------------------------- */
+
+/** One account with everything it has saved, as the admin panel shows it. */
+export interface AdminCustomer {
+  clientId: string;
+  email: string;
+  requests: Partial<Record<SystemId, RequestResponse>>;
+  bookings: Booking[];
+}
+
+export interface AdminOverview {
+  customers: AdminCustomer[];
+  tickets: Ticket[];
+}
+
+export interface AdminBookingPatch {
+  status: BookingStatus;
+  /** Required when status is "booked". */
+  reference?: string | null;
 }
 
 export interface ApiErrorBody {

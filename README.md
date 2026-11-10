@@ -31,6 +31,13 @@ You only create an account at the end, right before you pay.
 
 Both plans cover 1–10 people and run around the clock.
 
+## Admin panel and support tickets
+
+- **Admin panel.** `/admin` is not linked from anywhere, and anyone who is not an administrator gets the normal 404 page there. An administrator signs in through the ordinary login and opens `/admin` directly. With the bundled mock API, administrators are the emails in `ADMIN_EMAILS`; the real backend keeps the role in its database and returns `"admin": true` from `/auth/me`.
+- **What it does.** Answer and resolve support tickets, see every customer with their saved requests, bookings and alerts, change a customer's request or a booking's status on their behalf, and change any text on the site in English or Swedish (interface strings, page content, privacy policy and terms).
+- **Tickets.** A signed-in user can report a problem from the booking page. They get a token such as `PT-4F2K9Q`, and the ticket appears in the admin panel. With `TELEGRAM_BOT_TOKEN` and `ADMIN_TELEGRAM_CHAT_ID` set, the administrator also gets a Telegram message.
+- **Storage.** In the mock API all of this is kept in memory, so it is lost on a redeploy or cold start. The real backend must implement the same endpoints (`/tickets`, `/texts`, `/admin/*`) with a database.
+
 ## Languages
 
 The site is available in English and Swedish.

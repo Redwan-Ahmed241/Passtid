@@ -42,6 +42,13 @@ export function requireUser(request: Request): User {
   return user;
 }
 
+/** Admin endpoints answer 404 to everyone else, so their existence is not advertised. */
+export function requireAdmin(request: Request): User {
+  const user = userFromRequest(request);
+  if (!user?.admin) throw new ApiError(404, "not_found", "Not found.");
+  return user;
+}
+
 export const SLOT_RE = /^\d{4}-\d{2}-\d{2}T([01]\d|2[0-3]):[0-5]\d$/;
 
 const bad = (message: string) => new ApiError(422, "invalid_request", message);

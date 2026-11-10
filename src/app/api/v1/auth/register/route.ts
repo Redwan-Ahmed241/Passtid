@@ -1,7 +1,7 @@
 import type { User } from "@/lib/types";
 import { EMAIL_RE } from "@/lib/applicants";
 import { errorJson, handle, json } from "@/server/http";
-import { sessionCookie, userIdFor } from "@/server/session";
+import { sessionCookie, userIdFor, withRole } from "@/server/session";
 
 /** Demo registration: validates input and signs the user in. The real backend stores the account. */
 export async function POST(request: Request) {
@@ -14,6 +14,6 @@ export async function POST(request: Request) {
       return errorJson(422, "weak_password", "Use a password of at least 8 characters.");
     }
     const user: User = { id: userIdFor(email), email };
-    return json(user, 201, { "Set-Cookie": sessionCookie(user) });
+    return json(withRole(user), 201, { "Set-Cookie": sessionCookie(user) });
   });
 }
