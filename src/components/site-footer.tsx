@@ -5,7 +5,6 @@ import { Wordmark } from "./brand";
 import { features } from "@/lib/features";
 import { useI18n } from "@/lib/i18n";
 import type { TranslationKey } from "@/lib/i18n/translations";
-import { site } from "@/lib/site";
 
 /** Hidden unless NEXT_PUBLIC_SHOW_RULES=true. */
 const RULES_LINK = { href: "/rules", label: "navRules" } as const;
@@ -39,19 +38,6 @@ export function SiteFooter() {
             ))}
           </ul>
         </nav>
-      </div>
-      <div className="border-t border-line">
-        <p className="mx-auto max-w-5xl px-4 py-5 font-mono text-xs text-muted sm:px-6 lg:px-8">
-          {t("builtBy")}{" "}
-          <a
-            href={site.credit.url}
-            target="_blank"
-            rel="noopener"
-            className="inline-flex min-h-11 items-center font-semibold text-ink-2 underline-offset-4 hover:text-ink hover:underline sm:min-h-0"
-          >
-            {site.credit.name}
-          </a>
-        </p>
       </div>
     </footer>
   );

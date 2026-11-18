@@ -6,8 +6,16 @@
 function baseUrl(): string {
   const explicit = process.env.NEXT_PUBLIC_SITE_URL;
   const vercel = process.env.VERCEL_PROJECT_PRODUCTION_URL;
-  const raw = explicit || (vercel ? `https://${vercel}` : "http://localhost:3000");
-  return raw.replace(/\/$/, "");
+  const fallback = vercel ? `https://${vercel}` : "http://localhost:3000";
+  // Accept "passtid.nu" as well as "https://passtid.nu": a value without a scheme used to fail the build.
+  const raw = (explicit || fallback).trim();
+  const withScheme = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+  try {
+    return new URL(withScheme).origin;
+  } catch {
+    console.warn(`NEXT_PUBLIC_SITE_URL is not a valid URL ("${raw}"); using ${fallback} instead.`);
+    return fallback;
+  }
 }
 
 export const site = {
@@ -17,10 +25,10 @@ export const site = {
     "Passtid watches Swedish embassy slots in London for passports, ID cards and coordination numbers 24/7, then alerts you or books the first one that fits.",
   url: baseUrl(),
   /** Shown in the privacy policy and terms. Set NEXT_PUBLIC_CONTACT_EMAIL to the real support address. */
+  /** The embassy's own page, with opening hours, what to bring and current notices. */
+  embassyUrl: "https://www.swedenabroad.se/en/embassies/united-kingdom-london/",
   contactEmail: process.env.NEXT_PUBLIC_CONTACT_EMAIL || "support@passtid.com",
   locale: "en_GB",
-  /** Every FazeSoft project carries this credit in its footer. */
-  credit: { lead: "Built by", name: "FazeSoft", url: "https://www.fazesoft.com/" },
   disclaimer:
     "Passtid is an independent booking assistant. It is not affiliated with, endorsed by or operated by the Embassy of Sweden or the Swedish Migration Agency.",
 } as const;

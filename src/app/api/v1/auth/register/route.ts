@@ -1,7 +1,7 @@
 import { EMAIL_RE } from "@/lib/applicants";
 import { registerUser } from "@/server/auth";
 import { errorJson, handle, json } from "@/server/http";
-import { sessionCookie } from "@/server/session";
+import { sessionCookie, withRole } from "@/server/session";
 
 /** Creates the account and signs the new user in. */
 export async function POST(request: Request) {
@@ -14,6 +14,6 @@ export async function POST(request: Request) {
       return errorJson(422, "weak_password", "Use a password of at least 8 characters.");
     }
     const user = await registerUser(email, password);
-    return json(user, 201, { "Set-Cookie": sessionCookie(user) });
+    return json(withRole(user), 201, { "Set-Cookie": sessionCookie(user) });
   });
 }

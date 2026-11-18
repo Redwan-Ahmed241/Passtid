@@ -28,7 +28,6 @@ const en = {
   language: "Language",
   disclaimer:
     "Passtid is an independent booking assistant. It is not affiliated with, endorsed by or operated by the Embassy of Sweden or the Swedish Migration Agency.",
-  builtBy: "Built by",
 
   // save badge
   saving: "Saving",
@@ -108,6 +107,9 @@ const en = {
   bookingNumber: "Booking number",
   refPending: "pending",
   nobodyAhead: "Nobody is ahead of you.",
+  embassyBefore: "Before you visit the embassy, read the latest information on ",
+  embassyLink: "Sweden Abroad",
+  embassyAfter: ".",
   oneAhead: "1 person is ahead of you.",
   manyAhead: "{n} people are ahead of you.",
   keepIt: "Keep it",
@@ -219,6 +221,24 @@ const en = {
   savePhone: "Save number",
   phoneSaved: "Number saved.",
   phoneError: "That number cannot be used.",
+  reportProblem: "Problem with your booking? Report it",
+  reportTitle: "Report a problem",
+  reportCategory: "What is it about?",
+  catBooking: "Booking",
+  catPayment: "Payment",
+  catAccount: "Account",
+  catOther: "Something else",
+  reportMessage: "Describe the problem",
+  reportSend: "Send report",
+  reportSending: "Sending…",
+  reportSent: "Report sent. Our team has been notified. Your token:",
+  reportFail: "Couldn't send the report. Try again.",
+  errReportShort: "Describe the problem in a few words.",
+  yourReports: "Your reports",
+  ticketOpen: "Open",
+  ticketResolved: "Resolved",
+  supportReply: "Answer from support",
+  close: "Close",
   home: "Home",
   openConsole: "Start booking",
 } as const;
@@ -246,7 +266,6 @@ const sv: Record<TranslationKey, string> = {
   language: "Språk",
   disclaimer:
     "Passtid är en oberoende bokningsassistent. Den är inte ansluten till, godkänd av eller driven av Sveriges ambassad eller Migrationsverket.",
-  builtBy: "Byggd av",
 
   saving: "Sparar",
   saved: "Sparat",
@@ -322,6 +341,9 @@ const sv: Record<TranslationKey, string> = {
   bookingNumber: "Bokningsnummer",
   refPending: "väntar",
   nobodyAhead: "Ingen står före dig.",
+  embassyBefore: "Läs den senaste informationen på ",
+  embassyLink: "Sweden Abroad",
+  embassyAfter: " innan du besöker ambassaden.",
   oneAhead: "1 person står före dig.",
   manyAhead: "{n} personer står före dig.",
   keepIt: "Behåll",
@@ -433,14 +455,36 @@ const sv: Record<TranslationKey, string> = {
   savePhone: "Spara nummer",
   phoneSaved: "Numret sparat.",
   phoneError: "Det numret kan inte användas.",
+  reportProblem: "Problem med din bokning? Rapportera det",
+  reportTitle: "Rapportera ett problem",
+  reportCategory: "Vad gäller det?",
+  catBooking: "Bokning",
+  catPayment: "Betalning",
+  catAccount: "Konto",
+  catOther: "Något annat",
+  reportMessage: "Beskriv problemet",
+  reportSend: "Skicka rapport",
+  reportSending: "Skickar…",
+  reportSent: "Rapporten är skickad. Vårt team har fått ett meddelande. Din kod:",
+  reportFail: "Kunde inte skicka rapporten. Försök igen.",
+  errReportShort: "Beskriv problemet med några ord.",
+  yourReports: "Dina rapporter",
+  ticketOpen: "Öppen",
+  ticketResolved: "Löst",
+  supportReply: "Svar från supporten",
+  close: "Stäng",
   home: "Hem",
   openConsole: "Starta bokning",
 };
 
 export const translations: Record<Lang, Record<TranslationKey, string>> = { en, sv };
 
-export function translate(lang: Lang, key: TranslationKey, vars?: Record<string, string | number>): string {
-  let text = translations[lang][key];
+/** Replaces {name} placeholders. */
+export function fill(text: string, vars?: Record<string, string | number>): string {
   if (vars) for (const [k, v] of Object.entries(vars)) text = text.replaceAll(`{${k}}`, String(v));
   return text;
+}
+
+export function translate(lang: Lang, key: TranslationKey, vars?: Record<string, string | number>): string {
+  return fill(translations[lang][key], vars);
 }

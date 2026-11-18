@@ -83,6 +83,26 @@ create index if not exists notifications_due on notifications (next_attempt_at) 
 alter table users add column if not exists telegram_code text unique, add column if not exists telegram_chat_id text;
 alter table users add column if not exists phone text;
 create unique index if not exists users_phone_key on users (phone) where phone is not null;
+create table if not exists tickets (
+  token text primary key,      -- e.g. PT-4F2K9Q, quoted by the user to support
+  user_id text not null references users(id) on delete cascade,
+  email text not null,
+  category text not null,      -- booking | payment | account | other
+  system text,
+  message text not null,
+  status text not null default 'open',  -- open | resolved
+  reply text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists tickets_user_idx on tickets (user_id, status);
+create table if not exists site_texts (
+  lang text not null,          -- en | sv
+  key text not null,           -- t.<key>, c.<path> or l.<path>
+  value text not null,
+  updated_at timestamptz not null default now(),
+  primary key (lang, key)
+);
 `;
 
 const g = globalThis as unknown as { __pool?: Pool; __schema?: Promise<void> };

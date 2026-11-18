@@ -11,6 +11,12 @@ import type {
   SlotsResponse,
   SystemId,
   User,
+  AdminBookingPatch,
+  AdminOverview,
+  TextOverrides,
+  Ticket,
+  TicketCategory,
+  TicketStatus,
 } from "./types";
 
 /** Browser client for this app's own route handlers (src/app/api/v1). Requests carry the session cookie. */
@@ -85,4 +91,19 @@ export const api = {
   loadPhone: () => request<PhoneResponse>(`/account/phone`),
   savePhone: (phone: string | null) =>
     request<PhoneResponse>(`/account/phone`, { method: "PUT", body: JSON.stringify({ phone }) }),
+
+  texts: () => request<TextOverrides>(`/texts`),
+  myTickets: () => request<{ tickets: Ticket[] }>(`/tickets`),
+  createTicket: (input: { category: TicketCategory; system: SystemId | null; message: string }) =>
+    request<Ticket>(`/tickets`, { method: "POST", body: JSON.stringify(input) }),
+
+  adminOverview: () => request<AdminOverview>(`/admin/overview`),
+  adminUpdateTicket: (token: string, patch: { status: TicketStatus; reply: string | null }) =>
+    request<Ticket>(`/admin/tickets/${encodeURIComponent(token)}`, { method: "PATCH", body: JSON.stringify(patch) }),
+  adminSaveRequest: (clientId: string, system: SystemId, body: BookingRequest) =>
+    request<RequestResponse>(`/admin/requests/${encodeURIComponent(clientId)}/${system}`, { method: "PUT", body: JSON.stringify(body) }),
+  adminUpdateBooking: (id: string, patch: AdminBookingPatch) =>
+    request<Booking>(`/admin/bookings/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(patch) }),
+  adminSetTexts: (patch: Record<"en" | "sv", Record<string, string | null>>) =>
+    request<TextOverrides>(`/admin/texts`, { method: "PUT", body: JSON.stringify(patch) }),
 };
