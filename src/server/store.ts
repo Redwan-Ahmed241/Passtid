@@ -261,7 +261,9 @@ export function fulfilPayment(paid: PaidInfo, userId: string): Promise<ConfirmRe
     if (paid.plan === "notify") {
       const code = randomBytes(12).toString("hex");
       await query(
-        "insert into alert_subscriptions (user_id, system, telegram_code, stripe_subscription_id) values ($1, $2, $3, $4)",
+        // A user who already linked Telegram (by phone or an earlier code) gets alerts straight away.
+        `insert into alert_subscriptions (user_id, system, telegram_code, stripe_subscription_id, telegram_chat_id)
+         values ($1, $2, $3, $4, (select telegram_chat_id from users where id = $1))`,
         [userId, paid.system, code, paid.subscriptionId ?? null],
       );
       const bot = process.env.TELEGRAM_BOT_USERNAME?.replace(/^@/, "");
