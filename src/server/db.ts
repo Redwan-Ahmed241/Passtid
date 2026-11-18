@@ -83,6 +83,12 @@ create index if not exists notifications_due on notifications (next_attempt_at) 
 alter table users add column if not exists telegram_code text unique, add column if not exists telegram_chat_id text;
 alter table users add column if not exists phone text;
 create unique index if not exists users_phone_key on users (phone) where phone is not null;
+-- Slots already announced to each alert subscription, so a slot is never announced twice.
+create table if not exists alert_seen (
+  subscription_id uuid not null references alert_subscriptions(id) on delete cascade,
+  slot text not null,
+  primary key (subscription_id, slot)
+);
 create table if not exists tickets (
   token text primary key,      -- e.g. PT-4F2K9Q, quoted by the user to support
   user_id text not null references users(id) on delete cascade,
