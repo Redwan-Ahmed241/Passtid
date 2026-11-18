@@ -778,7 +778,7 @@ export function Booking() {
             </>
           )}
 
-          {user && <SupportBox system={system} />}
+          {user && <SupportBox system={system} startOpen={params.get("support") === "1"} />}
         </div>
 
         {/* The summary beside the form, like a receipt that fills in as you go. */}

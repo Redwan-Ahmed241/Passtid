@@ -13,6 +13,7 @@ const links = [
   { href: "/#how", label: "navHow" },
   { href: "/#price", label: "navPrice" },
   { href: "/#faq", label: "navFaq" },
+  { href: "/booking?support=1", label: "navSupport" },
   ...(features.rules ? [RULES_LINK] : []),
   { href: "/privacy", label: "navPrivacy" },
   { href: "/terms", label: "navTerms" },

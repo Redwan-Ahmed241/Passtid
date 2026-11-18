@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { LifeBuoy, Loader2 } from "lucide-react";
 import { api, ApiRequestError } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
@@ -18,10 +18,15 @@ const CATEGORY_KEYS: Record<TicketCategory, TranslationKey> = {
  * Lets a signed-in user report a problem. They get a token to quote, the administrator is
  * notified, and any answer shows up here under "Your reports".
  */
-export function SupportBox({ system }: { system: SystemId }) {
+export function SupportBox({ system, startOpen = false }: { system: SystemId; startOpen?: boolean }) {
   const { t } = useI18n();
   const uid = useId();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(startOpen);
+  const sectionRef = useRef<HTMLElement>(null);
+  // Opened from the "Support" link: bring the box into view.
+  useEffect(() => {
+    if (startOpen) sectionRef.current?.scrollIntoView({ block: "start" });
+  }, [startOpen]);
   const [category, setCategory] = useState<TicketCategory>("booking");
   const [message, setMessage] = useState("");
   const [showError, setShowError] = useState(false);
@@ -62,7 +67,7 @@ export function SupportBox({ system }: { system: SystemId }) {
   };
 
   return (
-    <section aria-labelledby={`${uid}-h`} className="mt-10 border-t border-line pt-6">
+    <section ref={sectionRef} aria-labelledby={`${uid}-h`} className="mt-10 border-t border-line pt-6">
       {!open ? (
         <button
           type="button"

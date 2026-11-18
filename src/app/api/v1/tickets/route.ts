@@ -1,14 +1,13 @@
 import { MAX_TICKET_MESSAGE, TICKET_CATEGORIES, isSystemId, type TicketCategory } from "@/lib/types";
 import { createTicket, listMyTickets } from "@/server/admin";
 import { errorJson, handle, json, requireUser } from "@/server/http";
-import { notifyAdminOfTicket } from "@/server/notify";
 
 /** The caller's own tickets, newest first, with any answer from support. */
 export async function GET(request: Request) {
   return handle(async () => json({ tickets: await listMyTickets(requireUser(request).id) }));
 }
 
-/** Report a problem. Answers with the ticket and its token, and notifies the administrator. */
+/** Report a problem. Answers with the ticket and its token, emails the user and alerts the administrator. */
 export async function POST(request: Request) {
   return handle(async () => {
     const user = requireUser(request);
@@ -23,7 +22,6 @@ export async function POST(request: Request) {
       system: isSystemId(body.system) ? body.system : null,
       message,
     });
-    notifyAdminOfTicket(ticket);
     return json(ticket, 201);
   });
 }

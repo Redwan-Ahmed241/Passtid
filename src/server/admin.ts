@@ -3,7 +3,7 @@
  * Bookings here are the same rows the Python booking bot works on, so every change is a guarded
  * single-row update rather than a read-modify-write.
  */
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import {
   SYSTEMS,
   type AdminBookingPatch,
@@ -24,12 +24,14 @@ import { isComplete } from "@/lib/applicants";
 import { isUniqueViolation, query } from "./db";
 import { ApiError } from "./errors";
 import { cancelBooking, getRequest, saveRequest } from "./store";
+import { site } from "@/lib/site";
 
 /* ------------------------------------------------------------------ */
 /* Support tickets                                                     */
 /* ------------------------------------------------------------------ */
 
 const MAX_OPEN_TICKETS = 5;
+const MAX_TICKETS_PER_HOUR = 3;
 const TOKEN_ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
 
 function newToken(): string {
@@ -65,6 +67,83 @@ const toTicket = (r: TicketRow): Ticket => ({
   updatedAt: r.updated_at.toISOString(),
 });
 
+/* Messages go into the notifications outbox; the notifier worker (sweden/bots) sends and retries them. */
+
+async function enqueue(kind: string, dedupeKey: string, userId: string | null, channel: string, address: string, message: string) {
+  await query(
+    `insert into notifications (user_id, kind, dedupe_key, channel, address, message)
+     values ($1, $2, $3, $4, $5, $6) on conflict (dedupe_key) do nothing`,
+    [userId, kind, `${dedupeKey}:${address}`, channel, address, message],
+  );
+  await query("select pg_notify('notify_needed', '')");
+}
+
+const supportUrl = () => `${site.url}/booking?support=1`;
+
+/** Email to the customer that the report arrived, and a Telegram alert to the administrator. */
+async function announceTicket(userId: string, ticket: Ticket) {
+  await enqueue(
+    "ticket_received",
+    `ticket_received:${ticket.token}`,
+    userId,
+    "email",
+    ticket.email,
+    `We received your report ${ticket.token}.
+
+` +
+      `Your message:
+${ticket.message}
+
+` +
+      `We will email you when support answers. You can also see your reports here: ${supportUrl()}
+
+` +
+      `Quote ${ticket.token} if you contact us about it.`,
+  );
+  const adminChat = process.env.TELEGRAM_ADMIN_CHAT_ID ?? process.env.ADMIN_TELEGRAM_CHAT_ID;
+  if (adminChat) {
+    await enqueue(
+      "ticket_new",
+      `ticket_new:${ticket.token}`,
+      null,
+      "telegram",
+      adminChat,
+      `New support ticket ${ticket.token}
+From: ${ticket.email}
+About: ${ticket.category}
+
+${ticket.message}`,
+    );
+  }
+}
+
+/** Email to the customer when support writes or changes an answer. The same answer is never sent twice. */
+async function announceAnswer(userId: string, ticket: Ticket) {
+  if (!ticket.reply) return;
+  const digest = createHash("sha256").update(ticket.reply).digest("hex").slice(0, 16);
+  await enqueue(
+    "ticket_answered",
+    `ticket_answered:${ticket.token}:${digest}`,
+    userId,
+    "email",
+    ticket.email,
+    `Support answered your report ${ticket.token}.
+
+` +
+      `Your message:
+${ticket.message}
+
+` +
+      `Answer from support:
+${ticket.reply}
+
+` +
+      `Status: ${ticket.status === "resolved" ? "resolved" : "still open"}.
+` +
+      `See all your reports: ${supportUrl()}`,
+  );
+}
+
 export async function createTicket(
   userId: string,
   email: string,
@@ -77,6 +156,13 @@ export async function createTicket(
   if (open >= MAX_OPEN_TICKETS) {
     throw new ApiError(429, "too_many_tickets", "You already have 5 open reports. Wait for an answer before sending another.");
   }
+  const [{ recent }] = await query<{ recent: number }>(
+    "select count(*)::int as recent from tickets where user_id = $1 and created_at > now() - interval '1 hour'",
+    [userId],
+  );
+  if (recent >= MAX_TICKETS_PER_HOUR) {
+    throw new ApiError(429, "too_many_tickets_recently", "You have sent 3 reports in the last hour. Try again later.");
+  }
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
       const [row] = await query<TicketRow>(
@@ -84,7 +170,9 @@ export async function createTicket(
          values ($1, $2, $3, $4, $5, $6) returning ${TICKET_COLUMNS}`,
         [newToken(), userId, email, input.category, input.system, input.message],
       );
-      return toTicket(row);
+      const ticket = toTicket(row);
+      await announceTicket(userId, ticket);
+      return ticket;
     } catch (err) {
       if (!isUniqueViolation(err)) throw err;
     }
@@ -101,12 +189,14 @@ export async function listMyTickets(userId: string): Promise<Ticket[]> {
 }
 
 export async function adminUpdateTicket(token: string, patch: { status: TicketStatus; reply: string | null }): Promise<Ticket> {
-  const [row] = await query<TicketRow>(
-    `update tickets set status = $2, reply = $3, updated_at = now() where token = $1 returning ${TICKET_COLUMNS}`,
+  const [row] = await query<TicketRow & { user_id: string }>(
+    `update tickets set status = $2, reply = $3, updated_at = now() where token = $1 returning ${TICKET_COLUMNS}, user_id`,
     [token, patch.status, patch.reply],
   );
   if (!row) throw new ApiError(404, "ticket_not_found", "No such ticket.");
-  return toTicket(row);
+  const ticket = toTicket(row);
+  await announceAnswer(row.user_id, ticket);
+  return ticket;
 }
 
 /* ------------------------------------------------------------------ */
