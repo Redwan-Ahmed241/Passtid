@@ -211,6 +211,10 @@ export async function adminSaveRequest(userId: string, system: SystemId, request
   return saveRequest(userId, system, request);
 }
 
+/** The booking bot changed the row after the admin loaded it: refresh instead of overwriting. */
+const changedMeanwhile = () =>
+  new ApiError(409, "booking_changed", "This booking changed while you were looking at it. Refresh and try again.");
+
 /**
  * Mark a booking booked (with its booking number), release it, or put it back in the bot's queue.
  * Each change is one guarded update, so it never overwrites what the booking bot did in between.
@@ -227,9 +231,10 @@ export async function adminUpdateBooking(id: string, patch: AdminBookingPatch): 
     try {
       const [row] = await query<BookingRow>(
         `update bookings set status = 'booked', reference = $2, reason = null, updated_at = now()
-          where id::text = $1 returning ${BOOKING_COLUMNS}`,
-        [id, ref],
+          where id::text = $1 and status = $3 returning ${BOOKING_COLUMNS}`,
+        [id, ref, current.status],
       );
+      if (!row) throw changedMeanwhile();
       return toBooking(row);
     } catch (err) {
       if (isUniqueViolation(err)) {
@@ -243,9 +248,10 @@ export async function adminUpdateBooking(id: string, patch: AdminBookingPatch): 
   try {
     const [row] = await query<BookingRow>(
       `update bookings set status = 'pending', reference = null, reason = null, heartbeat = now(), updated_at = now()
-        where id::text = $1 returning ${BOOKING_COLUMNS}`,
-      [id],
+        where id::text = $1 and status = $2 returning ${BOOKING_COLUMNS}`,
+      [id, current.status],
     );
+    if (!row) throw changedMeanwhile();
     return toBooking(row);
   } catch (err) {
     if (isUniqueViolation(err)) {
