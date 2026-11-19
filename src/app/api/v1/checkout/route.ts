@@ -1,13 +1,13 @@
 import { isPlanId, isSystemId, type CheckoutResponse } from "@/lib/types";
 import { getRequest } from "@/server/mock-backend";
-import { SLOT_RE, errorJson, handle, json, requireUser } from "@/server/http";
+import { SLOT_RE, errorJson, handle, json, requireUser, readJson } from "@/server/http";
 import { createCheckout } from "@/server/payments";
 
 /** Start paying for a plan. Only a complete booking request can be paid for. */
 export async function POST(request: Request) {
   return handle(async () => {
     const user = requireUser(request);
-    const body = (await request.json()) as { system?: unknown; plan?: unknown; slot?: unknown };
+    const body = (await readJson(request)) as { system?: unknown; plan?: unknown; slot?: unknown };
     if (!isSystemId(body.system)) return errorJson(422, "invalid_system", "`system` must be passport or coordination_number.");
     if (!isPlanId(body.plan)) return errorJson(422, "invalid_plan", "`plan` must be notify or autobook.");
     const slot = typeof body.slot === "string" && SLOT_RE.test(body.slot) ? body.slot : null;

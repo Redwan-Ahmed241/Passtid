@@ -34,6 +34,8 @@ function sign(user: User): string {
  * in its database; the mock reads it from the environment so no page ever has to offer it.
  */
 export function isAdminEmail(email: string): boolean {
+  // Without a private AUTH_SECRET in production a cookie could be forged, so nobody is an administrator.
+  if (process.env.NODE_ENV === "production" && !process.env.AUTH_SECRET) return false;
   const list = (process.env.ADMIN_EMAILS ?? "").split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
   return list.includes(email.trim().toLowerCase());
 }

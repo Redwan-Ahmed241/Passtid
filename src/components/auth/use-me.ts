@@ -69,6 +69,7 @@ export function displayName(email: string): string {
 
 /** Only allow same-site paths as a post-login destination. */
 export function safeNext(raw: string | null): string {
-  if (!raw || !raw.startsWith("/") || raw.startsWith("//") || raw.startsWith("/\\")) return "/booking";
+  // Same-site paths only. Anything with a backslash, control character or second slash can be read as another host.
+  if (!raw || raw.length > 300 || !/^\/(?!\/)[A-Za-z0-9\-._~/?=&%#+]*$/.test(raw)) return "/booking";
   return raw;
 }

@@ -1,6 +1,7 @@
 import { MAX_TICKET_MESSAGE, TICKET_CATEGORIES, isSystemId, type TicketCategory } from "@/lib/types";
 import { createTicket, listMyTickets } from "@/server/mock-backend";
-import { errorJson, handle, json, requireUser } from "@/server/http";
+import { cleanMultiline } from "@/lib/sanitize";
+import { errorJson, handle, json, rateLimit, readJson, requireUser } from "@/server/http";
 import { notifyAdminOfTicket } from "@/server/notify";
 
 /** The caller's own tickets, newest first, with any answer from support. */
@@ -12,9 +13,10 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   return handle(async () => {
     const user = requireUser(request);
-    const body = (await request.json()) as { category?: unknown; system?: unknown; message?: unknown };
+    rateLimit(request, "ticket", 10, 60 * 60 * 1000, user.id);
+    const body = (await readJson(request)) as { category?: unknown; system?: unknown; message?: unknown };
     const category = TICKET_CATEGORIES.find((c) => c === body.category) as TicketCategory | undefined;
-    const message = typeof body.message === "string" ? body.message.trim() : "";
+    const message = cleanMultiline(body.message, MAX_TICKET_MESSAGE + 1);
     if (!category) return errorJson(422, "invalid_category", "Choose what the problem is about.");
     if (message.length < 10) return errorJson(422, "message_too_short", "Describe the problem in a few words.");
     if (message.length > MAX_TICKET_MESSAGE) return errorJson(422, "message_too_long", "The message is too long.");

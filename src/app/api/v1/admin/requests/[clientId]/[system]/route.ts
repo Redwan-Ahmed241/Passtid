@@ -1,6 +1,6 @@
 import { isSystemId } from "@/lib/types";
 import { adminSaveRequest } from "@/server/mock-backend";
-import { errorJson, handle, json, parseBookingRequest, requireAdmin } from "@/server/http";
+import { errorJson, handle, json, parseBookingRequest, requireAdmin, readJson } from "@/server/http";
 
 type Ctx = { params: Promise<{ clientId: string; system: string }> };
 
@@ -10,6 +10,6 @@ export async function PUT(request: Request, { params }: Ctx) {
   return handle(async () => {
     requireAdmin(request);
     if (!isSystemId(system)) return errorJson(404, "unknown_system", `Unknown system “${system}”.`);
-    return json(adminSaveRequest(clientId, system, parseBookingRequest(await request.json())));
+    return json(adminSaveRequest(clientId, system, parseBookingRequest(await readJson(request))));
   });
 }

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { AlertTriangle, ArrowRight, BellRing, Bot, Check, CreditCard, Info, Loader2 } from "lucide-react";
+import { AlertTriangle, ArrowRight, BellRing, Bot, Check, CreditCard, Eye, EyeOff, Info, Loader2 } from "lucide-react";
 import { api, ApiRequestError } from "@/lib/api";
 import { formatPrice } from "@/lib/plans";
 import { LOCALES, useI18n } from "@/lib/i18n";
@@ -68,6 +68,7 @@ export function Booking() {
   // null = follow the contact email from the details step; a string = the customer chose another one.
   const [accountEmailInput, setAccountEmailInput] = useState<string | null>(null);
   const [accountPassword, setAccountPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [showAccountErrors, setShowAccountErrors] = useState(false);
   const [showDetailErrors, setShowDetailErrors] = useState(false);
   const [confirmingCancel, setConfirmingCancel] = useState(false);
@@ -632,6 +633,7 @@ export function Booking() {
                         type="email"
                         inputMode="email"
                         autoComplete="email"
+                        maxLength={200}
                         autoCapitalize="none"
                         spellCheck={false}
                         value={accountEmail}
@@ -644,15 +646,27 @@ export function Booking() {
                     </div>
                     <div>
                       <label htmlFor="acct-pass" className="mb-1.5 block text-sm font-medium text-ink-2">{t("password")}</label>
-                      <input
-                        id="acct-pass"
-                        className="field"
-                        type="password"
-                        autoComplete="new-password"
-                        value={accountPassword}
-                        onChange={(e) => setAccountPassword(e.target.value)}
-                        aria-invalid={showAccountErrors && accountPassword.length < 8}
-                      />
+                      <div className="relative">
+                        <input
+                          id="acct-pass"
+                          className="field pr-12"
+                          type={showPassword ? "text" : "password"}
+                          autoComplete="new-password"
+                          maxLength={200}
+                          value={accountPassword}
+                          onChange={(e) => setAccountPassword(e.target.value)}
+                          aria-invalid={showAccountErrors && accountPassword.length < 8}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword((s) => !s)}
+                          aria-label={showPassword ? t("hidePassword") : t("showPassword")}
+                          aria-pressed={showPassword}
+                          className="absolute top-0 right-0 grid size-11 place-items-center text-muted hover:text-ink"
+                        >
+                          {showPassword ? <EyeOff className="size-4" aria-hidden="true" /> : <Eye className="size-4" aria-hidden="true" />}
+                        </button>
+                      </div>
                       {showAccountErrors && accountPassword.length < 8 && (
                         <p role="alert" className="mt-1.5 text-[0.8125rem] text-hot">{t("errPassword8")}</p>
                       )}
