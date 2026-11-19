@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { LangProvider } from "@/lib/i18n";
 import { JsonLd } from "@/components/json-ld";
 import { baseOpenGraph, siteGraph } from "@/lib/seo";
@@ -100,6 +101,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         </main>
         <SiteFooter />
         </LangProvider>
+        <SpeedInsights />
       </body>
     </html>
   );
