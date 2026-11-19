@@ -30,7 +30,7 @@ export function renderShareImage() {
           {site.tagline}
         </div>
         <div style={{ display: "flex", marginTop: 16, fontSize: 28, color: "#4b5563" }}>
-          Swedish embassy appointments · London
+          Swedish appointments · London
         </div>
         {/* Swedish blue and yellow along the bottom edge */}
         <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, display: "flex", flexDirection: "column" }}>

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowUpRight, LogOut } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
-import { signOut, useMe } from "./auth/use-me";
+import { displayName, signOut, useMe } from "./auth/use-me";
 
 export function HeaderActions() {
   const router = useRouter();
@@ -32,8 +32,8 @@ export function HeaderActions() {
 
   return (
     <div className="flex items-center gap-2 md:ml-0">
-      <span className="hidden max-w-[10rem] truncate text-sm text-muted xl:inline" title={user.email}>
-        {user.email}
+      <span className="hidden max-w-[8rem] truncate text-sm font-medium text-muted xl:inline" title={user.email}>
+        {displayName(user.email)}
       </span>
       <button
         type="button"

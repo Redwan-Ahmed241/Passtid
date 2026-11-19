@@ -61,6 +61,12 @@ export function useMe():{ loading: boolean; user: User | null } {
   return state;
 }
 
+/** Short label for the header: the first name guessed from the email, e.g. "naseem_hasan@x.com" -> "Naseem". */
+export function displayName(email: string): string {
+  const first = email.split("@")[0]?.split(/[._\-+\d]+/).find(Boolean) ?? email;
+  return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
+}
+
 /** Only allow same-site paths as a post-login destination. */
 export function safeNext(raw: string | null): string {
   if (!raw || !raw.startsWith("/") || raw.startsWith("//") || raw.startsWith("/\\")) return "/booking";

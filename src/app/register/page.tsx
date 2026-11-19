@@ -5,7 +5,7 @@ import { AuthShell } from "@/components/auth/auth-shell";
 
 export const metadata: Metadata = {
   title: "Create an account",
-  description: "Create an account to watch Swedish embassy slots and book the one you can attend.",
+  description: "Create an account to watch Swedish appointment slots and book the one you can attend.",
   alternates: { canonical: "/register" },
   robots: { index: false, follow: true },
 };
