@@ -1,6 +1,6 @@
 import { isSystemId } from "@/lib/types";
 import { getRequest, saveRequest } from "@/server/store";
-import { errorJson, handle, json, parseBookingRequest, requireUser } from "@/server/http";
+import { errorJson, handle, json, parseBookingRequest, requireUser, readJson } from "@/server/http";
 
 type Ctx = { params: Promise<{ system: string }> };
 
@@ -19,6 +19,6 @@ export async function PUT(request: Request, { params }: Ctx) {
   return handle(async () => {
     const user = requireUser(request);
     if (!isSystemId(system)) return errorJson(404, "unknown_system", `Unknown system “${system}”.`);
-    return json(await saveRequest(user.id, system, parseBookingRequest(await request.json())));
+    return json(await saveRequest(user.id, system, parseBookingRequest(await readJson(request))));
   });
 }

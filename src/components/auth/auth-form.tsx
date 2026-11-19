@@ -94,6 +94,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
             type="email"
             inputMode="email"
             autoComplete="email"
+            maxLength={200}
             spellCheck={false}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -112,6 +113,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
             <input
               id={`${uid}-password`}
               className="field pr-12"
+              maxLength={200}
               type={show ? "text" : "password"}
               autoComplete={mode === "login" ? "current-password" : "new-password"}
               value={password}

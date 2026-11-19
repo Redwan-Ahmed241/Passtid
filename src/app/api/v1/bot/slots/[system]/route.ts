@@ -1,6 +1,6 @@
 import { isSystemId } from "@/lib/types";
 import { ApiError } from "@/server/errors";
-import { SLOT_RE, errorJson, handle, json, requireBot } from "@/server/http";
+import { SLOT_RE, errorJson, handle, json, requireBot, readJson } from "@/server/http";
 import { replaceSlots } from "@/server/store";
 
 /**
@@ -12,7 +12,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ syst
   return handle(async () => {
     requireBot(request);
     if (!isSystemId(system)) return errorJson(404, "unknown_system", `Unknown system “${system}”.`);
-    const body = (await request.json()) as { slots?: unknown };
+    const body = (await readJson(request)) as { slots?: unknown };
     if (!Array.isArray(body.slots) || body.slots.length > 2000) return errorJson(422, "invalid_slots", "`slots` must be a list.");
     const slots = body.slots.map((raw) => {
       const o = (raw ?? {}) as { slot?: unknown; freeOnSite?: unknown };

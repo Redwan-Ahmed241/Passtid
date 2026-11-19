@@ -8,6 +8,8 @@ import {
   type Person,
   type User,
 } from "@/lib/types";
+import { EMAIL_RE, NAME_RE, PERSONAL_NUMBER_RE, PHONE_RE } from "@/lib/applicants";
+import { cleanLine } from "@/lib/sanitize";
 import { DAY_RE, MAX_DATE_RANGES, MAX_TIME_RANGES, validateWindow } from "@/lib/window";
 import { ApiError } from "./errors";
 import { userFromRequest } from "./session";
@@ -57,7 +59,13 @@ export function requireBot(request: Request): void {
 export const SLOT_RE = /^\d{4}-\d{2}-\d{2}T([01]\d|2[0-3]):[0-5]\d$/;
 
 const bad = (message: string) => new ApiError(422, "invalid_request", message);
-const str = (v: unknown, max: number): string => (typeof v === "string" ? v.trim().slice(0, max) : "");
+const str = cleanLine;
+
+/** Empty is fine (a draft); anything typed must have the right shape. */
+function shaped(value: string, re: RegExp, what: string): string {
+  if (value && !re.test(value)) throw bad(`${what} has characters we cannot accept.`);
+  return value;
+}
 
 function parseWindow(input: unknown): BookingWindow {
   if (typeof input !== "object" || input === null) throw bad("`window` must be an object.");
@@ -101,10 +109,10 @@ function parsePersons(input: unknown): Person[] {
   return input.map((raw) => {
     const p = (raw ?? {}) as Record<string, unknown>;
     return {
-      firstName: str(p.firstName, 80),
-      lastName: str(p.lastName, 80),
-      personalNumber: str(p.personalNumber, 32),
-      phone: str(p.phone, 32),
+      firstName: shaped(str(p.firstName, 60), NAME_RE, "The first name"),
+      lastName: shaped(str(p.lastName, 60), NAME_RE, "The last name"),
+      personalNumber: shaped(str(p.personalNumber, 24), PERSONAL_NUMBER_RE, "The personal number"),
+      phone: shaped(str(p.phone, 24), PHONE_RE, "The phone number"),
     };
   });
 }
@@ -116,5 +124,39 @@ function parsePersons(input: unknown): Person[] {
 export function parseBookingRequest(input: unknown): BookingRequest {
   if (typeof input !== "object" || input === null) throw bad("Body must be an object.");
   const o = input as Record<string, unknown>;
-  return { persons: parsePersons(o.persons), email: str(o.email, 200), window: parseWindow(o.window) };
+  return { persons: parsePersons(o.persons), email: shaped(str(o.email, 200), EMAIL_RE, "The email"), window: parseWindow(o.window) };
+}
+
+/** Largest JSON body any endpoint accepts. Every payload here is a few kilobytes at most. */
+const MAX_BODY_BYTES = 64 * 1024;
+
+/** Read a JSON body with a size cap, so a huge payload cannot tie up the server. */
+export async function readJson(request: Request): Promise<unknown> {
+  const declared = Number(request.headers.get("content-length") ?? 0);
+  if (declared > MAX_BODY_BYTES) throw new ApiError(413, "payload_too_large", "The request is too large.");
+  const text = await request.text();
+  if (text.length > MAX_BODY_BYTES) throw new ApiError(413, "payload_too_large", "The request is too large.");
+  const body: unknown = JSON.parse(text);
+  if (typeof body !== "object" || body === null || Array.isArray(body)) throw new ApiError(400, "bad_json", "Request body must be a JSON object.");
+  return body;
+}
+
+const hits = new Map<string, number[]>();
+
+/**
+ * At most `max` calls per `windowMs` for this caller and action. In memory, so it counts per server
+ * instance: it slows guessing and spam down, it is not a replacement for a shared limiter at the edge.
+ */
+export function rateLimit(request: Request, action: string, max: number, windowMs: number, extra = ""): void {
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  const key = `${action}:${ip}:${extra}`;
+  const now = Date.now();
+  const recent = (hits.get(key) ?? []).filter((t) => now - t < windowMs);
+  if (recent.length >= max) {
+    hits.set(key, recent);
+    throw new ApiError(429, "too_many_requests", "Too many attempts. Try again in a few minutes.");
+  }
+  recent.push(now);
+  hits.set(key, recent);
+  if (hits.size > 5000) for (const [k, v] of hits) if (now - v[v.length - 1] >= windowMs) hits.delete(k);
 }

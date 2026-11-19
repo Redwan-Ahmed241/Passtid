@@ -1,4 +1,4 @@
-import { errorJson, handle, json, requireBot } from "@/server/http";
+import { errorJson, handle, json, requireBot, readJson } from "@/server/http";
 import { recordBookingResult } from "@/server/store";
 import type { ReleaseReason } from "@/lib/types";
 
@@ -13,12 +13,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const { id } = await params;
   return handle(async () => {
     requireBot(request);
-    const body = (await request.json()) as { status?: unknown; reference?: unknown; reason?: unknown };
+    const body = (await readJson(request)) as { status?: unknown; reference?: unknown; reason?: unknown };
     if (body.status !== "pending" && body.status !== "booked" && body.status !== "released") {
       return errorJson(422, "invalid_status", "`status` must be pending, booked or released.");
     }
     const reason = REASONS.find((r) => r === body.reason) as ReleaseReason | undefined;
-    const reference = typeof body.reference === "string" ? body.reference.slice(0, 64) : null;
+    const reference = typeof body.reference === "string" && /^[A-Za-z0-9 _-]{1,40}$/.test(body.reference.trim()) ? body.reference.trim() : null;
     return json(await recordBookingResult(id, { status: body.status, reason, reference }));
   });
 }

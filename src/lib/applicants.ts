@@ -9,10 +9,11 @@ import { MAX_PERSONS, SYSTEM_INFO, type BookingRequest, type Person, type System
  * A personal number is not a phone number, so the two are separate fields.
  */
 
-export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-const PERSONAL_NUMBER_RE = /^[A-Za-z0-9][A-Za-z0-9\- ]{4,23}$/;
-const PHONE_RE = /^\+?[0-9][0-9 ()\-]{6,22}$/;
-const NAME_RE = /^[\p{L}][\p{L}\p{M}'’ .\-]{0,59}$/u;
+/** Plain ASCII addresses only: no quotes, spaces, "?" or "&", so an email can never carry extra mailto or header content. */
+export const EMAIL_RE = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}$/;
+export const PERSONAL_NUMBER_RE = /^[A-Za-z0-9][A-Za-z0-9\- ]{4,23}$/;
+export const PHONE_RE = /^\+?[0-9][0-9 ()\-]{6,22}$/;
+export const NAME_RE = /^[\p{L}][\p{L}\p{M}'’ .\-]{0,59}$/u;
 
 export interface ApplicantIssue {
   /** e.g. "persons.0.firstName", "persons.1.phone", "email" */
