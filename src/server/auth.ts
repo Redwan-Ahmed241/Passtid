@@ -73,6 +73,22 @@ export async function authenticate(email: string, password: string): Promise<Use
   return toUser(row);
 }
 
+/** Administrator accounts sign in with ADMIN_PASSWORD (12+ characters), not the password stored on the account. */
+export function adminPasswordOk(given: string): boolean {
+  const expected = process.env.ADMIN_PASSWORD;
+  if (!expected || expected.length < 12) return false;
+  const a = Buffer.from(given);
+  const b = Buffer.from(expected);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
+/** Sign an administrator in: the email must belong to an existing account and the password must be ADMIN_PASSWORD. */
+export async function authenticateAdmin(email: string, password: string): Promise<User> {
+  const [row] = await query<UserRow>("select id, email, password_hash from users where email = $1", [email]);
+  if (!row || !adminPasswordOk(password)) throw new ApiError(401, "invalid_credentials", "Email or password is incorrect.");
+  return toUser(row);
+}
+
 export async function userExists(id: string): Promise<boolean> {
   return (await query("select 1 from users where id = $1", [id])).length > 0;
 }
