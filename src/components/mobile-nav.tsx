@@ -7,7 +7,7 @@ import { Menu, X } from "lucide-react";
 import { features } from "@/lib/features";
 import { useI18n } from "@/lib/i18n";
 import type { TranslationKey } from "@/lib/i18n/translations";
-import { signOut, useMe } from "./auth/use-me";
+import { displayName, signOut, useMe } from "./auth/use-me";
 
 /** Hidden unless NEXT_PUBLIC_SHOW_RULES=true. */
 const RULES_LINK = { href: "/rules", label: "navRules" } as const;
@@ -82,7 +82,7 @@ export function MobileNav() {
                   }}
                 >
                   {t("signOut")}
-                  <span className="ml-auto max-w-[10rem] truncate text-sm text-muted">{user.email}</span>
+                  <span className="ml-auto max-w-[10rem] truncate text-sm text-muted">{displayName(user.email)}</span>
                 </button>
               ) : (
                 <Link href="/login" onClick={close} className={row}>

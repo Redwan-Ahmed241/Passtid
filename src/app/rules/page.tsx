@@ -9,7 +9,7 @@ import { site } from "@/lib/site";
 export const metadata: Metadata = {
   title: "How slots are matched to your booking window",
   description:
-    "How Passtid matches Swedish embassy slots in London to your booking window, what happens when a booking fails, and why the rules are the same for every service.",
+    "How Passtid matches Swedish appointment slots in London to your booking window, what happens when a booking fails, and why the rules are the same for every service.",
   alternates: { canonical: "/rules" },
   openGraph: { ...baseOpenGraph, url: "/rules" },
 };

@@ -1,4 +1,4 @@
-import { errorJson, handle, json, requireUser } from "@/server/http";
+import { errorJson, handle, json, requireUser, readJson } from "@/server/http";
 import { fulfilPayment } from "@/server/store";
 import { verifyCheckout } from "@/server/payments";
 
@@ -6,7 +6,7 @@ import { verifyCheckout } from "@/server/payments";
 export async function POST(request: Request) {
   return handle(async () => {
     const user = requireUser(request);
-    const body = (await request.json()) as { sessionId?: unknown };
+    const body = (await readJson(request)) as { sessionId?: unknown };
     if (typeof body.sessionId !== "string" || body.sessionId.length > 4000) {
       return errorJson(422, "invalid_session", "`sessionId` is required.");
     }

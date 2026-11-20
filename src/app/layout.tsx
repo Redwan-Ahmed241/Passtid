@@ -43,7 +43,7 @@ const newsreader = localFont({
 export const metadata: Metadata = {
   metadataBase: new URL(site.url),
   title: {
-    default: "Swedish Embassy Appointment Alerts in London · Passtid",
+    default: "Swedish Appointment Alerts in London · Passtid",
     template: `%s · ${site.name}`,
   },
   description: site.description,

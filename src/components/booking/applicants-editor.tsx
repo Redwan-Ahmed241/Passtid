@@ -68,6 +68,7 @@ export function ApplicantsEditor({ system, persons, email, showAll, onChange }: 
                     id={`${uid}-${i}-fn`}
                     className="field"
                     autoComplete={i === 0 ? "given-name" : "off"}
+                    maxLength={60}
                     value={p.firstName}
                     onChange={(e) => setPerson(i, { firstName: e.target.value })}
                     onBlur={() => touch(f("firstName"))}
@@ -80,6 +81,7 @@ export function ApplicantsEditor({ system, persons, email, showAll, onChange }: 
                     id={`${uid}-${i}-ln`}
                     className="field"
                     autoComplete={i === 0 ? "family-name" : "off"}
+                    maxLength={60}
                     value={p.lastName}
                     onChange={(e) => setPerson(i, { lastName: e.target.value })}
                     onBlur={() => touch(f("lastName"))}
@@ -103,6 +105,7 @@ export function ApplicantsEditor({ system, persons, email, showAll, onChange }: 
                       type="tel"
                       inputMode="tel"
                       autoComplete={i === 0 ? "tel" : "off"}
+                      maxLength={24}
                       value={p.phone}
                       onChange={(e) => setPerson(i, { phone: e.target.value })}
                       onBlur={() => touch(f("phone"))}
@@ -121,6 +124,7 @@ export function ApplicantsEditor({ system, persons, email, showAll, onChange }: 
                       id={`${uid}-${i}-pn`}
                       className="field font-mono tabular"
                       autoComplete="off"
+                      maxLength={24}
                       spellCheck={false}
                       value={p.personalNumber}
                       onChange={(e) => setPerson(i, { personalNumber: e.target.value })}
@@ -159,6 +163,7 @@ export function ApplicantsEditor({ system, persons, email, showAll, onChange }: 
             type="email"
             inputMode="email"
             autoComplete="email"
+            maxLength={200}
             spellCheck={false}
             value={email}
             onChange={(e) => onChange({ persons, email: e.target.value })}

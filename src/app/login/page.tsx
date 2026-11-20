@@ -5,7 +5,7 @@ import { AuthShell } from "@/components/auth/auth-shell";
 
 export const metadata: Metadata = {
   title: "Sign in",
-  description: "Sign in to see live Swedish embassy slots and manage your booking requests.",
+  description: "Sign in to see live Swedish appointment slots and manage your booking requests.",
   alternates: { canonical: "/login" },
   robots: { index: false, follow: true },
 };
