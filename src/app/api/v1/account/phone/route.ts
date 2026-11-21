@@ -1,6 +1,6 @@
 import { normalizePhone } from "@/lib/phone";
 import { connection } from "next/server";
-import { errorJson, handle, json, requireUser } from "@/server/http";
+import { errorJson, handle, json, rateLimit, readJson, requireUser } from "@/server/http";
 import { getUserPhone, setUserPhone } from "@/server/store";
 
 /** Read the optional phone for prefill. */
@@ -13,8 +13,12 @@ export async function GET(request: Request) {
 export async function PUT(request: Request) {
   return handle(async () => {
     const user = requireUser(request);
-    const body = (await request.json()) as { phone?: unknown };
+    rateLimit(request, "phone", 10, 60 * 60 * 1000, user.id);
+    const body = (await readJson(request)) as { phone?: unknown };
     if (body.phone !== null && typeof body.phone !== "string") {
+      return errorJson(422, "invalid_phone", "Enter a valid phone number.");
+    }
+    if (typeof body.phone === "string" && body.phone.length > 40) {
       return errorJson(422, "invalid_phone", "Enter a valid phone number.");
     }
     if (body.phone === null || body.phone.trim() === "") {

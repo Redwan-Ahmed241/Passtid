@@ -733,7 +733,8 @@ export function Booking() {
                         autoComplete="tel"
                         value={accountPhone}
                         onChange={(e) => setAccountPhone(e.target.value)}
-                        placeholder="+46 70 123 45 67"
+                        placeholder="+44 7700 900123"
+                        maxLength={20}
                       />
                       <p className="mt-1.5 text-[0.8125rem] text-muted">{t("telegramPhoneHint")}</p>
                     </div>
@@ -916,7 +917,8 @@ function TelegramPhoneField({ value, onChange }: { value: string; onChange: (val
             onChange(e.target.value);
             setState("idle");
           }}
-          placeholder="+46 70 123 45 67"
+          placeholder="+44 7700 900123"
+          maxLength={20}
         />
         <button
           type="button"

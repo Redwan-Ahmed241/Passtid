@@ -21,9 +21,9 @@ import {
   type TicketStatus,
 } from "@/lib/types";
 import { isComplete } from "@/lib/applicants";
-import { isUniqueViolation, query } from "./db";
+import { isUniqueViolation, query, transaction } from "./db";
 import { ApiError } from "./errors";
-import { cancelBooking, getRequest, saveRequest } from "./store";
+import { assertBookingId, blankRequest, cancelBooking, saveRequest } from "./store";
 import { site } from "@/lib/site";
 
 /* ------------------------------------------------------------------ */
@@ -149,35 +149,37 @@ export async function createTicket(
   email: string,
   input: { category: TicketCategory; system: SystemId | null; message: string },
 ): Promise<Ticket> {
-  const [{ open }] = await query<{ open: number }>(
-    "select count(*)::int as open from tickets where user_id = $1 and status = 'open'",
-    [userId],
-  );
-  if (open >= MAX_OPEN_TICKETS) {
-    throw new ApiError(429, "too_many_tickets", "You already have 5 open reports. Wait for an answer before sending another.");
-  }
-  const [{ recent }] = await query<{ recent: number }>(
-    "select count(*)::int as recent from tickets where user_id = $1 and created_at > now() - interval '1 hour'",
-    [userId],
-  );
-  if (recent >= MAX_TICKETS_PER_HOUR) {
-    throw new ApiError(429, "too_many_tickets_recently", "You have sent 3 reports in the last hour. Try again later.");
-  }
-  for (let attempt = 0; attempt < 5; attempt++) {
-    try {
-      const [row] = await query<TicketRow>(
+  // The limit checks and the insert share one transaction under a per-user lock, so parallel
+  // requests cannot slip past. Everything runs on that one connection, so the pool cannot run dry.
+  const ticket = await transaction(async (client) => {
+    await client.query("select pg_advisory_xact_lock(hashtext($1))", [`ticket:${userId}`]);
+    const { rows: [{ open }] } = await client.query<{ open: number }>(
+      "select count(*)::int as open from tickets where user_id = $1 and status = 'open'",
+      [userId],
+    );
+    if (open >= MAX_OPEN_TICKETS) {
+      throw new ApiError(429, "too_many_tickets", "You already have 5 open reports. Wait for an answer before sending another.");
+    }
+    const { rows: [{ recent }] } = await client.query<{ recent: number }>(
+      "select count(*)::int as recent from tickets where user_id = $1 and created_at > now() - interval '1 hour'",
+      [userId],
+    );
+    if (recent >= MAX_TICKETS_PER_HOUR) {
+      throw new ApiError(429, "too_many_tickets_recently", "You have sent 3 reports in the last hour. Try again later.");
+    }
+    // A token collision is resolved inside the insert, so the transaction never sees a failed statement.
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const { rows: [row] } = await client.query<TicketRow>(
         `insert into tickets (token, user_id, email, category, system, message)
-         values ($1, $2, $3, $4, $5, $6) returning ${TICKET_COLUMNS}`,
+         values ($1, $2, $3, $4, $5, $6) on conflict (token) do nothing returning ${TICKET_COLUMNS}`,
         [newToken(), userId, email, input.category, input.system, input.message],
       );
-      const ticket = toTicket(row);
-      await announceTicket(userId, ticket);
-      return ticket;
-    } catch (err) {
-      if (!isUniqueViolation(err)) throw err;
+      if (row) return toTicket(row);
     }
-  }
-  throw new ApiError(503, "ticket_token_busy", "Couldn't create the report. Try again.");
+    throw new ApiError(503, "ticket_token_busy", "Couldn't create the report. Try again.");
+  });
+  await announceTicket(userId, ticket);
+  return ticket;
 }
 
 export async function listMyTickets(userId: string): Promise<Ticket[]> {
@@ -283,7 +285,7 @@ export async function adminOverview(): Promise<AdminOverview> {
       const row = saved.get(`${u.id}|${system}`);
       reqs[system] = row
         ? { request: row.request, updatedAt: row.updated_at.toISOString(), complete: isComplete(system, row.request) }
-        : await getRequest(u.id, system, u.email);
+        : blankRequest(system, u.email);
     }
     customers.push({
       clientId: u.id,
@@ -310,7 +312,8 @@ const changedMeanwhile = () =>
  * Each change is one guarded update, so it never overwrites what the booking bot did in between.
  */
 export async function adminUpdateBooking(id: string, patch: AdminBookingPatch): Promise<Booking> {
-  const [current] = await query<BookingRow>(`select ${BOOKING_COLUMNS} from bookings where id::text = $1`, [id]);
+  assertBookingId(id);
+  const [current] = await query<BookingRow>(`select ${BOOKING_COLUMNS} from bookings where id = $1::uuid`, [id]);
   if (!current) throw new ApiError(404, "booking_not_found", "No such booking.");
 
   if (patch.status === "released") return cancelBooking(id, current.user_id);
@@ -321,7 +324,7 @@ export async function adminUpdateBooking(id: string, patch: AdminBookingPatch): 
     try {
       const [row] = await query<BookingRow>(
         `update bookings set status = 'booked', reference = $2, reason = null, updated_at = now()
-          where id::text = $1 and status = $3 returning ${BOOKING_COLUMNS}`,
+          where id = $1::uuid and status = $3 returning ${BOOKING_COLUMNS}`,
         [id, ref, current.status],
       );
       if (!row) throw changedMeanwhile();
@@ -338,7 +341,7 @@ export async function adminUpdateBooking(id: string, patch: AdminBookingPatch): 
   try {
     const [row] = await query<BookingRow>(
       `update bookings set status = 'pending', reference = null, reason = null, heartbeat = now(), updated_at = now()
-        where id::text = $1 and status = $2 returning ${BOOKING_COLUMNS}`,
+        where id = $1::uuid and status = $2 returning ${BOOKING_COLUMNS}`,
       [id, current.status],
     );
     if (!row) throw changedMeanwhile();

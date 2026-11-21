@@ -189,10 +189,11 @@ export async function createBooking(system: SystemId, slot: string, userId: stri
 
 /** Reading a pending booking counts as progress, which refreshes its heartbeat. */
 export async function getBooking(id: string, userId: string): Promise<Booking> {
+  assertBookingId(id);
   await releaseStale();
   const [row] = await query<BookingRow>(
     `update bookings set heartbeat = case when status = 'pending' then now() else heartbeat end
-      where id::text = $1 and user_id = $2 returning ${BOOKING_COLUMNS}`,
+      where id = $1::uuid and user_id = $2 returning ${BOOKING_COLUMNS}`,
     [id, userId],
   );
   if (!row) throw new ApiError(404, "booking_not_found", "No such booking.");
@@ -201,18 +202,31 @@ export async function getBooking(id: string, userId: string): Promise<Booking> {
 
 /** Cancelling by the user leaves the line on purpose, so the payment stays watching: false. */
 export async function cancelBooking(id: string, userId: string): Promise<Booking> {
+  assertBookingId(id);
   const [row] = await query<BookingRow>(
     `update bookings set status = 'released', reason = 'cancelled', updated_at = now()
-      where id::text = $1 and user_id = $2 and status in ('pending', 'booked') returning ${BOOKING_COLUMNS}`,
+      where id = $1::uuid and user_id = $2 and status in ('pending', 'booked') returning ${BOOKING_COLUMNS}`,
     [id, userId],
   );
   if (row) return toBooking(row);
-  const [existing] = await query<BookingRow>(`select ${BOOKING_COLUMNS} from bookings where id::text = $1 and user_id = $2`, [id, userId]);
+  const [existing] = await query<BookingRow>(`select ${BOOKING_COLUMNS} from bookings where id = $1::uuid and user_id = $2`, [id, userId]);
   if (!existing) throw new ApiError(404, "booking_not_found", "No such booking.");
   return toBooking(existing);
 }
 
 /* ------------------------ booking requests ------------------------- */
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Booking ids are UUIDs; anything else cannot exist, so it is a 404 without touching the database. */
+export function assertBookingId(id: string): void {
+  if (!UUID_RE.test(id)) throw new ApiError(404, "booking_not_found", "No such booking.");
+}
+
+/** The empty request shown for a service the customer has not saved yet. */
+export function blankRequest(system: SystemId, email: string): RequestResponse {
+  return toResponse(system, defaultRequest(embassyToday(), email), null);
+}
 
 function toResponse(system: SystemId, request: BookingRequest, updatedAt: string | null): RequestResponse {
   return { request, updatedAt, complete: isComplete(system, request) };
@@ -224,7 +238,7 @@ export async function getRequest(userId: string, system: SystemId, email: string
     [userId, system],
   );
   if (row) return toResponse(system, row.request, row.updated_at.toISOString());
-  return toResponse(system, defaultRequest(embassyToday(), email), null);
+  return blankRequest(system, email);
 }
 
 export async function saveRequest(userId: string, system: SystemId, request: BookingRequest): Promise<RequestResponse> {
@@ -323,16 +337,14 @@ export async function getTelegramLink(userId: string): Promise<string | null> {
   return bot ? `https://t.me/${bot}?start=${code}` : null;
 }
 
-/** Save or clear the optional E.164 phone used for Telegram linking. */
+/**
+ * Save or clear the optional E.164 phone used for Telegram linking. Numbers are not unique and never
+ * rejected as taken, so the answer reveals nothing about other accounts and nobody can block a number.
+ * The bot links by phone only when the Telegram contact is the sender's own and exactly one paying
+ * account has that number; otherwise the customer uses the one-time /start link.
+ */
 export async function setUserPhone(userId: string, phone: string | null): Promise<string | null> {
-  try {
-    await query("update users set phone = $2 where id = $1", [userId, phone]);
-  } catch (err) {
-    if (isUniqueViolation(err)) {
-      throw new ApiError(409, "phone_taken", "That phone number cannot be used.");
-    }
-    throw err;
-  }
+  await query("update users set phone = $2 where id = $1", [userId, phone]);
   return phone;
 }
 
