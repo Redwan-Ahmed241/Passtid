@@ -140,7 +140,7 @@ export interface Slot {
   /** Counted queue entries on this exact slot (pending + booked, fresh < 15 min). */
   queued: number;
   /** The caller's own active entry on this slot, if any. */
-  mine: { bookingId: string; status: Exclude<BookingStatus, "released">; reference: string | null } | null;
+  mine: { bookingId: string; status: Exclude<BookingStatus, "released">; reference: string | null; autobook: boolean } | null;
 }
 
 export interface SlotsResponse {
@@ -153,6 +153,15 @@ export interface SlotsResponse {
   scanWeeks: number;
   generatedAt: string;
   slots: Slot[];
+  /** The caller's newest pending or booked booking, independent of the current slots table. */
+  myBooking: {
+    bookingId: string;
+    /** Embassy-local ISO date-time, e.g. 2026-10-23T09:30 */
+    slot: string;
+    status: Exclude<BookingStatus, "released">;
+    reference: string | null;
+    autobook: boolean;
+  } | null;
 }
 
 /* ------------------------- support tickets ----------------------- */
@@ -243,6 +252,11 @@ export interface CheckoutResponse {
   /** Where to send the browser: Stripe Checkout, or straight back to the console in demo mode. */
   url: string;
   demo: boolean;
+}
+
+export interface PhoneResponse {
+  /** Stored E.164 value, or null when cleared. */
+  phone: string | null;
 }
 
 /** Telegram alerts for one service, active once the notification plan is paid. */

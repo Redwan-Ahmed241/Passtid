@@ -10,7 +10,7 @@ import {
 import { EMAIL_RE, NAME_RE, PERSONAL_NUMBER_RE, PHONE_RE } from "@/lib/applicants";
 import { cleanLine } from "@/lib/sanitize";
 import { DAY_RE, MAX_DATE_RANGES, MAX_TIME_RANGES, validateWindow } from "@/lib/window";
-import { ApiError } from "./mock-backend";
+import { ApiError } from "./errors";
 import { userFromRequest } from "./session";
 
 const NO_STORE = { "Cache-Control": "no-store" };

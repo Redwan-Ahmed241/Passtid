@@ -1,6 +1,6 @@
 import type { TicketStatus } from "@/lib/types";
 import { cleanMultiline } from "@/lib/sanitize";
-import { adminUpdateTicket } from "@/server/mock-backend";
+import { adminUpdateTicket } from "@/server/admin";
 import { errorJson, handle, json, requireAdmin, readJson } from "@/server/http";
 
 type Ctx = { params: Promise<{ token: string }> };
@@ -15,6 +15,6 @@ export async function PATCH(request: Request, { params }: Ctx) {
       return errorJson(422, "invalid_status", "`status` must be open or resolved.");
     }
     const reply = cleanMultiline(body.reply, 2000) || null;
-    return json(adminUpdateTicket(token, { status: body.status as TicketStatus, reply }));
+    return json(await adminUpdateTicket(token, { status: body.status as TicketStatus, reply }));
   });
 }

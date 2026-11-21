@@ -65,8 +65,10 @@ export function Booking() {
   const [plan, setPlan] = useState<PlanId>(params.get("plan") === "notify" ? "notify" : "autobook");
   const [alertSub, setAlertSub] = useState<AlertSubscription | null>(null);
   const [watching, setWatching] = useState(false);
+  const [telegramUrl, setTelegramUrl] = useState<string | null>(null);
   // null = follow the contact email from the details step; a string = the customer chose another one.
   const [accountEmailInput, setAccountEmailInput] = useState<string | null>(null);
+  const [accountPhone, setAccountPhone] = useState("");
   const [accountPassword, setAccountPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showAccountErrors, setShowAccountErrors] = useState(false);
@@ -168,12 +170,35 @@ export function Booking() {
     return () => clearTimeout(t);
   }, [draft, savedReq, system, handleAuthLoss]);
 
+  // Prefill the optional Telegram phone once the account is known.
+  useEffect(() => {
+    if (!user) return;
+    let alive = true;
+    api.loadPhone().then(
+      (r) => {
+        if (alive && r.phone) setAccountPhone(r.phone);
+      },
+      () => {
+        /* optional field */
+      },
+    );
+    return () => {
+      alive = false;
+    };
+  }, [user]);
+
   // Follow every pending booking until it succeeds, fails or is cancelled.
   const pending = useMemo(() => {
     const out: { id: string; system: SystemId; slot: string }[] = [];
     for (const sys of SYSTEMS) {
-      for (const s of slotsBy[sys]?.slots ?? []) {
+      const response = slotsBy[sys];
+      for (const s of response?.slots ?? []) {
         if (s.mine?.status === "pending") out.push({ id: s.mine.bookingId, system: sys, slot: s.slot });
+      }
+      // A pending booking can outlive its slot row, so follow myBooking too.
+      const mine = response?.myBooking;
+      if (mine?.status === "pending" && !out.some((p) => p.id === mine.bookingId)) {
+        out.push({ id: mine.bookingId, system: sys, slot: mine.slot });
       }
     }
     return out;
@@ -290,6 +315,7 @@ export function Booking() {
       scanWeeks: weeks,
       generatedAt: new Date().toISOString(),
       slots: [],
+      myBooking: null,
     };
   }, [system]);
   const data = slotsBy[system] ?? (guest ? guestData : undefined);
@@ -304,10 +330,45 @@ export function Booking() {
     () => view.filter((s) => s.inWindow).sort((x, y) => x.slot.localeCompare(y.slot))[0] ?? null,
     [view],
   );
-  const mineSlot = view.find((s) => s.mine) ?? null;
-  const showStatus = !!mineSlot && !startNew;
+  const mySlot = useMemo<ViewSlot | null>(() => {
+    const mine = data?.myBooking;
+    if (!mine) return null;
+    const found = data?.slots.find((s) => s.slot === mine.slot);
+    return {
+      slot: mine.slot,
+      freeOnSite: found?.freeOnSite ?? null,
+      queued: found?.queued ?? 0,
+      mine: {
+        bookingId: mine.bookingId,
+        status: mine.status,
+        reference: mine.reference,
+        autobook: mine.autobook,
+      },
+      inWindow: true,
+    };
+  }, [data]);
+  const showStatus = !!mySlot && !startNew;
   const showAlert = !showStatus && !!alertSub && alertSub.system === system && !startNew;
   const showWatching = !showStatus && !showAlert && watching && !startNew;
+  const autobook = !!mySlot?.mine?.autobook || showWatching;
+
+  // Email is always sent. Telegram is optional, so fetch the stable link when an
+  // automatic-booking status is on screen; failure simply hides the optional link.
+  useEffect(() => {
+    if (!user || !autobook || (!showStatus && !showWatching)) return;
+    let alive = true;
+    api.telegramLink().then(
+      (res) => {
+        if (alive) setTelegramUrl(res.url);
+      },
+      () => {
+        /* optional link: leave it hidden */
+      },
+    );
+    return () => {
+      alive = false;
+    };
+  }, [user, autobook, showStatus, showWatching]);
 
   /* ----------------------------- actions ----------------------------- */
 
@@ -362,7 +423,17 @@ export function Booking() {
     setWorking(true);
     try {
       // Guests create their account now, with the contact email they already gave unless they chose another.
-      if (!user) announceAuthChange(await api.register(accountEmail.trim(), accountPassword));
+      if (!user) {
+        announceAuthChange(await api.register(accountEmail.trim(), accountPassword));
+        if (accountPhone.trim()) {
+          try {
+            const saved = await api.savePhone(accountPhone.trim());
+            setAccountPhone(saved.phone ?? "");
+          } catch {
+            /* optional field: never block the payment */
+          }
+        }
+      }
       const req: BookingRequest = windowValid ? draft : { ...draft, window: effectiveWindow };
       if (!savedReq || !sameRequest(req, savedReq)) {
         await api.saveRequest(system, req);
@@ -443,17 +514,21 @@ export function Booking() {
 
           {!ready && !loadError && <SlotListSkeleton />}
 
-          {ready && showStatus && mineSlot && draft && (
+          {ready && showStatus && mySlot && draft && (
             <StatusCard
               system={system}
-              slot={mineSlot}
+              slot={mySlot}
               people={draft.persons.length}
               email={draft.email}
+              telegramUrl={telegramUrl}
+              autobook={!!mySlot.mine?.autobook}
+              phone={accountPhone}
+              onPhoneChange={setAccountPhone}
               working={working}
               confirming={confirmingCancel}
               onAskCancel={() => setConfirmingCancel(true)}
               onKeep={() => setConfirmingCancel(false)}
-              onCancel={() => mineSlot.mine && void cancel(mineSlot.mine.bookingId)}
+              onCancel={() => mySlot.mine && void cancel(mySlot.mine.bookingId)}
               onAnother={() => {
                 setStartNew(true);
                 setStep(1);
@@ -474,6 +549,10 @@ export function Booking() {
 
           {ready && showWatching && (
             <WatchingCard
+              telegramUrl={telegramUrl}
+              autobook={watching}
+              phone={accountPhone}
+              onPhoneChange={setAccountPhone}
               onAnother={() => {
                 setStartNew(true);
                 setWatching(false);
@@ -645,6 +724,21 @@ export function Booking() {
                       )}
                     </div>
                     <div>
+                      <label htmlFor="acct-phone" className="mb-1.5 block text-sm font-medium text-ink-2">{t("phoneOptional")}</label>
+                      <input
+                        id="acct-phone"
+                        className="field"
+                        type="tel"
+                        inputMode="tel"
+                        autoComplete="tel"
+                        value={accountPhone}
+                        onChange={(e) => setAccountPhone(e.target.value)}
+                        placeholder="+44 7700 900123"
+                        maxLength={20}
+                      />
+                      <p className="mt-1.5 text-[0.8125rem] text-muted">{t("telegramPhoneHint")}</p>
+                    </div>
+                    <div>
                       <label htmlFor="acct-pass" className="mb-1.5 block text-sm font-medium text-ink-2">{t("password")}</label>
                       <div className="relative">
                         <input
@@ -699,7 +793,7 @@ export function Booking() {
             </>
           )}
 
-          {user && <SupportBox system={system} />}
+          {user && <SupportBox system={system} startOpen={params.get("support") === "1"} />}
         </div>
 
         {/* The summary beside the form, like a receipt that fills in as you go. */}
@@ -790,12 +884,72 @@ function StepButtons({
   );
 }
 
+/** Optional phone field used by the Telegram bot to link a paying customer's chat. */
+function TelegramPhoneField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const { t } = useI18n();
+  const [state, setState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+
+  const save = async () => {
+    setState("saving");
+    try {
+      const res = await api.savePhone(value.trim() || null);
+      onChange(res.phone ?? "");
+      setState("saved");
+    } catch {
+      setState("error");
+    }
+  };
+
+  return (
+    <div className="mt-5 text-left">
+      <label htmlFor="tg-phone" className="mb-1.5 block text-sm font-medium text-ink-2">
+        {t("phoneOptional")}
+      </label>
+      <div className="flex gap-2">
+        <input
+          id="tg-phone"
+          className="field"
+          type="tel"
+          inputMode="tel"
+          autoComplete="tel"
+          value={value}
+          onChange={(e) => {
+            onChange(e.target.value);
+            setState("idle");
+          }}
+          placeholder="+44 7700 900123"
+          maxLength={20}
+        />
+        <button
+          type="button"
+          className="btn btn-ghost flex-none border-accent-line px-4 text-accent-line"
+          disabled={state === "saving"}
+          onClick={() => void save()}
+        >
+          {t("savePhone")}
+        </button>
+      </div>
+      <p className="mt-1.5 text-[0.8125rem] text-muted">{t("telegramPhoneHint")}</p>
+      {state === "saved" && <p className="mt-1.5 text-[0.8125rem] text-accent-line">{t("phoneSaved")}</p>}
+      {state === "error" && (
+        <p role="alert" className="mt-1.5 text-[0.8125rem] text-hot">
+          {t("phoneError")}
+        </p>
+      )}
+    </div>
+  );
+}
+
 /** What the person sees once they hold a place: in the queue, or booked. */
 function StatusCard({
   system,
   slot,
   people,
   email,
+  telegramUrl,
+  autobook,
+  phone,
+  onPhoneChange,
   working,
   confirming,
   onAskCancel,
@@ -807,6 +961,10 @@ function StatusCard({
   slot: ViewSlot;
   people: number;
   email: string;
+  telegramUrl: string | null;
+  autobook: boolean;
+  phone: string;
+  onPhoneChange: (value: string) => void;
   working: boolean;
   confirming: boolean;
   onAskCancel: () => void;
@@ -848,6 +1006,22 @@ function StatusCard({
         <Row label={t("rowApplicants")} value={String(people)} />
         <Row label={t("rowEmail")} value={email} />
       </dl>
+
+      {autobook && telegramUrl && (
+        <p className="mt-5 text-sm text-muted">
+          {t("emailAlways")}{" "}
+          <a
+            href={telegramUrl}
+            target="_blank"
+            rel="noopener"
+            className="font-semibold text-accent-line underline underline-offset-2"
+          >
+            {t("telegramAlso")}
+          </a>
+        </p>
+      )}
+
+      <TelegramPhoneField value={phone} onChange={onPhoneChange} />
 
       <EmbassyNotice />
 
@@ -897,7 +1071,19 @@ function EmbassyNotice() {
 }
 
 /** Shown after automatic booking is paid but no slot fits yet. */
-function WatchingCard({ onAnother }: { onAnother: () => void }) {
+function WatchingCard({
+  onAnother,
+  telegramUrl,
+  autobook,
+  phone,
+  onPhoneChange,
+}: {
+  onAnother: () => void;
+  telegramUrl: string | null;
+  autobook: boolean;
+  phone: string;
+  onPhoneChange: (value: string) => void;
+}) {
   const { t } = useI18n();
   return (
     <div className="text-center">
@@ -906,6 +1092,20 @@ function WatchingCard({ onAnother }: { onAnother: () => void }) {
       </span>
       <h1 className="mt-4 text-2xl font-semibold text-ink">{t("watchingTitle")}</h1>
       <p className="mt-2 text-sm text-muted">{t("watchingBody")}</p>
+      {autobook && telegramUrl && (
+        <p className="mt-4 text-sm text-muted">
+          {t("emailAlways")}{" "}
+          <a
+            href={telegramUrl}
+            target="_blank"
+            rel="noopener"
+            className="font-semibold text-accent-line underline underline-offset-2"
+          >
+            {t("telegramAlso")}
+          </a>
+        </p>
+      )}
+      <TelegramPhoneField value={phone} onChange={onPhoneChange} />
       <EmbassyNotice />
       <button type="button" className="btn btn-ghost mt-5 w-full border-accent-line text-accent-line" onClick={onAnother}>
         {t("bookAnother")}

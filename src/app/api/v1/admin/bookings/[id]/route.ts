@@ -1,5 +1,5 @@
 import type { BookingStatus } from "@/lib/types";
-import { adminUpdateBooking } from "@/server/mock-backend";
+import { adminUpdateBooking } from "@/server/admin";
 import { errorJson, handle, json, requireAdmin, readJson } from "@/server/http";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -14,7 +14,7 @@ export async function PATCH(request: Request, { params }: Ctx) {
       return errorJson(422, "invalid_status", "`status` must be pending, booked or released.");
     }
     return json(
-      adminUpdateBooking(id, {
+      await adminUpdateBooking(id, {
         status: body.status as BookingStatus,
         reference: typeof body.reference === "string" && /^[A-Za-z0-9 _-]{1,40}$/.test(body.reference.trim()) ? body.reference.trim() : null,
       }),

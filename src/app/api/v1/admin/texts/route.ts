@@ -1,5 +1,5 @@
 import { cleanMultiline } from "@/lib/sanitize";
-import { adminSetTexts } from "@/server/mock-backend";
+import { adminSetTexts } from "@/server/admin";
 import { handle, json, requireAdmin, readJson } from "@/server/http";
 
 /** Change site texts. Body: { en: { path: text | null }, sv: { ... } }. null restores the built-in text. */
@@ -13,6 +13,6 @@ export async function PUT(request: Request) {
         Object.entries(v).slice(0, 2000).map(([k, text]) => [k, typeof text === "string" ? cleanMultiline(text, 5000) : null]),
       );
     };
-    return json(adminSetTexts({ en: part(body.en), sv: part(body.sv) }));
+    return json(await adminSetTexts({ en: part(body.en), sv: part(body.sv) }));
   });
 }

@@ -22,6 +22,19 @@ Passtid looks up to 12 weeks ahead for passports and ID cards, and 8 weeks ahead
 
 You only create an account at the end, right before you pay.
 
+## Backend
+
+Everything runs in this Next.js app: the pages, the route handlers in `src/app/api/v1`, and the data layer in `src/server`.
+
+- **Database.** Postgres via `DATABASE_URL`. The tables (users, requests, slots, bookings, payments, alert subscriptions) are created on first use.
+- **Accounts.** Email and password (scrypt hashes). The session is an HMAC-signed HttpOnly cookie; `AUTH_SECRET` is required in production. Accounts are created at the last step of the booking flow, right before payment.
+- **Payments.** The last booking step sells two plans through Stripe Checkout: Telegram alerts (default £4 a month, a Stripe subscription) and automatic booking (default £30, paid once). Up to 10 people can be added to one booking. Prices are in GBP; change them (in pence) with `PLAN_NOTIFY_CENTS` and `PLAN_AUTOBOOK_CENTS`. Set `STRIPE_SECRET_KEY`, and add a webhook endpoint at `/api/v1/stripe/webhook` (events `checkout.session.completed`, `checkout.session.async_payment_succeeded` and `customer.subscription.deleted`, which switches the alerts off when a customer cancels) with its signing secret in `STRIPE_WEBHOOK_SECRET`. Fulfilment is idempotent, so the return redirect and the webhook can both run. In production, payments are refused without a Stripe key; elsewhere, without one, checkout runs in demo mode and nobody is charged.
+- **Local setup.** Copy `.env.example` to `.env.local`, set `DATABASE_URL` and `AUTH_SECRET`, run `npm run dev`.
+
+### Booking bots
+
+The Python bots (separate `sweden` repo) share this app's Postgres database: they write free slots and booking results to the tables directly. There is no HTTP bot API.
+
 ## Plans
 
 | Plan | What you get | Price |

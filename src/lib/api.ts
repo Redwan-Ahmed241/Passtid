@@ -6,6 +6,7 @@ import type {
   PlanId,
   PlansResponse,
   BookingRequest,
+  PhoneResponse,
   RequestResponse,
   SlotsResponse,
   SystemId,
@@ -86,6 +87,10 @@ export const api = {
     request<ConfirmResponse>(`/checkout/confirm`, { method: "POST", body: JSON.stringify({ sessionId }) }),
   booking: (id: string) => request<Booking>(`/bookings/${encodeURIComponent(id)}`),
   cancel: (id: string) => request<Booking>(`/bookings/${encodeURIComponent(id)}`, { method: "DELETE" }),
+  telegramLink: () => request<{ url: string | null }>(`/telegram/link`),
+  loadPhone: () => request<PhoneResponse>(`/account/phone`),
+  savePhone: (phone: string | null) =>
+    request<PhoneResponse>(`/account/phone`, { method: "PUT", body: JSON.stringify({ phone }) }),
 
   texts: () => request<TextOverrides>(`/texts`),
   myTickets: () => request<{ tickets: Ticket[] }>(`/tickets`),
