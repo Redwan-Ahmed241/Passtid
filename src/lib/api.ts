@@ -70,6 +70,10 @@ export const api = {
     request<User>(`/auth/login`, { method: "POST", body: JSON.stringify({ email, password }) }),
   register: (email: string, password: string) =>
     request<User>(`/auth/register`, { method: "POST", body: JSON.stringify({ email, password }) }),
+  forgotPassword: (email: string) =>
+    request<{ ok: true }>(`/auth/forgot`, { method: "POST", body: JSON.stringify({ email }) }),
+  resetPassword: (token: string, password: string) =>
+    request<{ ok: true }>(`/auth/reset`, { method: "POST", body: JSON.stringify({ token, password }) }),
   logout: () => request<{ ok: true }>(`/auth/logout`, { method: "POST" }),
 
   slots: (system: SystemId, signal?: AbortSignal) =>

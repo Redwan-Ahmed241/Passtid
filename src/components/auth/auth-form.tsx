@@ -134,6 +134,14 @@ export function AuthForm({ mode }: { mode: Mode }) {
           </div>
         </Field>
 
+        {mode === "login" && (
+          <div className="-mt-2 text-right">
+            <Link href="/forgot-password" className="inline-flex min-h-11 items-center text-sm font-semibold text-accent hover:text-accent-ink">
+              {t("forgotPassword")}
+            </Link>
+          </div>
+        )}
+
         {formError && (
           <p role="alert" className="rounded-lg border border-hot-line bg-hot-bg px-3 py-2.5 text-sm text-hot">
             {formError}

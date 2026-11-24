@@ -69,7 +69,7 @@ const toTicket = (r: TicketRow): Ticket => ({
 
 /* Messages go into the notifications outbox; the notifier worker (sweden/bots) sends and retries them. */
 
-async function enqueue(kind: string, dedupeKey: string, userId: string | null, channel: string, address: string, message: string) {
+export async function enqueue(kind: string, dedupeKey: string, userId: string | null, channel: string, address: string, message: string) {
   await query(
     `insert into notifications (user_id, kind, dedupe_key, channel, address, message)
      values ($1, $2, $3, $4, $5, $6) on conflict (dedupe_key) do nothing`,

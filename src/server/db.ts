@@ -91,6 +91,15 @@ create table if not exists alert_seen (
   slot text not null,
   primary key (subscription_id, slot)
 );
+-- One-time password reset links. Only the hash of the token is stored, so a database leak is not a set of live links.
+create table if not exists password_resets (
+  token_hash text primary key,
+  user_id text not null references users(id) on delete cascade,
+  expires_at timestamptz not null,
+  used_at timestamptz,
+  created_at timestamptz not null default now()
+);
+create index if not exists password_resets_user on password_resets (user_id, created_at);
 create table if not exists tickets (
   token text primary key,      -- e.g. PT-4F2K9Q, quoted by the user to support
   user_id text not null references users(id) on delete cascade,
