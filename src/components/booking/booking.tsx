@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AlertTriangle, ArrowRight, BellRing, Bot, Check, CreditCard, Eye, EyeOff, Info, Loader2 } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import { api, ApiRequestError } from "@/lib/api";
 import { formatPrice } from "@/lib/plans";
 import { LOCALES, useI18n } from "@/lib/i18n";
@@ -1007,19 +1008,7 @@ function StatusCard({
         <Row label={t("rowEmail")} value={email} />
       </dl>
 
-      {autobook && telegramUrl && (
-        <p className="mt-5 text-sm text-muted">
-          {t("emailAlways")}{" "}
-          <a
-            href={telegramUrl}
-            target="_blank"
-            rel="noopener"
-            className="font-semibold text-accent-line underline underline-offset-2"
-          >
-            {t("telegramAlso")}
-          </a>
-        </p>
-      )}
+      {autobook && telegramUrl && <TelegramConnect url={telegramUrl} label={t("telegramAlso")} note={t("emailAlways")} />}
 
       <TelegramPhoneField value={phone} onChange={onPhoneChange} />
 
@@ -1044,6 +1033,28 @@ function StatusCard({
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * One-tap Telegram connect: a big button for phones, plus a QR code on larger screens
+ * because most people pay on a laptop but have Telegram on their phone.
+ */
+function TelegramConnect({ url, label, note }: { url: string; label: string; note?: string }) {
+  const { t } = useI18n();
+  return (
+    <div className="mt-5">
+      <a href={url} target="_blank" rel="noopener" className="btn btn-primary w-full">
+        {label} <ArrowRight className="size-4" aria-hidden="true" />
+      </a>
+      <div className="mt-4 hidden flex-col items-center gap-2 sm:flex">
+        <div className="rounded-lg bg-white p-3">
+          <QRCodeSVG value={url} size={136} marginSize={0} title={t("telegramScan")} />
+        </div>
+        <p className="text-[0.8125rem] text-muted">{t("telegramScan")}</p>
+      </div>
+      {note && <p className="mt-3 text-[0.8125rem] text-muted">{note}</p>}
     </div>
   );
 }
@@ -1092,19 +1103,7 @@ function WatchingCard({
       </span>
       <h1 className="mt-4 text-2xl font-semibold text-ink">{t("watchingTitle")}</h1>
       <p className="mt-2 text-sm text-muted">{t("watchingBody")}</p>
-      {autobook && telegramUrl && (
-        <p className="mt-4 text-sm text-muted">
-          {t("emailAlways")}{" "}
-          <a
-            href={telegramUrl}
-            target="_blank"
-            rel="noopener"
-            className="font-semibold text-accent-line underline underline-offset-2"
-          >
-            {t("telegramAlso")}
-          </a>
-        </p>
-      )}
+      {autobook && telegramUrl && <TelegramConnect url={telegramUrl} label={t("telegramAlso")} note={t("emailAlways")} />}
       <TelegramPhoneField value={phone} onChange={onPhoneChange} />
       <EmbassyNotice />
       <button type="button" className="btn btn-ghost mt-5 w-full border-accent-line text-accent-line" onClick={onAnother}>
@@ -1124,11 +1123,7 @@ function AlertCard({ alert, onAnother }: { alert: AlertSubscription; onAnother: 
       </span>
       <h1 className="mt-4 text-2xl font-semibold text-ink">{t("alertsTitle")}</h1>
       <p className="mt-2 text-sm text-muted">{alert.telegramUrl ? t("alertsBody") : t("alertsNoBot")}</p>
-      {alert.telegramUrl && (
-        <a href={alert.telegramUrl} target="_blank" rel="noopener" className="btn btn-primary mt-5 w-full">
-          {t("openTelegram")} <ArrowRight className="size-4" aria-hidden="true" />
-        </a>
-      )}
+      {alert.telegramUrl && <TelegramConnect url={alert.telegramUrl} label={t("openTelegram")} />}
       <EmbassyNotice />
       <button type="button" className="btn btn-ghost mt-5 w-full border-accent-line text-accent-line" onClick={onAnother}>
         {t("bookAnother")}
