@@ -71,6 +71,13 @@ export function MobileNav() {
                 </Link>
               </li>
             ))}
+            {user?.admin && (
+              <li className="border-b border-line-2">
+                <Link href="/admin" onClick={close} aria-current={pathname === "/admin" ? "page" : undefined} className={row}>
+                  {t("navAdmin")}
+                </Link>
+              </li>
+            )}
             <li>
               {user ? (
                 <button
