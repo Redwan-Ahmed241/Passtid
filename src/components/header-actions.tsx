@@ -32,9 +32,11 @@ export function HeaderActions() {
 
   return (
     <div className="flex items-center gap-2 md:ml-0">
-      <span className="hidden max-w-[8rem] truncate text-sm font-medium text-muted xl:inline" title={user.email}>
-        {displayName(user.email)}
-      </span>
+      {!user.admin && (
+        <span className="hidden max-w-[8rem] truncate text-sm font-medium text-muted xl:inline" title={user.email}>
+          {displayName(user.email)}
+        </span>
+      )}
       {user.admin && (
         <Link href="/admin" className="btn btn-primary hidden h-10 min-h-10 px-3.5 text-sm md:inline-flex">
           {t("navAdmin")}
