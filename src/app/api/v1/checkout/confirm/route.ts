@@ -5,7 +5,7 @@ import { verifyCheckout } from "@/server/payments";
 /** Called when the browser comes back from checkout: verify the payment, then activate what was bought. */
 export async function POST(request: Request) {
   return handle(async () => {
-    const user = requireUser(request);
+    const user = await requireUser(request);
     const body = (await readJson(request)) as { sessionId?: unknown };
     if (typeof body.sessionId !== "string" || body.sessionId.length > 4000) {
       return errorJson(422, "invalid_session", "`sessionId` is required.");

@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { useId, useState } from "react";
+import { useId, useState, useSyncExternalStore } from "react";
 import { CheckCircle2, Eye, EyeOff, Loader2, MailCheck } from "lucide-react";
 import { api, ApiRequestError } from "@/lib/api";
 import { EMAIL_RE } from "@/lib/applicants";
 import { useI18n } from "@/lib/i18n";
+import { signOut } from "./use-me";
 
 const errorBox = "rounded-lg border border-hot-line bg-hot-bg px-3 py-2.5 text-sm text-hot";
 
@@ -147,11 +147,19 @@ export function ForgotForm() {
   );
 }
 
+function onHashChange(notify: () => void) {
+  window.addEventListener("hashchange", notify);
+  return () => window.removeEventListener("hashchange", notify);
+}
+
+const tokenFromHash = () => new URLSearchParams(window.location.hash.slice(1)).get("token") ?? "";
+
 /** Step 2: choose a new password with the token from the email link. */
 export function ResetForm() {
   const uid = useId();
   const { t } = useI18n();
-  const token = useSearchParams().get("token") ?? "";
+  // The token is in the URL fragment, which only the browser can see: null until it has been read.
+  const token = useSyncExternalStore(onHashChange, tokenFromHash, () => null);
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [touched, setTouched] = useState(false);
@@ -171,6 +179,8 @@ export function ResetForm() {
       </div>
     );
   }
+
+  if (token === null) return <div className="skeleton h-72 w-full max-w-md" aria-hidden="true" />;
 
   if (!token) {
     return (
@@ -199,7 +209,9 @@ export function ResetForm() {
     }
     setBusy(true);
     try {
-      await api.resetPassword(token, password);
+      await api.resetPassword(token ?? "", password);
+      // The server has ended every session; drop this browser's cookie and signed-in header to match.
+      await signOut();
       setDone(true);
     } catch (err) {
       setFormError(err instanceof ApiRequestError ? err.message : t("somethingWrong"));

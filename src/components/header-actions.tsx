@@ -35,12 +35,19 @@ export function HeaderActions() {
       <span className="hidden max-w-[8rem] truncate text-sm font-medium text-muted xl:inline" title={user.email}>
         {displayName(user.email)}
       </span>
+      {user.admin && (
+        <Link href="/admin" className="btn btn-primary hidden h-10 min-h-10 px-3.5 text-sm md:inline-flex">
+          {t("navAdmin")}
+        </Link>
+      )}
       <button
         type="button"
         onClick={() => void signOut().then(() => router.push("/"))}
         className="btn btn-ghost hidden h-10 min-h-10 px-3.5 text-sm md:inline-flex"
       >
-        <LogOut className="size-4" aria-hidden="true" /> {t("signOut")}
+        <LogOut className="size-4" aria-hidden="true" />
+        {/* An administrator has one more button, so on narrow desktops this one is just its icon. */}
+        <span className={user.admin ? "sr-only lg:not-sr-only" : undefined}>{t("signOut")}</span>
       </button>
       {/* The nav already links to the console from tablet width up. */}
       <Link href="/booking" className="btn btn-primary h-11 min-h-11 px-3 text-sm max-[399px]:hidden sm:px-4 md:hidden">

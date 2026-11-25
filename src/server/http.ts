@@ -10,8 +10,9 @@ import {
 import { EMAIL_RE, NAME_RE, PERSONAL_NUMBER_RE, PHONE_RE } from "@/lib/applicants";
 import { cleanLine } from "@/lib/sanitize";
 import { DAY_RE, MAX_DATE_RANGES, MAX_TIME_RANGES, validateWindow } from "@/lib/window";
+import { isSessionCurrent } from "./auth";
 import { ApiError } from "./errors";
-import { userFromRequest } from "./session";
+import { sessionFromRequest } from "./session";
 
 const NO_STORE = { "Cache-Control": "no-store" };
 
@@ -19,8 +20,8 @@ export function json<T>(body: T, status = 200, headers: Record<string, string> =
   return Response.json(body, { status, headers: { ...NO_STORE, ...headers } });
 }
 
-export function errorJson(status: number, code: string, message: string) {
-  return json<ApiErrorBody>({ error: { code, message } }, status);
+export function errorJson(status: number, code: string, message: string, headers: Record<string, string> = {}) {
+  return json<ApiErrorBody>({ error: { code, message } }, status, headers);
 }
 
 /** Wrap a handler so thrown ApiErrors become JSON error responses. */
@@ -30,23 +31,31 @@ export async function handle(fn: () => Response | Promise<Response>) {
   } catch (err) {
     // Next.js control-flow errors (e.g. "this route is dynamic") carry a digest and must propagate.
     if (typeof err === "object" && err !== null && "digest" in err) throw err;
-    if (err instanceof ApiError) return errorJson(err.status, err.code, err.message);
+    if (err instanceof ApiError) {
+      const headers: Record<string, string> = err.retryAfter ? { "Retry-After": String(err.retryAfter) } : {};
+      return errorJson(err.status, err.code, err.message, headers);
+    }
     if (err instanceof SyntaxError) return errorJson(400, "bad_json", "Request body is not valid JSON.");
     console.error(err);
     return errorJson(500, "internal", "Something went wrong on our side.");
   }
 }
 
-/** Every slot, booking and request endpoint requires a signed-in user. */
-export function requireUser(request: Request): User {
-  const user = userFromRequest(request);
-  if (!user) throw new ApiError(401, "unauthenticated", "Sign in to continue.");
-  return user;
+/**
+ * Every slot, booking and request endpoint requires a signed-in user. The cookie only counts while the
+ * account still exists and its password has not been reset since the cookie was issued.
+ */
+export async function requireUser(request: Request): Promise<User> {
+  const session = sessionFromRequest(request);
+  if (!session || !(await isSessionCurrent(session.user.id, session.version))) {
+    throw new ApiError(401, "unauthenticated", "Sign in to continue.");
+  }
+  return session.user;
 }
 
 /** Admin endpoints answer 404 to everyone else, so their existence is not advertised. */
 export function requireAdmin(request: Request): User {
-  const user = userFromRequest(request);
+  const user = sessionFromRequest(request)?.user;
   if (!user?.admin) throw new ApiError(404, "not_found", "Not found.");
   return user;
 }
@@ -149,7 +158,8 @@ export function rateLimit(request: Request, action: string, max: number, windowM
   const recent = (hits.get(key) ?? []).filter((t) => now - t < windowMs);
   if (recent.length >= max) {
     hits.set(key, recent);
-    throw new ApiError(429, "too_many_requests", "Too many attempts. Try again in a few minutes.");
+    const retryAfter = Math.ceil((recent[0] + windowMs - now) / 1000);
+    throw new ApiError(429, "too_many_requests", "Too many attempts. Try again later.", retryAfter);
   }
   recent.push(now);
   hits.set(key, recent);

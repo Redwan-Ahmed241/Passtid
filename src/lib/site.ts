@@ -24,10 +24,10 @@ export const site = {
   description:
     "Passtid watches Swedish appointment slots in London for passports, ID cards and coordination numbers 24/7, then alerts you or books the first one that fits.",
   url: baseUrl(),
-  /** Shown in the privacy policy and terms. Set NEXT_PUBLIC_CONTACT_EMAIL to the real support address. */
   /** The embassy's own page, with opening hours, what to bring and current notices. */
   embassyUrl: "https://www.swedenabroad.se/en/embassies/united-kingdom-london/",
-  contactEmail: process.env.NEXT_PUBLIC_CONTACT_EMAIL || "support@passtid.com",
+  /** Shown in the privacy policy and terms. NEXT_PUBLIC_CONTACT_EMAIL overrides it. */
+  contactEmail: process.env.NEXT_PUBLIC_CONTACT_EMAIL || "support@passtid.nu",
   locale: "en_GB",
   disclaimer:
     "Passtid is an independent booking assistant. It is not affiliated with, endorsed by or operated by the Embassy of Sweden or the Swedish Migration Agency.",

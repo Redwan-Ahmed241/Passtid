@@ -6,7 +6,7 @@ import { createCheckout } from "@/server/payments";
 /** Start paying for a plan. Only a complete booking request can be paid for. */
 export async function POST(request: Request) {
   return handle(async () => {
-    const user = requireUser(request);
+    const user = await requireUser(request);
     const body = (await readJson(request)) as { system?: unknown; plan?: unknown; slot?: unknown };
     if (!isSystemId(body.system)) return errorJson(422, "invalid_system", "`system` must be passport or coordination_number.");
     if (!isPlanId(body.plan)) return errorJson(422, "invalid_plan", "`plan` must be notify or autobook.");

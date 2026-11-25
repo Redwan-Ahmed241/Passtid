@@ -10,6 +10,7 @@ const en = {
   // shell
   skipToContent: "Skip to content",
   navConsole: "Booking",
+  navAdmin: "Admin",
   navRules: "Booking rules",
   navFaq: "Questions",
   navHow: "How it works",
@@ -268,6 +269,7 @@ export type TranslationKey = keyof typeof en;
 const sv: Record<TranslationKey, string> = {
   skipToContent: "Hoppa till innehållet",
   navConsole: "Bokning",
+  navAdmin: "Admin",
   navRules: "Bokningsregler",
   navFaq: "Frågor",
   navHow: "Så fungerar det",

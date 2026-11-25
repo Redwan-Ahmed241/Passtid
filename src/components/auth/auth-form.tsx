@@ -8,6 +8,7 @@ import { api, ApiRequestError } from "@/lib/api";
 import { EMAIL_RE } from "@/lib/applicants";
 import { useI18n } from "@/lib/i18n";
 import type { TranslationKey } from "@/lib/i18n/translations";
+import type { User } from "@/lib/types";
 import { announceAuthChange, safeNext, useMe } from "./use-me";
 
 type Mode = "login" | "register";
@@ -27,9 +28,13 @@ const COPY = {
   },
 } as const satisfies Record<Mode, { title: TranslationKey; lead: TranslationKey; submit: TranslationKey; swap: { text: TranslationKey; cta: TranslationKey; href: string } }>;
 
+/** Where to go once signed in: the page they were headed to, else the panel for an administrator. */
+const landing = (user: User, requested: string | null) => (!requested && user.admin ? "/admin" : safeNext(requested));
+
 export function AuthForm({ mode }: { mode: Mode }) {
   const params = useSearchParams();
-  const next = safeNext(params.get("next"));
+  const requested = params.get("next");
+  const next = safeNext(requested);
   const uid = useId();
   const copy = COPY[mode];
   const { t } = useI18n();
@@ -46,8 +51,8 @@ export function AuthForm({ mode }: { mode: Mode }) {
   // avoids the router's cached prefetch of a protected page from before sign-in, and makes sure the
   // proxy sees the new session cookie.
   useEffect(() => {
-    if (user) window.location.assign(next);
-  }, [user, next]);
+    if (user) window.location.assign(landing(user, requested));
+  }, [user, requested]);
 
   const errors: Record<string, string> = {};
   if (!email.trim()) errors.email = t("errEnterEmail");
@@ -74,7 +79,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
           ? await api.login(email.trim(), password)
           : await api.register(email.trim(), password);
       announceAuthChange(u);
-      window.location.assign(next);
+      window.location.assign(landing(u, requested));
     } catch (err) {
       setFormError(err instanceof ApiRequestError ? err.message : t("somethingWrong"));
       setBusy(false);

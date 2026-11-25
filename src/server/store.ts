@@ -24,7 +24,7 @@ import {
 import { isComplete } from "@/lib/applicants";
 import { defaultRequest } from "@/lib/defaults";
 import { EMBASSY_TZ, addDays, embassyClock, embassyToday } from "@/lib/time";
-import { isUniqueViolation, query, transaction, withLock } from "./db";
+import { isUniqueViolation, query, transaction } from "./db";
 import { ApiError } from "./errors";
 
 export { ApiError };
@@ -159,6 +159,12 @@ export async function createBooking(system: SystemId, slot: string, userId: stri
   if (!isComplete(system, req.request)) {
     throw new ApiError(422, "incomplete_details", "Complete the people and email details for this service before booking.");
   }
+  // A queued booking is what the bot acts on, so only a paid automatic-booking plan may create one.
+  const [plan] = await run<{ one: number }>(
+    "select 1 as one from payments where user_id = $1 and system = $2 and plan = 'autobook' limit 1",
+    [userId, system],
+  );
+  if (!plan) throw new ApiError(402, "payment_required", "Buy automatic booking for this service before booking.");
   const [exists] = await run<{ one: number }>("select 1 as one from slots where system = $1 and slot = $2", [system, slot]);
   if (!exists) throw new ApiError(404, "slot_not_found", "That slot is no longer offered by the site.");
 
@@ -267,14 +273,19 @@ interface PaidInfo {
  *  - autobook : a queued booking for the earliest slot that fits the window, else the bot keeps watching
  */
 export function fulfilPayment(paid: PaidInfo, userId: string): Promise<ConfirmResponse> {
-  return withLock(`payment:${paid.sessionId}`, async () => {
-    const [done] = await query<{ result: ConfirmResponse }>("select result from payments where session_id = $1", [paid.sessionId]);
+  // One transaction on one connection: the lock makes a second delivery wait its turn, and either
+  // everything that was bought is saved or nothing is.
+  return transaction(async (client) => {
+    await client.query("select pg_advisory_xact_lock(hashtext($1))", [`payment:${paid.sessionId}`]);
+    const { rows: [done] } = await client.query<{ result: ConfirmResponse }>("select result from payments where session_id = $1", [
+      paid.sessionId,
+    ]);
     if (done) return done.result;
 
     let result: ConfirmResponse;
     if (paid.plan === "notify") {
       const code = randomBytes(12).toString("hex");
-      await query(
+      await client.query(
         // A user who already linked Telegram (by phone or an earlier code) gets alerts straight away.
         `insert into alert_subscriptions (user_id, system, telegram_code, stripe_subscription_id, telegram_chat_id)
          values ($1, $2, $3, $4, (select telegram_chat_id from users where id = $1))`,
@@ -290,7 +301,7 @@ export function fulfilPayment(paid: PaidInfo, userId: string): Promise<ConfirmRe
     } else {
       result = { plan: "autobook", system: paid.system, booking: null, alert: null, watching: true };
     }
-    await query("insert into payments (session_id, user_id, system, plan, result) values ($1, $2, $3, $4, $5)", [
+    await client.query("insert into payments (session_id, user_id, system, plan, result) values ($1, $2, $3, $4, $5)", [
       paid.sessionId,
       userId,
       paid.system,
@@ -298,7 +309,8 @@ export function fulfilPayment(paid: PaidInfo, userId: string): Promise<ConfirmRe
       JSON.stringify(result),
     ]);
     if (paid.plan === "autobook") {
-      await query("select pg_notify('match_needed', $1)", [paid.system]);
+      // Delivered when the transaction commits, so the bot never looks for a payment that is not there yet.
+      await client.query("select pg_notify('match_needed', $1)", [paid.system]);
     }
     return result;
   });
