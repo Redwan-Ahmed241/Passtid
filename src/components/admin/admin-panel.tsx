@@ -1,25 +1,23 @@
 "use client";
 
 import { notFound } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Loader2, RefreshCw } from "lucide-react";
 import { api, ApiRequestError } from "@/lib/api";
-import { applyTexts } from "@/lib/i18n";
-import { builtinTexts } from "@/lib/i18n/overrides";
-import { LANGS, type Lang } from "@/lib/i18n/translations";
 import { SYSTEM_INFO } from "@/lib/types";
-import type { AdminCustomer, AdminOverview, Booking, BookingRequest, BookingStatus, SystemId, TextOverrides, Ticket } from "@/lib/types";
+import type { AdminCustomer, AdminOverview, Booking, BookingRequest, BookingStatus, SystemId, Ticket, TicketCategory } from "@/lib/types";
 import { addDays, embassyToday, formatDayShort } from "@/lib/time";
 import { describeWindow } from "@/lib/window";
 import { useMe } from "../auth/use-me";
 import { ApplicantsEditor } from "../booking/applicants-editor";
 import { WindowEditor } from "../booking/window-editor";
+import { SiteTexts } from "./site-texts";
 
 type Tab = "tickets" | "customers" | "texts";
 const TABS: { id: Tab; label: string }[] = [
   { id: "tickets", label: "Tickets" },
   { id: "customers", label: "Customers" },
-  { id: "texts", label: "Site texts" },
+  { id: "texts", label: "Website texts" },
 ];
 
 const when = (iso: string) => `${formatDayShort(iso.slice(0, 10), "en-GB")} ${iso.slice(11, 16)}`;
@@ -32,6 +30,8 @@ const message = (err: unknown) => (err instanceof ApiRequestError ? err.message 
 export function AdminPanel() {
   const { loading, user } = useMe();
   const [tab, setTab] = useState<Tab>("tickets");
+  /** Once opened, the text editor stays mounted so switching tabs never loses unsaved wording. */
+  const [textsOpened, setTextsOpened] = useState(false);
   const [data, setData] = useState<AdminOverview | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -61,7 +61,7 @@ export function AdminPanel() {
   const openCount = data?.tickets.filter((t) => t.status === "open").length ?? 0;
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-4 pt-8 pb-16 sm:px-6 lg:px-8">
+    <div className="mx-auto w-full max-w-6xl px-4 pt-8 pb-16 sm:px-6 lg:px-8">
       <div className="flex items-center justify-between gap-4">
         <h1 className="text-2xl font-bold text-ink sm:text-3xl">Admin</h1>
         <button type="button" className="btn btn-ghost h-10 min-h-10 px-3.5 text-sm" disabled={refreshing} onClick={() => void load()}>
@@ -76,7 +76,10 @@ export function AdminPanel() {
             type="button"
             role="tab"
             aria-selected={tab === tb.id}
-            onClick={() => setTab(tb.id)}
+            onClick={() => {
+              setTab(tb.id);
+              if (tb.id === "texts") setTextsOpened(true);
+            }}
             className={`-mb-px min-h-11 border-b-2 text-[0.9375rem] font-semibold transition-colors ${
               tab === tb.id ? "border-accent text-ink" : "border-transparent text-muted hover:text-ink"
             }`}
@@ -94,9 +97,12 @@ export function AdminPanel() {
       )}
 
       <div className="mt-6">
-        {tab === "texts" ? (
-          <TextsTab />
-        ) : !data ? (
+        {textsOpened && (
+          <div hidden={tab !== "texts"}>
+            <SiteTexts />
+          </div>
+        )}
+        {tab === "texts" ? null : !data ? (
           !error && <Loader2 className="size-5 animate-spin text-muted" aria-label="Loading" />
         ) : tab === "tickets" ? (
           <TicketsTab tickets={data.tickets} onChange={(t) => setData((d) => d && { ...d, tickets: d.tickets.map((x) => (x.token === t.token ? t : x)) })} />
@@ -107,6 +113,9 @@ export function AdminPanel() {
     </div>
   );
 }
+
+const CATEGORY_NAMES: Record<TicketCategory, string> = { booking: "Booking", payment: "Payment", account: "Account", other: "Something else" };
+const STATUS_NAMES: Record<BookingStatus, string> = { pending: "Waiting to be booked", booked: "Booked", released: "Cancelled" };
 
 /* ------------------------------------------------------------------ */
 /* Tickets                                                             */
@@ -147,7 +156,7 @@ function TicketRow({ ticket, onChange }: { ticket: Ticket; onChange: (t: Ticket)
         <span className={ticket.status === "open" ? "font-semibold text-busy" : "font-semibold text-clear"}>
           {ticket.status === "open" ? "Open" : "Resolved"}
         </span>
-        <span className="text-muted">{ticket.category}</span>
+        <span className="text-muted">{CATEGORY_NAMES[ticket.category]}</span>
         {ticket.system && <span className="text-muted">{SYSTEM_INFO[ticket.system].short}</span>}
         <a href={`mailto:${ticket.email}`} className="text-accent underline-offset-2 hover:underline">{ticket.email}</a>
         <span className="font-mono text-xs text-muted tabular">{when(ticket.createdAt)}</span>
@@ -287,9 +296,9 @@ function BookingRow({ booking, onReload }: { booking: Booking; onReload: () => P
       <div className="mt-2 flex flex-wrap items-end gap-2">
         <label>
           <span className="mb-1 block text-xs font-medium text-muted">Status</span>
-          <select className="field h-10 min-h-10 w-36 py-0 text-sm" value={status} onChange={(e) => setStatus(e.target.value as BookingStatus)}>
+          <select className="field h-10 min-h-10 w-52 py-0 text-sm" value={status} onChange={(e) => setStatus(e.target.value as BookingStatus)}>
             {STATUSES.map((s) => (
-              <option key={s} value={s}>{s}</option>
+              <option key={s} value={s}>{STATUS_NAMES[s]}</option>
             ))}
           </select>
         </label>
@@ -383,142 +392,5 @@ function RequestEditor({
         </div>
       )}
     </div>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* Site texts                                                          */
-/* ------------------------------------------------------------------ */
-
-const MAX_SHOWN = 60;
-
-function TextsTab() {
-  const [lang, setLang] = useState<Lang>("en");
-  const [query, setQuery] = useState("");
-  const [onlyEdited, setOnlyEdited] = useState(false);
-  const [saved, setSaved] = useState<TextOverrides | null>(null);
-  /** Unsaved edits per language: a string to set, null to restore the built-in text. */
-  const [dirty, setDirty] = useState<Record<Lang, Record<string, string | null>>>({ en: {}, sv: {} });
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    api.texts().then(setSaved, (err: unknown) => setError(message(err)));
-  }, []);
-
-  const defaults = useMemo(() => builtinTexts(lang), [lang]);
-  const paths = useMemo(() => Object.keys(defaults), [defaults]);
-
-  if (!saved) {
-    return error ? <p role="alert" className="text-sm text-hot">{error}</p> : <Loader2 className="size-5 animate-spin text-muted" aria-label="Loading" />;
-  }
-
-  const q = query.trim().toLowerCase();
-  const current = (path: string) => {
-    const d = dirty[lang][path];
-    return d !== undefined ? (d ?? defaults[path]) : (saved[lang][path] ?? defaults[path]);
-  };
-  const isEdited = (path: string) => (dirty[lang][path] !== undefined ? dirty[lang][path] !== null : saved[lang][path] !== undefined);
-  const matches = paths.filter(
-    (p) => (!onlyEdited || isEdited(p)) && (!q || p.toLowerCase().includes(q) || current(p).toLowerCase().includes(q)),
-  );
-  const dirtyCount = Object.keys(dirty.en).length + Object.keys(dirty.sv).length;
-
-  const edit = (path: string, value: string) =>
-    setDirty((d) => {
-      const next = { ...d[lang] };
-      // Typing the text back to what is stored is not a change.
-      if (value === (saved[lang][path] ?? defaults[path])) delete next[path];
-      else next[path] = value === defaults[path] ? null : value;
-      return { ...d, [lang]: next };
-    });
-
-  const reset = (path: string) =>
-    setDirty((d) => {
-      const next = { ...d[lang] };
-      if (saved[lang][path] === undefined) delete next[path];
-      else next[path] = null;
-      return { ...d, [lang]: next };
-    });
-
-  const save = async () => {
-    setBusy(true);
-    setError(null);
-    try {
-      const next = await api.adminSetTexts(dirty);
-      setSaved(next);
-      applyTexts(next);
-      setDirty({ en: {}, sv: {} });
-    } catch (err) {
-      setError(message(err));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <>
-      <div className="flex flex-wrap items-center gap-3">
-        <div role="group" aria-label="Language" className="inline-flex h-11 rounded-[0.625rem] border border-line bg-surface p-0.5">
-          {LANGS.map((l) => (
-            <button
-              key={l}
-              type="button"
-              aria-pressed={lang === l}
-              onClick={() => setLang(l)}
-              className="min-w-11 rounded-lg px-2 text-xs font-semibold text-muted uppercase transition-colors hover:text-ink aria-pressed:bg-accent aria-pressed:text-white"
-            >
-              {l}
-            </button>
-          ))}
-        </div>
-        <input
-          type="search"
-          className="field max-w-xs"
-          placeholder="Search texts"
-          aria-label="Search texts"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-        <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm text-ink-2">
-          <input type="checkbox" className="size-4 accent-[#006aa7]" checked={onlyEdited} onChange={(e) => setOnlyEdited(e.target.checked)} />
-          Only changed
-        </label>
-        <button type="button" className="btn btn-primary ml-auto" disabled={busy || dirtyCount === 0} onClick={() => void save()}>
-          {busy && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
-          {dirtyCount > 0 ? `Save ${dirtyCount} change${dirtyCount === 1 ? "" : "s"}` : "Saved"}
-        </button>
-      </div>
-      {error && <p role="alert" className="mt-3 text-sm text-hot">{error}</p>}
-      <p className="mt-3 text-sm text-muted tabular">
-        {matches.length} of {paths.length} texts{matches.length > MAX_SHOWN ? `, showing the first ${MAX_SHOWN}. Search to narrow it down.` : "."} Keep
-        placeholders such as {"{price}"} as they are.
-      </p>
-
-      <ul className="mt-4 divide-y divide-line border-y border-line">
-        {matches.slice(0, MAX_SHOWN).map((path) => (
-          <li key={`${lang}:${path}`} className="py-4">
-            <div className="flex flex-wrap items-baseline justify-between gap-x-4">
-              <label htmlFor={`txt-${path}`} className="font-mono text-xs break-all text-muted">
-                {path}
-              </label>
-              {isEdited(path) && (
-                <button type="button" className="min-h-11 text-sm font-semibold text-accent hover:text-accent-ink sm:min-h-0" onClick={() => reset(path)}>
-                  Restore original
-                </button>
-              )}
-            </div>
-            <textarea
-              id={`txt-${path}`}
-              rows={Math.min(8, Math.max(1, Math.ceil(current(path).length / 80)))}
-              className={`field mt-1.5 resize-y text-[0.9375rem] ${isEdited(path) ? "border-accent" : ""}`}
-              maxLength={5000}
-              value={current(path)}
-              onChange={(e) => edit(path, e.target.value)}
-            />
-          </li>
-        ))}
-      </ul>
-    </>
   );
 }
