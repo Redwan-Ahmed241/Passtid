@@ -91,7 +91,9 @@ create table if not exists alert_seen (
   slot text not null,
   primary key (subscription_id, slot)
 );
--- One-time password reset links. Only the hash of the token is stored, so a database leak is not a set of live links.
+-- Raised when a password is reset: session cookies carrying an older number stop working.
+alter table users add column if not exists session_version int not null default 0;
+-- One-time password reset links. Only the hash of the token is kept here (the outbox row for the email has the link).
 create table if not exists password_resets (
   token_hash text primary key,
   user_id text not null references users(id) on delete cascade,
@@ -127,34 +129,16 @@ const g = globalThis as unknown as { __pool?: Pool; __schema?: Promise<void> };
 function pool(): Pool {
   const url = process.env.DATABASE_URL;
   if (!url) throw new ApiError(503, "database_unavailable", "The database is not configured.");
-  return (g.__pool ??= new Pool({ connectionString: url, max: 5 }));
+  if (!g.__pool) {
+    // Without a time limit a request waits for ever when every connection is busy.
+    g.__pool = new Pool({ connectionString: url, max: 5, connectionTimeoutMillis: 10_000 });
+    // The server or its pooler may drop an idle connection; unhandled, that error ends the process.
+    g.__pool.on("error", (err) => console.error("Idle database connection failed", err.message));
+  }
+  return g.__pool;
 }
 
-/** Create the tables once per server instance. An advisory lock keeps parallel cold starts from racing. */
-function ensureSchema(): Promise<void> {
-  return (g.__schema ??= (async () => {
-    const client = await pool().connect();
-    try {
-      await client.query("select pg_advisory_lock(727001)");
-      await client.query(SCHEMA);
-      await client.query("select pg_advisory_unlock(727001)");
-    } finally {
-      client.release();
-    }
-  })().catch((err) => {
-    g.__schema = undefined;
-    throw err;
-  }));
-}
-
-export async function query<T extends QueryResultRow = QueryResultRow>(text: string, params: unknown[] = []): Promise<T[]> {
-  await ensureSchema();
-  return (await pool().query<T>(text, params)).rows;
-}
-
-/** Run `fn` with a dedicated connection inside a transaction. */
-export async function transaction<T>(fn: (client: PoolClient) => Promise<T>): Promise<T> {
-  await ensureSchema();
+async function inTransaction<T>(fn: (client: PoolClient) => Promise<T>): Promise<T> {
   const client = await pool().connect();
   try {
     await client.query("begin");
@@ -169,20 +153,33 @@ export async function transaction<T>(fn: (client: PoolClient) => Promise<T>): Pr
   }
 }
 
-/** Serialise work on one key across all server instances (e.g. a payment handled by two requests at once). */
-export async function withLock<T>(key: string, fn: () => Promise<T>): Promise<T> {
+/**
+ * Create the tables once per server instance. An advisory lock keeps parallel cold starts from racing.
+ * It is a transaction lock because a pooled connection string (Neon's "-pooler") may send each statement
+ * outside a transaction to a different server session, which would leave a session lock held for good.
+ */
+function ensureSchema(): Promise<void> {
+  return (g.__schema ??= inTransaction(async (client) => {
+    await client.query("select pg_advisory_xact_lock(727001)");
+    await client.query(SCHEMA);
+  }).catch((err) => {
+    g.__schema = undefined;
+    throw err;
+  }));
+}
+
+export async function query<T extends QueryResultRow = QueryResultRow>(text: string, params: unknown[] = []): Promise<T[]> {
   await ensureSchema();
-  const client = await pool().connect();
-  try {
-    await client.query("select pg_advisory_lock(hashtext($1))", [key]);
-    try {
-      return await fn();
-    } finally {
-      await client.query("select pg_advisory_unlock(hashtext($1))", [key]);
-    }
-  } finally {
-    client.release();
-  }
+  return (await pool().query<T>(text, params)).rows;
+}
+
+/**
+ * Run `fn` with a dedicated connection inside a transaction. Inside `fn`, query only through that client:
+ * asking the pool for a second connection while holding one can leave every request waiting on the others.
+ */
+export async function transaction<T>(fn: (client: PoolClient) => Promise<T>): Promise<T> {
+  await ensureSchema();
+  return inTransaction(fn);
 }
 
 export const isUniqueViolation = (err: unknown) =>

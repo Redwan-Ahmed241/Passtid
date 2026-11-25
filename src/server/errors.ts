@@ -4,6 +4,8 @@ export class ApiError extends Error {
     public status: number,
     public code: string,
     message: string,
+    /** Seconds the caller should wait, sent as Retry-After. */
+    public retryAfter?: number,
   ) {
     super(message);
   }

@@ -6,13 +6,13 @@ import { getUserPhone, setUserPhone } from "@/server/store";
 /** Read the optional phone for prefill. */
 export async function GET(request: Request) {
   await connection();
-  return handle(async () => json({ phone: await getUserPhone(requireUser(request).id) }));
+  return handle(async () => json({ phone: await getUserPhone((await requireUser(request)).id) }));
 }
 
 /** Save or clear the optional phone used to link a Telegram chat. */
 export async function PUT(request: Request) {
   return handle(async () => {
-    const user = requireUser(request);
+    const user = await requireUser(request);
     rateLimit(request, "phone", 10, 60 * 60 * 1000, user.id);
     const body = (await readJson(request)) as { phone?: unknown };
     if (body.phone !== null && typeof body.phone !== "string") {

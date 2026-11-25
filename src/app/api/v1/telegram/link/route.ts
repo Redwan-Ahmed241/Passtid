@@ -6,5 +6,5 @@ import { handle, json, requireUser } from "@/server/http";
 export async function GET(request: Request) {
   // Depends on the request's cookie, so never prerender this.
   await connection();
-  return handle(async () => json({ url: await getTelegramLink(requireUser(request).id) }));
+  return handle(async () => json({ url: await getTelegramLink((await requireUser(request)).id) }));
 }

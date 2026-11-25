@@ -22,9 +22,23 @@ const b64 = (s: string) => Buffer.from(s, "utf8").toString("base64url");
 const unb64 = (s: string) => Buffer.from(s, "base64url").toString("utf8");
 const mac = (body: string) => createHmac("sha256", secret()).update(body).digest("base64url");
 
-function sign(user: User): string {
+/** A user as the sign-in functions return it, with the number a password reset raises. */
+export type SessionUser = User & { sessionVersion?: number };
+
+/** What a valid cookie says. `version` still has to match the account for the session to count. */
+export interface Session {
+  user: User;
+  version: number;
+}
+
+/** Ties an administrator's cookie to the current ADMIN_PASSWORD, so changing it ends every admin session. */
+const adminStamp = () => mac(`admin:${process.env.ADMIN_PASSWORD ?? ""}`);
+
+function sign(user: SessionUser): string {
   // The role is never stored in the cookie: it is looked up again on every request.
-  const body = b64(JSON.stringify({ id: user.id, email: user.email, exp: Math.floor(Date.now() / 1000) + MAX_AGE_S }));
+  const exp = Math.floor(Date.now() / 1000) + MAX_AGE_S;
+  const stamp = isAdminEmail(user.email) ? { a: adminStamp() } : {};
+  const body = b64(JSON.stringify({ id: user.id, email: user.email, v: user.sessionVersion ?? 0, ...stamp, exp }));
   return `${body}.${mac(body)}`;
 }
 
@@ -44,17 +58,20 @@ export function withRole(user: User): User {
   return isAdminEmail(user.email) ? { id: user.id, email: user.email, admin: true } : { id: user.id, email: user.email };
 }
 
-function verify(token: string): User | null {
+function verify(token: string): Session | null {
   const [body, sig] = token.split(".");
   if (!body || !sig) return null;
   const expected = Buffer.from(mac(body));
   const given = Buffer.from(sig);
   if (expected.length !== given.length || !timingSafeEqual(expected, given)) return null;
   try {
-    const data = JSON.parse(unb64(body)) as User & { exp: number };
+    const data = JSON.parse(unb64(body)) as User & { exp: number; v?: number; a?: string };
     if (typeof data.exp !== "number" || data.exp < Date.now() / 1000) return null;
     if (typeof data.id !== "string" || typeof data.email !== "string") return null;
-    return withRole({ id: data.id, email: data.email });
+    // An admin address needs a cookie from an administrator sign-in with the password in force now.
+    if (isAdminEmail(data.email) && data.a !== adminStamp()) return null;
+    // Cookies issued before versions existed count as version 0, so nobody is signed out by the upgrade.
+    return { user: withRole({ id: data.id, email: data.email }), version: data.v ?? 0 };
   } catch {
     return null;
   }
@@ -69,14 +86,14 @@ function readCookie(header: string | null, name: string): string | null {
   return null;
 }
 
-export function userFromRequest(request: Request): User | null {
+export function sessionFromRequest(request: Request): Session | null {
   const token = readCookie(request.headers.get("cookie"), SESSION_COOKIE);
   return token ? verify(token) : null;
 }
 
 const secure = () => (process.env.NODE_ENV === "production" ? "; Secure" : "");
 
-export function sessionCookie(user: User): string {
+export function sessionCookie(user: SessionUser): string {
   return `${SESSION_COOKIE}=${sign(user)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${MAX_AGE_S}${secure()}`;
 }
 

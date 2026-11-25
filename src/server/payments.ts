@@ -32,6 +32,7 @@ async function stripe<T>(path: string, init: { method?: string; form?: URLSearch
       },
       body: init.form,
       cache: "no-store",
+      signal: AbortSignal.timeout(10_000), // a stalled provider must not hold the request open
     });
   } catch {
     throw new ApiError(502, "payments_unreachable", "Can't reach the payment provider. Try again in a moment.");

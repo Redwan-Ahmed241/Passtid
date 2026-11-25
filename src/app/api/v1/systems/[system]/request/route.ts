@@ -8,7 +8,7 @@ type Ctx = { params: Promise<{ system: string }> };
 export async function GET(request: Request, { params }: Ctx) {
   const { system } = await params;
   return handle(async () => {
-    const user = requireUser(request);
+    const user = await requireUser(request);
     if (!isSystemId(system)) return errorJson(404, "unknown_system", `Unknown system “${system}”.`);
     return json(await getRequest(user.id, system, user.email));
   });
@@ -17,7 +17,7 @@ export async function GET(request: Request, { params }: Ctx) {
 export async function PUT(request: Request, { params }: Ctx) {
   const { system } = await params;
   return handle(async () => {
-    const user = requireUser(request);
+    const user = await requireUser(request);
     if (!isSystemId(system)) return errorJson(404, "unknown_system", `Unknown system “${system}”.`);
     return json(await saveRequest(user.id, system, parseBookingRequest(await readJson(request))));
   });

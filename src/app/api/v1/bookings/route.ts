@@ -5,7 +5,7 @@ import { SLOT_RE, errorJson, handle, json, requireUser, readJson } from "@/serve
 /** Confirming a request puts the caller in the queue immediately, before the booking succeeds. */
 export async function POST(request: Request) {
   return handle(async () => {
-    const user = requireUser(request);
+    const user = await requireUser(request);
     const body = (await readJson(request)) as { system?: unknown; slot?: unknown };
     if (!isSystemId(body.system)) return errorJson(422, "invalid_system", "`system` must be passport or coordination_number.");
     if (typeof body.slot !== "string" || !SLOT_RE.test(body.slot)) {

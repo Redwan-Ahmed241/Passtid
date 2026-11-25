@@ -82,6 +82,8 @@ const supportUrl = () => `${site.url}/booking?support=1`;
 
 /** Email to the customer that the report arrived, and a Telegram alert to the administrator. */
 async function announceTicket(userId: string, ticket: Ticket) {
+  // The customer's own words are not repeated here: sign-up does not verify addresses, so doing so would
+  // let anyone send text of their choosing to someone else's inbox under our name.
   await enqueue(
     "ticket_received",
     `ticket_received:${ticket.token}`,
@@ -89,10 +91,6 @@ async function announceTicket(userId: string, ticket: Ticket) {
     "email",
     ticket.email,
     `We received your report ${ticket.token}.
-
-` +
-      `Your message:
-${ticket.message}
 
 ` +
       `We will email you when support answers. You can also see your reports here: ${supportUrl()}
