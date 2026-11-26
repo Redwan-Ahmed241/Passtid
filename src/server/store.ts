@@ -26,6 +26,7 @@ import { defaultRequest } from "@/lib/defaults";
 import { EMBASSY_TZ, addDays, embassyClock, embassyToday } from "@/lib/time";
 import { isUniqueViolation, query, transaction } from "./db";
 import { ApiError } from "./errors";
+import { paidSessionPattern } from "./payments";
 
 export { ApiError };
 
@@ -161,8 +162,8 @@ export async function createBooking(system: SystemId, slot: string, userId: stri
   }
   // A queued booking is what the bot acts on, so only a paid automatic-booking plan may create one.
   const [plan] = await run<{ one: number }>(
-    "select 1 as one from payments where user_id = $1 and system = $2 and plan = 'autobook' limit 1",
-    [userId, system],
+    "select 1 as one from payments where user_id = $1 and system = $2 and plan = 'autobook' and session_id like $3 limit 1",
+    [userId, system, paidSessionPattern()],
   );
   if (!plan) throw new ApiError(402, "payment_required", "Buy automatic booking for this service before booking.");
   const [exists] = await run<{ one: number }>("select 1 as one from slots where system = $1 and slot = $2", [system, slot]);

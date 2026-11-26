@@ -7,6 +7,9 @@
  *
  * Without STRIPE_SECRET_KEY the flow runs in demo mode and nobody is charged. Demo mode only exists
  * outside production: a production deployment without a key refuses to take orders.
+ *
+ * A deployed site takes real money only. Stripe's test mode accepts made-up card numbers, so there
+ * a test key, a test checkout session and a test webhook event are all refused.
  */
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { planFor } from "@/lib/plans";
@@ -19,9 +22,19 @@ export const isDemoPayments = () => !process.env.STRIPE_SECRET_KEY && process.en
 
 const DEMO_PREFIX = "demo_";
 
+/** True on any production build, previews included: they share the live database. */
+const liveOnly = () => process.env.NODE_ENV === "production";
+
+/** SQL LIKE pattern for the checkout sessions that count as paid for. */
+export const paidSessionPattern = () => (liveOnly() ? String.raw`cs\_live\_%` : "%");
+
 async function stripe<T>(path: string, init: { method?: string; form?: URLSearchParams } = {}): Promise<T> {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) throw new ApiError(503, "payments_unavailable", "Payments are not available yet.");
+  if (liveOnly() && !/^(sk|rk)_live_/.test(key)) {
+    console.error("STRIPE_SECRET_KEY is not a live key; payments are switched off until it is.");
+    throw new ApiError(503, "payments_unavailable", "Payments are not available yet.");
+  }
   let res: Response;
   try {
     res = await fetch(`${STRIPE_API}${path}`, {
@@ -99,6 +112,8 @@ export interface PaidSession extends CheckoutIntent {
 
 interface StripeSession {
   id: string;
+  /** False for a payment made in test mode, with no real money. */
+  livemode?: boolean;
   subscription?: string | null;
   payment_status: string;
   amount_total: number | null;
@@ -111,6 +126,7 @@ const invalid = () => new ApiError(402, "payment_not_confirmed", "We could not c
 
 /** A Checkout Session counts only if it is paid, for a known plan, at the current price. */
 function paidFromSession(s: StripeSession, expectedUserId: string | null): PaidSession {
+  if (liveOnly() && s.livemode !== true) throw invalid();
   const m = s.metadata ?? {};
   const plan = m.plan === "notify" || m.plan === "autobook" ? m.plan : null;
   const system = m.system === "passport" || m.system === "coordination_number" ? m.system : null;
@@ -162,9 +178,10 @@ export function readWebhook(rawBody: string, signatureHeader: string | null): We
   if (expected.length !== given.length || !timingSafeEqual(expected, given)) {
     throw new ApiError(400, "bad_signature", "Invalid webhook signature.");
   }
-  const event = JSON.parse(rawBody) as { type?: string; data?: { object?: StripeSession } };
+  const event = JSON.parse(rawBody) as { type?: string; livemode?: boolean; data?: { object?: StripeSession } };
   const object = event.data?.object;
-  if (!object) return { paid: null, endedSubscription: null };
+  // Test events are acknowledged and ignored, so Stripe does not keep retrying them.
+  if (!object || (liveOnly() && event.livemode !== true)) return { paid: null, endedSubscription: null };
   if (event.type === "customer.subscription.deleted") return { paid: null, endedSubscription: object.id };
   if (event.type !== "checkout.session.completed" && event.type !== "checkout.session.async_payment_succeeded") {
     return { paid: null, endedSubscription: null };
