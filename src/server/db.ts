@@ -3,6 +3,7 @@
  * The schema is created on first use, so a fresh database needs no manual migration.
  */
 import { Pool, type PoolClient, type QueryResultRow } from "pg";
+import { strictSslMode } from "./db-url";
 import { ApiError } from "./errors";
 
 const SCHEMA = `
@@ -142,7 +143,7 @@ function pool(): Pool {
   if (!url) throw new ApiError(503, "database_unavailable", "The database is not configured.");
   if (!g.__pool) {
     // Without a time limit a request waits for ever when every connection is busy.
-    g.__pool = new Pool({ connectionString: url, max: 5, connectionTimeoutMillis: 10_000 });
+    g.__pool = new Pool({ connectionString: strictSslMode(url), max: 5, connectionTimeoutMillis: 10_000 });
     // The server or its pooler may drop an idle connection; unhandled, that error ends the process.
     g.__pool.on("error", (err) => console.error("Idle database connection failed", err.message));
   }
