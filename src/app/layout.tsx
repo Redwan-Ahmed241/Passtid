@@ -1,6 +1,7 @@
 import { savedTexts } from "@/server/saved-texts";
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
+import { Analytics } from "@vercel/analytics/next";
 import { Insights } from "@/components/insights";
 import { LangProvider } from "@/lib/i18n";
 import { JsonLd } from "@/components/json-ld";
@@ -113,6 +114,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
         <SiteFooter />
         </LangProvider>
         <Insights />
+        <Analytics />
       </body>
     </html>
   );
