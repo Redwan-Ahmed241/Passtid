@@ -36,7 +36,11 @@ const nextConfig: NextConfig = {
   partialPrefetching: true,
   poweredByHeader: false,
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      // The <html> tag is shared and says English; this tells crawlers what /sv actually serves.
+      { source: "/sv/:path*", headers: [{ key: "Content-Language", value: "sv-SE" }] },
+    ];
   },
   async redirects() {
     // The booking page used to live at /console.

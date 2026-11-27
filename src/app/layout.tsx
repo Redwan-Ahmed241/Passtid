@@ -1,3 +1,4 @@
+import { savedTexts } from "@/server/saved-texts";
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { Insights } from "@/components/insights";
@@ -95,12 +96,13 @@ export const viewport: Viewport = {
   colorScheme: "light",
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const texts = await savedTexts();
   return (
     <html lang="en-GB" className={`${plexSans.variable} ${plexMono.variable} ${newsreader.variable}`}>
       <body className="flex min-h-dvh flex-col">
         <JsonLd data={siteGraph} />
-        <LangProvider>
+        <LangProvider initialTexts={texts}>
         <SkipLink />
         <SiteHeader />
         <main id="main" className="flex-1">

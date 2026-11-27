@@ -7,6 +7,7 @@ import { api } from "@/lib/api";
 import { content, type Content } from "./content";
 import { legal, type LegalDoc, type LegalId } from "./legal";
 import { applyOverrides } from "./overrides";
+import { HOME_PATHS, routeOf } from "./paths";
 import { LANGS, fill, translate, type Lang, type TranslationKey } from "./translations";
 
 const STORAGE_KEY = "passtid-lang";
@@ -41,9 +42,8 @@ const subscribe = (cb: () => void) => {
   return () => void listeners.delete(cb);
 };
 
-const NO_TEXTS: TextOverrides = { en: {}, sv: {} };
-/** Texts an administrator changed, loaded once per page view. */
-let texts: TextOverrides = NO_TEXTS;
+/** Texts an administrator changed, as fetched by this browser. Until then the server's copy is used. */
+let texts: TextOverrides | null = null;
 let textsRequested = false;
 
 /** Swap in a new set of overrides; every mounted page re-renders with them. */
@@ -52,20 +52,19 @@ export function applyTexts(next: TextOverrides) {
   listeners.forEach((cb) => cb());
 }
 
-/** Swedish has its own URL so search engines can index it; the path decides the language there. */
-export const SWEDISH_PATH = "/sv";
-const isSwedishPath = (pathname: string) => pathname === SWEDISH_PATH || pathname.startsWith(`${SWEDISH_PATH}/`);
-
 /** English on the server and during hydration, then the saved or browser language. */
-export function LangProvider({ children }: { children: React.ReactNode }) {
+export function LangProvider({ children, initialTexts }: { children: React.ReactNode; initialTexts: TextOverrides }) {
   const router = useRouter();
-  const routeLang: Lang | null = isSwedishPath(usePathname()) ? "sv" : null;
+  const pathname = usePathname();
+  const route = useMemo(() => routeOf(pathname), [pathname]);
+  const routeLang = route?.lang ?? null;
   const stored = useSyncExternalStore(subscribe, readLang, () => "en" as Lang);
   const lang = routeLang ?? stored;
 
   // Someone who arrived on the Swedish URL keeps Swedish when they move on to the booking pages.
+  // English addresses save nothing: "/" is also where old links lead.
   useEffect(() => {
-    if (routeLang && chosen !== routeLang) {
+    if (routeLang === "sv" && chosen !== routeLang) {
       chosen = routeLang;
       try {
         localStorage.setItem(STORAGE_KEY, routeLang);
@@ -84,11 +83,15 @@ export function LangProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem(STORAGE_KEY, next);
     } catch {}
     listeners.forEach((cb) => cb());
-    // Leaving Swedish on the Swedish URL means going to the English page.
-    if (routeLang && next !== routeLang) router.push("/");
-  }, [routeLang, router]);
+    // Where the language belongs to the address, choosing the other one moves to its address.
+    if (route && next !== route.lang) router.push(route.pair[next]);
+  }, [route, router]);
 
-  const overrides = useSyncExternalStore(subscribe, () => texts, () => NO_TEXTS)[lang];
+  const overrides = useSyncExternalStore(
+    subscribe,
+    () => (texts ?? initialTexts)[lang],
+    () => initialTexts[lang],
+  );
 
   useEffect(() => {
     if (textsRequested) return;
@@ -111,6 +114,12 @@ export function LangProvider({ children }: { children: React.ReactNode }) {
     };
   }, [lang, setLang, overrides]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+}
+
+/** The home page in the current language, optionally at a section: homeHref("how"). */
+export function useHomeHref(): (section?: string) => string {
+  const { lang } = useI18n();
+  return useCallback((section?: string) => HOME_PATHS[lang] + (section ? `#${section}` : ""), [lang]);
 }
 
 export function useI18n(): I18n {

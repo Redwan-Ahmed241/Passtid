@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { features } from "@/lib/features";
-import { useI18n } from "@/lib/i18n";
+import { useHomeHref, useI18n } from "@/lib/i18n";
 import type { TranslationKey } from "@/lib/i18n/translations";
 import { useMe } from "./auth/use-me";
 
@@ -20,6 +20,7 @@ const links = [
 export function NavLinks() {
   const pathname = usePathname();
   const { t } = useI18n();
+  const homeHref = useHomeHref();
   const { user } = useMe();
   // Signed-out visitors already have the "Start booking" button; signed-in ones need a way back in.
   const shown = user ? [...links, { href: "/booking", label: "navConsole" } as const] : links;
@@ -30,7 +31,7 @@ export function NavLinks() {
         return (
           <Link
             key={l.href}
-            href={l.href}
+            href={l.href.startsWith("/#") ? homeHref(l.href.slice(2)) : l.href}
             aria-current={active ? "page" : undefined}
             // Signed in there is one link more, so on tablets the first explainer link makes room for it.
             className={`rounded-lg px-2 py-2 text-[0.9375rem] whitespace-nowrap transition-colors lg:px-3 ${

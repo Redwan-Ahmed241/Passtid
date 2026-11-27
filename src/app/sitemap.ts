@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { features } from "@/lib/features";
-import { homeAlternates } from "@/lib/seo";
+import { homeAlternates, questionsAlternates } from "@/lib/seo";
+import { CHECKED } from "@/lib/questions";
 import { site } from "@/lib/site";
 
 /**
@@ -19,10 +20,16 @@ const homeLanguages = Object.fromEntries(
   Object.entries(homeAlternates).map(([lang, path]) => [lang, `${site.url}${path}`]),
 );
 
+const questionLanguages = Object.fromEntries(
+  Object.entries(questionsAlternates).map(([lang, path]) => [lang, `${site.url}${path}`]),
+);
+
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
     { url: `${site.url}/`, lastModified: updated.home, changeFrequency: "monthly", priority: 1, alternates: { languages: homeLanguages } },
     { url: `${site.url}/sv`, lastModified: updated.home, changeFrequency: "monthly", priority: 0.9, alternates: { languages: homeLanguages } },
+    { url: `${site.url}/questions`, lastModified: CHECKED, changeFrequency: "monthly", priority: 0.8, alternates: { languages: questionLanguages } },
+    { url: `${site.url}/sv/fragor`, lastModified: CHECKED, changeFrequency: "monthly", priority: 0.7, alternates: { languages: questionLanguages } },
     // Hidden pages stay out of the sitemap until they are switched on.
     ...(features.rules
       ? [{ url: `${site.url}/rules`, lastModified: updated.rules, changeFrequency: "monthly" as const, priority: 0.7 }]

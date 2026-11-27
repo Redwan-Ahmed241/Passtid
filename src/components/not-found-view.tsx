@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useI18n } from "@/lib/i18n";
+import { useHomeHref, useI18n } from "@/lib/i18n";
 
 export function NotFoundView() {
   const { t } = useI18n();
+  const homeHref = useHomeHref();
   return (
     <section className="mx-auto flex max-w-2xl flex-col items-start px-4 py-28 sm:px-6">
       <p className="font-mono text-sm text-accent">404</p>
@@ -12,7 +13,7 @@ export function NotFoundView() {
       <p className="mt-4 text-lg text-ink-2">{t("nfBody")}</p>
       <div className="mt-8 flex gap-3">
         <Link href="/booking" className="btn btn-primary">{t("openConsole")}</Link>
-        <Link href="/" className="btn btn-ghost">{t("home")}</Link>
+        <Link href={homeHref()} className="btn btn-ghost">{t("home")}</Link>
       </div>
     </section>
   );

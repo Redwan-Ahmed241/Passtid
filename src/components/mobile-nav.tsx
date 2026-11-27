@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Menu, X } from "lucide-react";
 import { features } from "@/lib/features";
-import { useI18n } from "@/lib/i18n";
+import { useHomeHref, useI18n } from "@/lib/i18n";
 import type { TranslationKey } from "@/lib/i18n/translations";
 import { displayName, signOutAndLeave, useMe } from "./auth/use-me";
 
@@ -24,6 +24,7 @@ export function MobileNav() {
   const pathname = usePathname();
   const { user } = useMe();
   const { t } = useI18n();
+  const homeHref = useHomeHref();
   // Remembering the path the menu was opened on closes it automatically on navigation.
   const [openPath, setOpenPath] = useState<string | null>(null);
   const open = openPath === pathname;
@@ -61,7 +62,7 @@ export function MobileNav() {
             {links.map((l) => (
               <li key={l.href} className="border-b border-line-2">
                 <Link
-                  href={l.href}
+                  href={l.href.startsWith("/#") ? homeHref(l.href.slice(2)) : l.href}
                   onClick={close}
                   aria-current={l.href === pathname ? "page" : undefined}
                   className={row}
