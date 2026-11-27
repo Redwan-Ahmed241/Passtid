@@ -189,6 +189,41 @@ export interface Ticket {
   updatedAt: string;
 }
 
+/* --------------------------- feedback ---------------------------- */
+
+export const MAX_FEEDBACK_MESSAGE = 600;
+export const MAX_FEEDBACK_NAME = 40;
+export const FEEDBACK_STATUSES = ["waiting", "published", "hidden"] as const;
+export type FeedbackStatus = (typeof FEEDBACK_STATUSES)[number];
+
+export interface FeedbackInput {
+  rating: number;
+  message: string;
+  /** Shown beside the feedback if it is published. */
+  name: string;
+  /** The customer agrees to it being shown on the website. */
+  allowPublic: boolean;
+}
+
+export interface Feedback extends FeedbackInput {
+  status: FeedbackStatus;
+  updatedAt: string;
+}
+
+export interface MyFeedbackResponse {
+  /** Only customers who have paid for a plan may leave feedback. */
+  eligible: boolean;
+  feedback: Feedback | null;
+}
+
+/** What visitors see: nothing that identifies the account. */
+export type PublicFeedback = Pick<Feedback, "rating" | "message" | "name" | "updatedAt">;
+
+export interface AdminFeedback extends Feedback {
+  clientId: string;
+  email: string;
+}
+
 /* --------------------------- site texts -------------------------- */
 
 /**
@@ -210,6 +245,7 @@ export interface AdminCustomer {
 export interface AdminOverview {
   customers: AdminCustomer[];
   tickets: Ticket[];
+  feedback: AdminFeedback[];
 }
 
 export interface AdminBookingPatch {

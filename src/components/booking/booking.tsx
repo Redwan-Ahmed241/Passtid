@@ -30,6 +30,7 @@ import { describeWindow, matchesWindow, validateWindow } from "@/lib/window";
 import { announceAuthChange, useMe } from "../auth/use-me";
 import { ApplicantsEditor } from "./applicants-editor";
 import { SlotListSkeleton, type ViewSlot } from "./slot-list";
+import { FeedbackBox } from "./feedback-box";
 import { SupportBox } from "./support-box";
 import { WindowEditor } from "./window-editor";
 
@@ -795,6 +796,7 @@ export function Booking() {
           )}
 
           {user && <SupportBox system={system} startOpen={params.get("support") === "1"} />}
+          {user && <FeedbackBox key={user.id} startOpen={params.get("feedback") === "1"} />}
         </div>
 
         {/* The summary beside the form, like a receipt that fills in as you go. */}

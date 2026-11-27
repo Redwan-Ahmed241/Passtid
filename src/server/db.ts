@@ -115,6 +115,17 @@ create table if not exists tickets (
   updated_at timestamptz not null default now()
 );
 create index if not exists tickets_user_idx on tickets (user_id, status);
+-- One piece of feedback per customer. Nothing is public until the customer allows it and an admin publishes it.
+create table if not exists feedback (
+  user_id text primary key references users(id) on delete cascade,
+  rating int not null check (rating between 1 and 5),
+  message text not null,
+  display_name text not null default '',
+  allow_public boolean not null default false,
+  status text not null default 'waiting',  -- waiting | published | hidden
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
 create table if not exists site_texts (
   lang text not null,          -- en | sv
   key text not null,           -- t.<key>, c.<path> or l.<path>

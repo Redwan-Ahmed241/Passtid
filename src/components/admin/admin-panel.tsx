@@ -2,7 +2,7 @@
 
 import { notFound } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { Loader2, RefreshCw } from "lucide-react";
+import { ChevronRight, Loader2, RefreshCw } from "lucide-react";
 import { api, ApiRequestError } from "@/lib/api";
 import { SYSTEM_INFO } from "@/lib/types";
 import type { AdminCustomer, AdminOverview, Booking, BookingRequest, BookingStatus, SystemId, Ticket, TicketCategory } from "@/lib/types";
@@ -11,11 +11,13 @@ import { describeWindow } from "@/lib/window";
 import { useMe } from "../auth/use-me";
 import { ApplicantsEditor } from "../booking/applicants-editor";
 import { WindowEditor } from "../booking/window-editor";
+import { FeedbackTab } from "./feedback-tab";
 import { SiteTexts } from "./site-texts";
 
-type Tab = "tickets" | "customers" | "texts";
+type Tab = "tickets" | "feedback" | "customers" | "texts";
 const TABS: { id: Tab; label: string }[] = [
   { id: "tickets", label: "Tickets" },
+  { id: "feedback", label: "Feedback" },
   { id: "customers", label: "Customers" },
   { id: "texts", label: "Website texts" },
 ];
@@ -58,7 +60,10 @@ export function AdminPanel() {
   if (loading) return <div className="mx-auto max-w-5xl px-4 py-16" aria-busy="true" />;
   if (!user?.admin) notFound();
 
-  const openCount = data?.tickets.filter((t) => t.status === "open").length ?? 0;
+  const badges: Partial<Record<Tab, number>> = {
+    tickets: data?.tickets.filter((t) => t.status === "open").length,
+    feedback: data?.feedback.filter((f) => f.status === "waiting").length,
+  };
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 pt-8 pb-16 sm:px-6 lg:px-8">
@@ -69,7 +74,7 @@ export function AdminPanel() {
         </button>
       </div>
 
-      <div role="tablist" aria-label="Admin sections" className="mt-6 flex gap-6 border-b border-line">
+      <div role="tablist" aria-label="Admin sections" className="mt-6 flex flex-wrap gap-x-4 border-b border-line sm:gap-x-6">
         {TABS.map((tb) => (
           <button
             key={tb.id}
@@ -80,20 +85,20 @@ export function AdminPanel() {
               setTab(tb.id);
               if (tb.id === "texts") setTextsOpened(true);
             }}
-            className={`-mb-px min-h-11 border-b-2 text-[0.9375rem] font-semibold transition-colors ${
+            className={`min-h-11 shrink-0 border-b-2 text-[0.9375rem] font-semibold transition-colors ${
               tab === tb.id ? "border-accent text-ink" : "border-transparent text-muted hover:text-ink"
             }`}
           >
             {tb.label}
-            {tb.id === "tickets" && openCount > 0 && (
-              <span className="ml-2 rounded-full bg-yellow px-2 py-0.5 font-mono text-xs text-navy tabular">{openCount}</span>
+            {!!badges[tb.id] && (
+              <span className="ml-2 rounded-full bg-yellow px-2 py-0.5 font-mono text-xs text-navy tabular">{badges[tb.id]}</span>
             )}
           </button>
         ))}
       </div>
 
       {error && (
-        <p role="alert" className="mt-6 border-l-4 border-hot py-1 pl-4 text-sm text-hot">{error}</p>
+        <p role="alert" className="mt-6 rounded-lg border border-hot-line bg-hot-bg px-4 py-2.5 text-sm text-hot">{error}</p>
       )}
 
       <div className="mt-6">
@@ -106,6 +111,8 @@ export function AdminPanel() {
           !error && <Loader2 className="size-5 animate-spin text-muted" aria-label="Loading" />
         ) : tab === "tickets" ? (
           <TicketsTab tickets={data.tickets} onChange={(t) => setData((d) => d && { ...d, tickets: d.tickets.map((x) => (x.token === t.token ? t : x)) })} />
+        ) : tab === "feedback" ? (
+          <FeedbackTab items={data.feedback} onReload={load} />
         ) : (
           <CustomersTab customers={data.customers} onReload={load} />
         )}
@@ -196,6 +203,28 @@ function TicketRow({ ticket, onChange }: { ticket: Ticket; onChange: (t: Ticket)
 /* Customers                                                           */
 /* ------------------------------------------------------------------ */
 
+/** What happened to a booking, in words an administrator can act on. */
+function bookingState({ status, reason }: Booking): { label: string; tone: string } {
+  if (status === "booked") return { label: "Booked", tone: "bg-clear-bg text-clear" };
+  if (status === "pending") return { label: "Waiting to be booked", tone: "bg-busy-bg text-busy" };
+  if (reason === "failed") return { label: "Could not be booked", tone: "bg-hot-bg text-hot" };
+  const label = reason === "timed_out" ? "Timed out" : reason === "slot_gone" ? "Time was taken" : "Cancelled";
+  return { label, tone: "bg-sunken text-ink-2" };
+}
+
+function bookingSummary(bookings: Booking[]): string {
+  if (bookings.length === 0) return "No bookings";
+  const count = (status: BookingStatus) => bookings.filter((b) => b.status === status).length;
+  return [
+    [count("booked"), "booked"],
+    [count("pending"), "waiting"],
+    [count("released"), "not booked"],
+  ]
+    .filter(([n]) => n)
+    .map(([n, word]) => `${n} ${word}`)
+    .join(" · ");
+}
+
 function CustomersTab({ customers, onReload }: { customers: AdminCustomer[]; onReload: () => Promise<void> }) {
   const [query, setQuery] = useState("");
   const shown = customers.filter((c) => c.email.toLowerCase().includes(query.trim().toLowerCase()));
@@ -210,19 +239,19 @@ function CustomersTab({ customers, onReload }: { customers: AdminCustomer[]; onR
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />
+      {shown.length === 0 && <p className="mt-4 text-sm text-muted">No customer matches that email.</p>}
       <ul className="mt-4 divide-y divide-line border-y border-line">
         {shown.map((c) => (
           <li key={c.clientId}>
             <details className="group">
-              <summary className="flex min-h-12 cursor-pointer list-none flex-wrap items-center gap-x-4 gap-y-1 py-2 [&::-webkit-details-marker]:hidden">
-                <span className="font-semibold text-ink">{c.email || c.clientId}</span>
-                <span className="text-sm text-muted">
-                  {c.bookings.length} booking{c.bookings.length === 1 ? "" : "s"}
+              <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 py-2.5 [&::-webkit-details-marker]:hidden">
+                <ChevronRight className="size-4 shrink-0 text-muted transition-transform group-open:rotate-90" aria-hidden="true" />
+                <span className="min-w-0 flex-1 sm:flex sm:items-baseline sm:justify-between sm:gap-4">
+                  <span className="block truncate font-semibold text-ink">{c.email || c.clientId}</span>
+                  <span className="block shrink-0 text-sm text-muted tabular">{bookingSummary(c.bookings)}</span>
                 </span>
-                <span className="ml-auto text-sm font-semibold text-accent group-open:hidden">Open</span>
-                <span className="ml-auto hidden text-sm font-semibold text-accent group-open:inline">Close</span>
               </summary>
-              <div className="pb-6">
+              <div className="pb-6 sm:pl-7">
                 <CustomerDetail customer={c} onReload={onReload} />
               </div>
             </details>
@@ -235,19 +264,21 @@ function CustomersTab({ customers, onReload }: { customers: AdminCustomer[]; onR
 
 function CustomerDetail({ customer, onReload }: { customer: AdminCustomer; onReload: () => Promise<void> }) {
   const today = embassyToday();
+  const systems = Object.keys(customer.requests) as SystemId[];
   return (
-    <div className="space-y-8">
+    <div className="divide-y divide-line rounded-xl border border-line bg-surface px-4 sm:px-5">
       {customer.bookings.length > 0 && (
-        <div>
-          <h3 className="text-sm font-semibold text-ink">Bookings</h3>
-          <ul className="mt-2 space-y-3">
+        <section className="pt-4 pb-1">
+          <h3 className="text-base font-semibold text-ink">Bookings</h3>
+          <ul className="mt-1 divide-y divide-line">
             {customer.bookings.map((b) => (
-              <BookingRow key={b.id} booking={b} onReload={onReload} />
+              // Remounted when the booking changes, so an open form never saves over what the bot just did.
+              <BookingRow key={`${b.id}:${b.updatedAt}`} booking={b} onReload={onReload} />
             ))}
           </ul>
-        </div>
+        </section>
       )}
-      {(Object.keys(customer.requests) as SystemId[]).map((system) => {
+      {systems.map((system) => {
         const saved = customer.requests[system];
         if (!saved) return null;
         return (
@@ -256,6 +287,7 @@ function CustomerDetail({ customer, onReload }: { customer: AdminCustomer; onRel
             clientId={customer.clientId}
             system={system}
             saved={saved.request}
+            complete={saved.complete}
             today={today}
             onReload={onReload}
           />
@@ -267,18 +299,41 @@ function CustomerDetail({ customer, onReload }: { customer: AdminCustomer; onRel
 
 const STATUSES: BookingStatus[] = ["pending", "booked", "released"];
 
+/** Said under the status choice, so nobody changes one without knowing what the bot will then do. */
+const STATUS_HELP: Record<BookingStatus, string> = {
+  pending: "The booking bot will try to book this time.",
+  booked: "Enter the booking number you got from the embassy.",
+  released: "The booking bot will stop working on this time.",
+};
+
+const textButton = "min-h-11 shrink-0 text-sm font-semibold text-accent hover:text-accent-ink";
+
 function BookingRow({ booking, onReload }: { booking: Booking; onReload: () => Promise<void> }) {
+  const [open, setOpen] = useState(false);
   const [status, setStatus] = useState<BookingStatus>(booking.status);
   const [reference, setReference] = useState(booking.reference ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const state = bookingState(booking);
+  const number = reference.trim();
+  const changed = status !== booking.status || (status === "booked" && number !== (booking.reference ?? ""));
+  const ready = changed && (status !== "booked" || number !== "");
+
+  const toggle = () => {
+    setStatus(booking.status);
+    setReference(booking.reference ?? "");
+    setError(null);
+    setOpen((o) => !o);
+  };
+
   const save = async () => {
     setBusy(true);
     setError(null);
     try {
-      await api.adminUpdateBooking(booking.id, { status, reference: reference.trim() || null });
+      await api.adminUpdateBooking(booking.id, { status, reference: number || null });
       await onReload();
+      setOpen(false);
     } catch (err) {
       setError(message(err));
     } finally {
@@ -287,30 +342,50 @@ function BookingRow({ booking, onReload }: { booking: Booking; onReload: () => P
   };
 
   return (
-    <li className="text-sm">
-      <p className="text-ink">
-        <span className="font-semibold">{SYSTEM_INFO[booking.system].short}</span>{" "}
-        <span className="font-mono tabular">{when(booking.slot)}</span>
-        {booking.reason && <span className="text-muted"> · {booking.reason.replace("_", " ")}</span>}
-      </p>
-      <div className="mt-2 flex flex-wrap items-end gap-2">
-        <label>
-          <span className="mb-1 block text-xs font-medium text-muted">Status</span>
-          <select className="field h-10 min-h-10 w-52 py-0 text-sm" value={status} onChange={(e) => setStatus(e.target.value as BookingStatus)}>
-            {STATUSES.map((s) => (
-              <option key={s} value={s}>{STATUS_NAMES[s]}</option>
-            ))}
-          </select>
-        </label>
-        <label>
-          <span className="mb-1 block text-xs font-medium text-muted">Booking number</span>
-          <input className="field h-10 min-h-10 w-40 py-0 font-mono text-sm" value={reference} onChange={(e) => setReference(e.target.value)} />
-        </label>
-        <button type="button" className="btn btn-ghost h-10 min-h-10 text-sm" disabled={busy} onClick={() => void save()}>
-          Save
+    <li className="py-3">
+      <div className="flex items-center gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+            <span className="font-semibold text-ink">{SYSTEM_INFO[booking.system].short}</span>
+            <span className="text-ink-2 tabular">{when(booking.slot)}</span>
+            <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${state.tone}`}>{state.label}</span>
+          </p>
+          {booking.reference && <p className="mt-1 text-sm text-muted">Booking number {booking.reference}</p>}
+        </div>
+        <button type="button" className={textButton} aria-expanded={open} onClick={toggle}>
+          {open ? "Close" : "Change"}
+          <span className="sr-only"> booking, {SYSTEM_INFO[booking.system].short} {when(booking.slot)}</span>
         </button>
       </div>
-      {error && <p role="alert" className="mt-1.5 text-[0.8125rem] text-hot">{error}</p>}
+      {open && (
+        <form
+          className="mt-2 max-w-md space-y-3 pb-1"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (ready && !busy) void save();
+          }}
+        >
+          <label className="block">
+            <span className="mb-1.5 block text-sm font-medium text-ink-2">Status</span>
+            <select className="field" value={status} onChange={(e) => setStatus(e.target.value as BookingStatus)}>
+              {STATUSES.map((s) => (
+                <option key={s} value={s}>{STATUS_NAMES[s]}</option>
+              ))}
+            </select>
+            {changed && <span className="mt-1.5 block text-[0.8125rem] text-muted">{STATUS_HELP[status]}</span>}
+          </label>
+          {status === "booked" && (
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-medium text-ink-2">Booking number</span>
+              <input className="field tabular" maxLength={40} required value={reference} onChange={(e) => setReference(e.target.value)} />
+            </label>
+          )}
+          {error && <p role="alert" className="text-[0.8125rem] text-hot">{error}</p>}
+          <button type="submit" className="btn btn-primary h-10 min-h-10 text-sm" disabled={busy || !ready}>
+            {busy && <Loader2 className="size-4 animate-spin" aria-hidden="true" />} Save change
+          </button>
+        </form>
+      )}
     </li>
   );
 }
@@ -319,12 +394,14 @@ function RequestEditor({
   clientId,
   system,
   saved,
+  complete,
   today,
   onReload,
 }: {
   clientId: string;
   system: SystemId;
   saved: BookingRequest;
+  complete: boolean;
   today: string;
   onReload: () => Promise<void>;
 }) {
@@ -350,24 +427,45 @@ function RequestEditor({
   const names = saved.persons.map((p) => `${p.firstName} ${p.lastName}`.trim()).filter(Boolean).join(", ");
 
   return (
-    <div>
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h3 className="text-sm font-semibold text-ink">{SYSTEM_INFO[system].short} request</h3>
+    <section className="py-4">
+      <div className="flex items-center justify-between gap-4">
+        <h3 className="flex flex-wrap items-center gap-x-3 gap-y-1 text-base font-semibold text-ink">
+          {SYSTEM_INFO[system].short} request
+          {names && !complete && (
+            <span className="rounded-full bg-busy-bg px-2.5 py-0.5 text-xs font-semibold text-busy">Details missing</span>
+          )}
+        </h3>
         <button
           type="button"
-          className="min-h-11 text-sm font-semibold text-accent hover:text-accent-ink"
+          className={textButton}
+          aria-expanded={open}
           onClick={() => {
             setDraft(saved);
+            setError(null);
             setOpen((o) => !o);
           }}
         >
-          {open ? "Cancel" : "Edit"}
+          {open ? "Cancel" : names ? "Edit" : "Fill in"}
+          <span className="sr-only"> {SYSTEM_INFO[system].short} request</span>
         </button>
       </div>
       {!open ? (
-        <p className="text-sm text-ink-2">
-          {names || "No names yet"} · {describeWindow(saved.window, "en")}
-        </p>
+        names ? (
+          <dl className="mt-1.5 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+            <dt className="text-muted">{saved.persons.length > 1 ? "People" : "Person"}</dt>
+            <dd className="break-words text-ink">{names}</dd>
+            <dt className="text-muted">Wanted time</dt>
+            <dd className="text-ink first-letter:uppercase">{describeWindow(saved.window, "en")}</dd>
+            {saved.email && (
+              <>
+                <dt className="text-muted">Contact</dt>
+                <dd className="break-all text-ink">{saved.email}</dd>
+              </>
+            )}
+          </dl>
+        ) : (
+          <p className="text-sm text-muted">Nothing filled in yet.</p>
+        )
       ) : (
         <div className="mt-3 max-w-xl">
           <ApplicantsEditor
@@ -391,6 +489,6 @@ function RequestEditor({
           </button>
         </div>
       )}
-    </div>
+    </section>
   );
 }

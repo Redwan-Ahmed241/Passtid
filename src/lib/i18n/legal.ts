@@ -16,7 +16,7 @@ export type LegalId = "privacy" | "terms";
 const en: Record<LegalId, LegalDoc> = {
   privacy: {
     title: "Privacy policy",
-    updated: "Last updated 27 October 2026",
+    updated: "Last updated 27 November 2026",
     intro:
       "Passtid helps you get a Swedish embassy appointment in London. This policy explains what personal data we handle to do that, why, and what your rights are.",
     sections: [
@@ -29,6 +29,7 @@ const en: Record<LegalId, LegalDoc> = {
         p: [
           "For each person on a booking: first and last name, and a personal (security) number for passports and ID cards or a phone number for coordination numbers. For the booking as a whole: a contact email, the dates and times you can attend, and the status of your booking.",
           "For your account: your name, your email and a password, which we store only as a one-way hash.",
+          "If you send feedback: your rating, your words and the name you choose. We publish them on our website only if you agree, and you can withdraw that by updating your feedback or writing to us.",
           "We do not see or store your card number. Payments are handled by Stripe, and we only receive confirmation that a payment was made.",
         ],
       },
@@ -122,7 +123,7 @@ const en: Record<LegalId, LegalDoc> = {
 const sv: Record<LegalId, LegalDoc> = {
   privacy: {
     title: "Integritetspolicy",
-    updated: "Senast uppdaterad 27 oktober 2026",
+    updated: "Senast uppdaterad 27 november 2026",
     intro:
       "Passtid hjälper dig att få en tid på Sveriges ambassad i London. Här förklarar vi vilka personuppgifter vi hanterar för det, varför, och vilka rättigheter du har.",
     sections: [
@@ -135,6 +136,7 @@ const sv: Record<LegalId, LegalDoc> = {
         p: [
           "För varje person i en bokning: förnamn och efternamn samt personnummer för pass och ID-kort eller telefonnummer för samordningsnummer. För bokningen som helhet: en kontaktmejl, vilka datum och tider du kan komma och bokningens status.",
           "För ditt konto: ditt namn, din e-postadress och ett lösenord som vi bara lagrar som en envägs-hash.",
+          "Om du skickar ett omdöme: ditt betyg, din text och det namn du väljer. Vi publicerar dem på vår webbplats bara om du går med på det, och du kan ta tillbaka det genom att uppdatera omdömet eller skriva till oss.",
           "Vi ser eller lagrar aldrig ditt kortnummer. Betalningar hanteras av Stripe, och vi får bara en bekräftelse på att en betalning gjorts.",
         ],
       },
