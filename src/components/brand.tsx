@@ -1,5 +1,5 @@
 import Image from "next/image";
-import Link from "next/link";
+import { HomeLink } from "@/components/home-link";
 import { site } from "@/lib/site";
 
 /** Mark: a Swedish-blue passport with a yellow cross, two navy binding pins and a clock face. */
@@ -20,7 +20,7 @@ export function LogoMark({ className = "size-7" }: { className?: string }) {
 /** The Passtid logo. Header and footer both use it; /logo.svg is the same artwork without the white box. */
 export function Wordmark() {
   return (
-    <Link href="/" className="group inline-flex min-h-11 shrink-0 items-center rounded-md" aria-label={`${site.name} home`}>
+    <HomeLink className="group inline-flex min-h-11 shrink-0 items-center rounded-md" aria-label={`${site.name} home`}>
       <Image
         src="/logo.svg"
         alt={site.name}
@@ -30,6 +30,6 @@ export function Wordmark() {
         unoptimized
         className="h-7 w-auto max-w-none shrink-0 sm:h-8"
       />
-    </Link>
+    </HomeLink>
   );
 }

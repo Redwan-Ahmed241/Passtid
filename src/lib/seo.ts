@@ -25,6 +25,12 @@ export const homeAlternates = {
   "x-default": "/",
 } as const;
 
+export const questionsAlternates = {
+  "en-GB": "/questions",
+  "sv-SE": "/sv/fragor",
+  "x-default": "/questions",
+} as const;
+
 /**
  * Open Graph fields every page shares. A page's `openGraph` replaces the layout's whole object
  * (metadata merges shallowly), so pages spread this in next to their own `url`. It carries no

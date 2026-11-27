@@ -42,7 +42,7 @@ export const SECTIONS: TextSection[] = [
     title: "Menu and footer",
     about: "Links and buttons at the top and bottom of every page, and the disclaimer.",
     href: "/",
-    keys: "navHow navPrice navFaq navConsole navRules startBooking bookShort signIn signOut createAccount navSupport navPrivacy navTerms navAdmin home openConsole disclaimer language openMenu closeMenu skipToContent",
+    keys: "navHow navPrice navFaq navConsole navRules startBooking bookShort signIn signOut createAccount navSupport navPrivacy navTerms navAdmin home openConsole disclaimer language openMenu closeMenu skipToContent navPassportQuestions",
   },
   {
     id: "general",
