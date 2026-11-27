@@ -100,7 +100,9 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   const texts = await savedTexts();
   return (
     <html lang="en-GB" className={`${plexSans.variable} ${plexMono.variable} ${newsreader.variable}`}>
-      <body className="flex min-h-dvh flex-col">
+      {/* Browser extensions add attributes to <body> before React starts (ColorZilla adds
+          cz-shortcut-listen). This silences that for the body's own attributes only, not its content. */}
+      <body className="flex min-h-dvh flex-col" suppressHydrationWarning>
         <JsonLd data={siteGraph} />
         <LangProvider initialTexts={texts}>
         <SkipLink />
