@@ -8,7 +8,7 @@ const en = {
   home: {
     eyebrow: "Swedish appointments · London",
     heroTitle: "Get your Swedish appointment in London.",
-    heroLead: "Tell us the days you can attend. We watch the calendar around the clock, then alert you or book the first slot that fits.",
+    heroLead: "Tell us the days you can attend. We watch the Swedish embassy's London calendar around the clock, then alert you or book the first slot that fits.",
     startBooking: "Start booking",
     openBooking: "Open booking",
     points: ["Passports, ID cards and coordination numbers", "Checked around the clock", "Times in London time"],
@@ -42,6 +42,12 @@ const en = {
     { q: "How far ahead do you look?", a: "Up to 12 weeks for passports and ID cards, and 8 weeks for coordination numbers." },
     { q: "What if nothing fits my dates?", a: "Nothing is booked. The bot keeps watching and acts on the first slot that opens inside your dates." },
     { q: "Are you the embassy?", a: "No. Passtid is an independent service and is not affiliated with the Embassy of Sweden or the Swedish Migration Agency." },
+    { q: "Why are there no Swedish embassy appointments available in London?", a: "Appointments are limited and are taken quickly, so the embassy's calendar is often empty. New ones appear when someone cancels or more are released. Passtid checks around the clock and alerts you, or books it for you, the moment one opens." },
+    { q: "How do I renew a Swedish passport or get a national ID card in London?", a: "You apply in person at a Swedish embassy, which needs a booked appointment. Passtid helps you get that appointment; it does not issue documents. The embassy's own page on Sweden Abroad lists what to bring and any current notices." },
+    { q: "Are fingerprints taken at the appointment?", a: "For a passport, the photo and fingerprints are taken in person at the appointment, which is why the application cannot be made remotely. The embassy's page lists the details, including any age rules." },
+    { q: "Can my children get a Swedish passport at the same appointment?", a: "Children apply in person too, usually with their guardians. Add each child as a person in your booking, up to 10 people per booking. The embassy's page lists the documents that are needed." },
+    { q: "What is a samordningsnummer (coordination number)?", a: "A coordination number is an identity number for people who are not registered as living in Sweden. It is issued by the Swedish Tax Agency (Skatteverket). Passtid watches the embassy's coordination-number appointments in London, the same way as for passports." },
+    { q: "What are the Swedish embassy's opening hours and address in London?", a: "They can change, so the embassy's own page on Sweden Abroad is the reliable source. Passtid shows appointment times only, always in London time." },
   ],
   timeline: {
     caption: "Window “09:00 – 12:00”",
@@ -131,7 +137,7 @@ const sv: Content = {
   home: {
     eyebrow: "Svenska tider · London",
     heroTitle: "Få din svenska tid i London.",
-    heroLead: "Berätta vilka dagar du kan komma. Vi bevakar kalendern dygnet runt och aviserar dig eller bokar den första tiden som passar.",
+    heroLead: "Berätta vilka dagar du kan komma. Vi bevakar svenska ambassadens kalender i London dygnet runt och aviserar dig eller bokar den första tiden som passar.",
     startBooking: "Starta bokning",
     openBooking: "Öppna bokning",
     points: ["Pass, ID-kort och samordningsnummer", "Bevakas dygnet runt", "Tider i Londontid"],
@@ -165,6 +171,12 @@ const sv: Content = {
     { q: "Hur långt framåt tittar ni?", a: "Upp till 12 veckor för pass och ID-kort, och 8 veckor för samordningsnummer." },
     { q: "Vad händer om inget passar mina datum?", a: "Ingenting bokas. Boten fortsätter bevaka och agerar på den första tiden som öppnas inom dina datum." },
     { q: "Är ni ambassaden?", a: "Nej. Passtid är en oberoende tjänst och har ingen koppling till Sveriges ambassad eller Migrationsverket." },
+    { q: "Varför finns inga lediga tider på svenska ambassaden i London?", a: "Tiderna är få och tas snabbt, så ambassadens kalender är ofta tom. Nya tider dyker upp när någon avbokar eller när fler släpps. Passtid bevakar dygnet runt och aviserar dig, eller bokar åt dig, så fort en tid öppnas." },
+    { q: "Hur förnyar jag pass eller får nationellt ID-kort utomlands, till exempel i England?", a: "Du ansöker personligen på en svensk ambassad, och då behöver du en bokad tid. Passtid hjälper dig att få tiden men utfärdar inga handlingar. Ambassadens egen sida på Sweden Abroad visar vad du ska ta med och aktuella meddelanden." },
+    { q: "Tas fingeravtryck vid besöket?", a: "För pass tas foto och fingeravtryck på plats vid besöket, och därför kan ansökan inte göras på distans. Ambassadens sida beskriver detaljerna, bland annat eventuella åldersregler." },
+    { q: "Kan mina barn få svenskt pass vid samma besök?", a: "Barn ansöker också personligen, oftast tillsammans med vårdnadshavarna. Lägg till varje barn som en person i din bokning, upp till 10 personer per bokning. Ambassadens sida visar vilka handlingar som krävs." },
+    { q: "Vad är ett samordningsnummer?", a: "Ett samordningsnummer är ett identitetsnummer för personer som inte är folkbokförda i Sverige. Det utfärdas av Skatteverket. Passtid bevakar ambassadens tider för samordningsnummer i London på samma sätt som för pass." },
+    { q: "Vilka är den svenska ambassadens öppettider och adress i London?", a: "De kan ändras, så ambassadens egen sida på Sweden Abroad är den pålitliga källan. Passtid visar bara tider, alltid i Londontid." },
   ],
   timeline: {
     caption: "Fönster ”09:00 – 12:00”",

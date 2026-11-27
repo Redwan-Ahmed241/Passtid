@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname, useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useSyncExternalStore } from "react";
 import type { TextOverrides } from "@/lib/types";
 import { api } from "@/lib/api";
@@ -51,9 +52,27 @@ export function applyTexts(next: TextOverrides) {
   listeners.forEach((cb) => cb());
 }
 
+/** Swedish has its own URL so search engines can index it; the path decides the language there. */
+export const SWEDISH_PATH = "/sv";
+const isSwedishPath = (pathname: string) => pathname === SWEDISH_PATH || pathname.startsWith(`${SWEDISH_PATH}/`);
+
 /** English on the server and during hydration, then the saved or browser language. */
 export function LangProvider({ children }: { children: React.ReactNode }) {
-  const lang = useSyncExternalStore(subscribe, readLang, () => "en" as Lang);
+  const router = useRouter();
+  const routeLang: Lang | null = isSwedishPath(usePathname()) ? "sv" : null;
+  const stored = useSyncExternalStore(subscribe, readLang, () => "en" as Lang);
+  const lang = routeLang ?? stored;
+
+  // Someone who arrived on the Swedish URL keeps Swedish when they move on to the booking pages.
+  useEffect(() => {
+    if (routeLang && chosen !== routeLang) {
+      chosen = routeLang;
+      try {
+        localStorage.setItem(STORAGE_KEY, routeLang);
+      } catch {}
+      listeners.forEach((cb) => cb());
+    }
+  }, [routeLang]);
 
   useEffect(() => {
     document.documentElement.lang = lang === "sv" ? "sv-SE" : "en-GB";
@@ -65,7 +84,9 @@ export function LangProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem(STORAGE_KEY, next);
     } catch {}
     listeners.forEach((cb) => cb());
-  }, []);
+    // Leaving Swedish on the Swedish URL means going to the English page.
+    if (routeLang && next !== routeLang) router.push("/");
+  }, [routeLang, router]);
 
   const overrides = useSyncExternalStore(subscribe, () => texts, () => NO_TEXTS)[lang];
 

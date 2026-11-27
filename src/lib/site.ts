@@ -22,7 +22,7 @@ export const site = {
   name: "Passtid",
   tagline: "Book a slot you can actually attend",
   description:
-    "Passtid watches Swedish appointment slots in London for passports, ID cards and coordination numbers 24/7, then alerts you or books the first one that fits.",
+    "Swedish embassy appointment slots in London for passports, ID cards and samordningsnummer, watched 24/7. Get an alert or let Passtid book the first slot that fits.",
   url: baseUrl(),
   /** The embassy's own page, with opening hours, what to bring and current notices. */
   embassyUrl: "https://www.swedenabroad.se/en/embassies/united-kingdom-london/",

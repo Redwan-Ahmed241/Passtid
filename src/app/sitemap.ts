@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { features } from "@/lib/features";
+import { homeAlternates } from "@/lib/seo";
 import { site } from "@/lib/site";
 
 /**
@@ -7,15 +8,21 @@ import { site } from "@/lib/site";
  * doesn't tell crawlers every page changed. Update a date when you edit that page's copy.
  */
 const updated = {
-  home: "2026-11-03",
+  home: "2026-11-27",
   rules: "2026-11-03",
   privacy: "2026-11-03",
   terms: "2026-11-03",
 } as const;
 
+/** The English and Swedish home pages list each other, as hreflang requires. */
+const homeLanguages = Object.fromEntries(
+  Object.entries(homeAlternates).map(([lang, path]) => [lang, `${site.url}${path}`]),
+);
+
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
-    { url: `${site.url}/`, lastModified: updated.home, changeFrequency: "monthly", priority: 1 },
+    { url: `${site.url}/`, lastModified: updated.home, changeFrequency: "monthly", priority: 1, alternates: { languages: homeLanguages } },
+    { url: `${site.url}/sv`, lastModified: updated.home, changeFrequency: "monthly", priority: 0.9, alternates: { languages: homeLanguages } },
     // Hidden pages stay out of the sitemap until they are switched on.
     ...(features.rules
       ? [{ url: `${site.url}/rules`, lastModified: updated.rules, changeFrequency: "monthly" as const, priority: 0.7 }]

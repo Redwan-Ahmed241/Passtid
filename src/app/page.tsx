@@ -1,42 +1,18 @@
+import type { Metadata } from "next";
+import { HomeJsonLd } from "@/components/home-jsonld";
 import { HomeView } from "@/components/home-view";
-import { JsonLd } from "@/components/json-ld";
-import { content } from "@/lib/i18n/content";
+import { baseOpenGraph, homeAlternates } from "@/lib/seo";
 import { formatPrice, planFor } from "@/lib/plans";
-import { ids, languages } from "@/lib/seo";
-import { site } from "@/lib/site";
+
+export const metadata: Metadata = {
+  alternates: { canonical: "/", languages: homeAlternates },
+  openGraph: { ...baseOpenGraph, url: "/" },
+};
 
 export default function Home() {
   return (
     <>
-      <JsonLd
-        data={{
-          "@context": "https://schema.org",
-          "@graph": [
-            {
-              "@type": "WebApplication",
-              "@id": ids.app,
-              name: site.name,
-              url: site.url,
-              image: `${site.url}/logo.png`,
-              description: site.description,
-              applicationCategory: "UtilitiesApplication",
-              publisher: { "@id": ids.organization },
-              isPartOf: { "@id": ids.website },
-              operatingSystem: "Web",
-              inLanguage: languages,
-            },
-            {
-              "@type": "FAQPage",
-              mainEntity: content.en.faq.map((f) => ({
-                "@type": "Question",
-                name: f.q,
-                acceptedAnswer: { "@type": "Answer", text: f.a },
-              })),
-            },
-          ],
-        }}
-      />
-
+      <HomeJsonLd lang="en" path="/" />
       <HomeView
         prices={{ notify: formatPrice(planFor("notify")), autobook: formatPrice(planFor("autobook")) }}
         monthly={{ notify: planFor("notify").interval === "month", autobook: planFor("autobook").interval === "month" }}

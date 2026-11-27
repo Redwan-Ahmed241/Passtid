@@ -13,10 +13,17 @@ export const ids = {
 } as const;
 
 /**
- * Languages search engines can index. Swedish is switched on the client on the same URL, so
- * crawlers only ever see English. Add "sv-SE" here once Swedish has its own URLs.
+ * Languages search engines can index. English lives at "/" and Swedish at "/sv", each with
+ * its own server-rendered copy, linked to each other with hreflang.
  */
-export const languages = ["en-GB"] as const;
+export const languages = ["en-GB", "sv-SE"] as const;
+
+/** hreflang alternates for the home page pair. Paths are relative to metadataBase. */
+export const homeAlternates = {
+  "en-GB": "/",
+  "sv-SE": "/sv",
+  "x-default": "/",
+} as const;
 
 /**
  * Open Graph fields every page shares. A page's `openGraph` replaces the layout's whole object

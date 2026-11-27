@@ -20,7 +20,7 @@ const links = [
 ] as const satisfies readonly { href: string; label: TranslationKey }[];
 
 export function SiteFooter() {
-  const { t } = useI18n();
+  const { t, lang, setLang } = useI18n();
   return (
     <footer className="mt-8 border-t border-line">
       <div className="mx-auto flex max-w-5xl flex-col gap-8 px-4 py-10 sm:px-6 md:flex-row md:justify-between lg:px-8">
@@ -37,6 +37,18 @@ export function SiteFooter() {
                 </Link>
               </li>
             ))}
+            <li>
+              {/* A plain link, so crawlers find the Swedish pages without running scripts. */}
+              <Link
+                className="inline-flex min-h-11 items-center text-ink-2 hover:text-ink md:min-h-9"
+                href={lang === "sv" ? "/" : "/sv"}
+                hrefLang={lang === "sv" ? "en-GB" : "sv-SE"}
+                lang={lang === "sv" ? "en" : "sv"}
+                onClick={() => setLang(lang === "sv" ? "en" : "sv")}
+              >
+                {lang === "sv" ? "English" : "Svenska"}
+              </Link>
+            </li>
           </ul>
         </nav>
       </div>
