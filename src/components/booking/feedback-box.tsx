@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
 import { Loader2, Star } from "lucide-react";
 import { api, ApiRequestError } from "@/lib/api";
@@ -13,12 +14,16 @@ const STATUS_KEYS: Record<FeedbackStatus, TranslationKey> = {
   hidden: "fbHidden",
 };
 
-/** Lets a paying customer rate the service. Renders nothing for anyone else. */
-export function FeedbackBox({ startOpen = false }: { startOpen?: boolean }) {
+/**
+ * Lets a paying customer rate the service. Anyone else sees nothing, unless they followed a
+ * "leave feedback" link (`startOpen`), in which case they are told why there is no form.
+ */
+export function FeedbackBox({ signedIn, startOpen = false }: { signedIn: boolean; startOpen?: boolean }) {
   const { t } = useI18n();
   const uid = useId();
   const sectionRef = useRef<HTMLElement>(null);
-  const [eligible, setEligible] = useState(false);
+  /** null until the server has answered. */
+  const [eligible, setEligible] = useState<boolean | null>(null);
   const [saved, setSaved] = useState<Feedback | null>(null);
   const [open, setOpen] = useState(startOpen);
   const [rating, setRating] = useState(0);
@@ -31,6 +36,7 @@ export function FeedbackBox({ startOpen = false }: { startOpen?: boolean }) {
   const [failed, setFailed] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!signedIn) return;
     api.myFeedback().then(
       (r) => {
         setEligible(r.eligible);
@@ -45,14 +51,28 @@ export function FeedbackBox({ startOpen = false }: { startOpen?: boolean }) {
         /* feedback is optional; booking works without it */
       },
     );
-  }, []);
+  }, [signedIn]);
 
-  // Opened from a "leave feedback" link: bring the form into view once we know it applies.
+  // Opened from a "leave feedback" link: bring the form, or the reason there is none, into view.
+  const answered = !signedIn || eligible !== null;
   useEffect(() => {
-    if (startOpen && eligible) sectionRef.current?.scrollIntoView({ block: "start" });
-  }, [startOpen, eligible]);
+    if (startOpen && answered) sectionRef.current?.scrollIntoView({ block: "start" });
+  }, [startOpen, answered]);
 
-  if (!eligible) return null;
+  if (!signedIn || !eligible) {
+    if (!startOpen || !answered) return null;
+    return (
+      <section ref={sectionRef} aria-labelledby={`${uid}-h`} className="mt-6 scroll-mt-24 border-t border-line pt-6">
+        <h2 id={`${uid}-h`} className="text-lg font-bold text-ink">{t("fbTitle")}</h2>
+        <p className="mt-1.5 max-w-[60ch] text-ink-2">{t(signedIn ? "fbOnlyPaid" : "fbSignIn")}</p>
+        {!signedIn && (
+          <Link href={`/login?next=${encodeURIComponent("/booking?feedback=1")}`} className="btn btn-primary mt-3">
+            {t("signIn")}
+          </Link>
+        )}
+      </section>
+    );
+  }
 
   const missing = { rating: rating === 0, message: message.trim().length < 10, name: name.trim() === "" };
   const changed = () => setSent(false);

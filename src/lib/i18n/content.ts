@@ -116,11 +116,11 @@ const en = {
   },
   auth: {
     why: "Why an account",
-    pitch: "Slots and queue counts are for signed-in users only.",
+    pitch: "One account keeps your booking in one place.",
     points: [
-      "See every open slot on a month calendar, with the live queue count on each one.",
-      "Set several date ranges, each with its own time of day. The bot books only inside them.",
-      "Passports and coordination numbers, one account. Times are always London time.",
+      "Choose Telegram alerts, or let us book the earliest slot that fits.",
+      "Set several date ranges, each with its own time of day. We only act inside them.",
+      "Passports, ID cards and coordination numbers. Times are always London time.",
     ],
   },
 };
@@ -131,7 +131,7 @@ const sv: Content = {
   home: {
     eyebrow: "Svenska tider · London",
     heroTitle: "Få din svenska tid i London.",
-    heroLead: "Berätta vilka dagar du kan komma. Vi bevakar kalendern dygnet runt och Aviseringar dig eller bokar den första tiden som passar.",
+    heroLead: "Berätta vilka dagar du kan komma. Vi bevakar kalendern dygnet runt och aviserar dig eller bokar den första tiden som passar.",
     startBooking: "Starta bokning",
     openBooking: "Öppna bokning",
     points: ["Pass, ID-kort och samordningsnummer", "Bevakas dygnet runt", "Tider i Londontid"],
@@ -239,11 +239,11 @@ const sv: Content = {
   },
   auth: {
     why: "Varför ett konto",
-    pitch: "Tider och kölängder är bara för inloggade användare.",
+    pitch: "Ett konto samlar din bokning på ett ställe.",
     points: [
-      "Se varje ledig tid i en månadskalender, med kölängden live på var och en.",
-      "Ange flera datumintervall, vart och ett med egen tid på dagen. Boten bokar bara inom dem.",
-      "Pass och samordningsnummer, ett konto. Tider är alltid Londontid.",
+      "Välj aviseringar via Telegram, eller låt oss boka den första tiden som passar.",
+      "Ange flera datumintervall, vart och ett med egen tid på dagen. Vi agerar bara inom dem.",
+      "Pass, id-kort och samordningsnummer. Tider är alltid Londontid.",
     ],
   },
 };

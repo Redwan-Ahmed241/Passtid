@@ -1,13 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { ArrowUpRight, LogOut } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
-import { displayName, signOut, useMe } from "./auth/use-me";
+import { displayName, signOutAndLeave, useMe } from "./auth/use-me";
 
 export function HeaderActions() {
-  const router = useRouter();
   const { loading, user } = useMe();
   const { t } = useI18n();
 
@@ -44,7 +42,7 @@ export function HeaderActions() {
       )}
       <button
         type="button"
-        onClick={() => void signOut().then(() => router.push("/"))}
+        onClick={signOutAndLeave}
         className="btn btn-ghost hidden h-10 min-h-10 px-3.5 text-sm md:inline-flex"
       >
         <LogOut className="size-4" aria-hidden="true" />

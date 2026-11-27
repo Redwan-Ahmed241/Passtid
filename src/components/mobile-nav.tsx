@@ -1,13 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Menu, X } from "lucide-react";
 import { features } from "@/lib/features";
 import { useI18n } from "@/lib/i18n";
 import type { TranslationKey } from "@/lib/i18n/translations";
-import { displayName, signOut, useMe } from "./auth/use-me";
+import { displayName, signOutAndLeave, useMe } from "./auth/use-me";
 
 /** Hidden unless NEXT_PUBLIC_SHOW_RULES=true. */
 const RULES_LINK = { href: "/rules", label: "navRules" } as const;
@@ -22,7 +22,6 @@ const links = [
 
 export function MobileNav() {
   const pathname = usePathname();
-  const router = useRouter();
   const { user } = useMe();
   const { t } = useI18n();
   // Remembering the path the menu was opened on closes it automatically on navigation.
@@ -85,7 +84,7 @@ export function MobileNav() {
                   className={row}
                   onClick={() => {
                     close();
-                    void signOut().then(() => router.push("/"));
+                    signOutAndLeave();
                   }}
                 >
                   {t("signOut")}

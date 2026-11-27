@@ -26,6 +26,19 @@ export function loadMe(force = false): Promise<User | null> {
   return cache;
 }
 
+/**
+ * The browser can bring a whole page back from memory (Back after leaving the site or after a full
+ * reload). If the person has signed out or changed since, that page shows someone else's details.
+ */
+if (typeof window !== "undefined") {
+  window.addEventListener("pageshow", (event) => {
+    if (!event.persisted || !cache) return;
+    void Promise.all([cache, fetchMe()]).then(([before, now]) => {
+      if ((before?.id ?? null) !== (now?.id ?? null)) window.location.reload();
+    });
+  });
+}
+
 /** Call after a successful sign-in or sign-out so every listener refreshes. */
 export function announceAuthChange(user: User | null) {
   cache = Promise.resolve(user);
@@ -38,6 +51,15 @@ export function signOut(): Promise<void> {
     () => announceAuthChange(null),
     () => announceAuthChange(null),
   );
+}
+
+/**
+ * Sign out from a button. A full page load afterwards, not an in-app navigation: pages already visited
+ * stay in memory with their contents, and Back would show them to whoever uses the browser next.
+ */
+export function signOutAndLeave(): void {
+  // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+  void signOut().then(() => window.location.assign("/"));
 }
 
 export function useMe():{ loading: boolean; user: User | null } {

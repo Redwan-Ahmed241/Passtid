@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { goBackToStep, goToStep, showStep, stepFromUrl, type Step } from "./steps";
 import { AlertTriangle, ArrowRight, BellRing, Bot, Check, CreditCard, Eye, EyeOff, Info, Loader2 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { api, ApiRequestError } from "@/lib/api";
@@ -31,18 +32,29 @@ import { announceAuthChange, useMe } from "../auth/use-me";
 import { ApplicantsEditor } from "./applicants-editor";
 import { SlotListSkeleton, type ViewSlot } from "./slot-list";
 import { FeedbackBox } from "./feedback-box";
-import { SupportBox } from "./support-box";
+import { SupportBox, SupportSignIn } from "./support-box";
 import { WindowEditor } from "./window-editor";
 
 const POLL_SLOTS_MS = 15_000;
 const POLL_BOOKING_MS = 1_500;
 
-type Step = 1 | 2 | 3 | 4;
 const STEP_KEYS: Record<Step, TranslationKey> = { 1: "stepService", 2: "stepDateTime", 3: "stepDetails", 4: "stepConfirm" };
 
 const sameRequest = (a: BookingRequest, b: BookingRequest) => JSON.stringify(a) === JSON.stringify(b);
 
+/**
+ * Everything typed or loaded belongs to one person. When that person signs out or the session ends,
+ * start again from nothing. Signing in from a guest booking keeps what was typed.
+ */
 export function Booking() {
+  const { loading, user } = useMe();
+  const id = user?.id ?? null;
+  const [owner, setOwner] = useState<{ id: string | null; generation: number }>({ id: null, generation: 0 });
+  if (!loading && id !== owner.id) setOwner({ id, generation: owner.id ? owner.generation + 1 : owner.generation });
+  return <BookingFlow key={owner.generation} />;
+}
+
+function BookingFlow() {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -53,11 +65,10 @@ export function Booking() {
   const locale = LOCALES[lang];
   const slotLabel = useCallback((iso: string) => `${formatDayShort(iso, locale)} ${clockOf(iso)}`, [locale]);
 
-  // Coming back from a cancelled payment lands on the review step again.
-  const [step, setStep] = useState<Step>(params.get("checkout") === "cancel" ? 4 : 1);
   /** The person asked to book another service even though this one already has a booking. */
   const [startNew, setStartNew] = useState(false);
-  const [consent, setConsent] = useState(false);
+  // Anyone returning from the payment page had already agreed before paying.
+  const [consent, setConsent] = useState(() => params.has("checkout"));
   const [drafts, setDrafts] = useState<Partial<Record<SystemId, BookingRequest>>>({});
   const [saved, setSaved] = useState<Partial<Record<SystemId, BookingRequest>>>({});
   const [slotsBy, setSlotsBy] = useState<Partial<Record<SystemId, SlotsResponse>>>({});
@@ -159,6 +170,10 @@ export function Booking() {
   const windowValid = draft ? validateWindow(draft.window).length === 0 : true;
   const detailsReady = draft ? isComplete(system, draft) : false;
   const accountEmail = accountEmailInput ?? draft?.email ?? "";
+  // The step lives in the address, so the browser's Back and Forward move between steps. A step that
+  // cannot be shown yet (review without details or consent) falls back to the details step.
+  const wanted: Step = params.get("checkout") === "cancel" ? 4 : stepFromUrl(params.get("step"));
+  const step: Step = wanted === 4 && !(detailsReady && consent) ? 3 : wanted;
 
   // Autosave once the window is valid and something changed. People and email may still be a draft.
   useEffect(() => {
@@ -254,10 +269,12 @@ export function Booking() {
   const sessionId = params.get("session_id");
   useEffect(() => {
     if (!user || !checkoutState) return;
-    const clean = () => {
+    const clean = (backTo?: Step) => {
       const q = new URLSearchParams(params.toString());
       q.delete("checkout");
       q.delete("session_id");
+      const next = checkoutState === "cancel" ? 4 : backTo;
+      if (next) q.set("step", String(next));
       const qs = q.toString();
       router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
     };
@@ -288,9 +305,8 @@ export function Booking() {
       },
       (err: unknown) => {
         if (handleAuthLoss(err)) return;
-        setStep(4);
         notify(err instanceof ApiRequestError ? err.message : t("payFail"), "warn");
-        clean();
+        clean(4);
       },
     );
     // params/pathname/router are only read to rewrite the URL once.
@@ -381,10 +397,10 @@ export function Booking() {
       else q.set("system", next);
       const qs = q.toString();
       setShowDetailErrors(false);
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+      window.history.replaceState(window.history.state, "", qs ? `${pathname}?${qs}` : pathname);
     }
     setStartNew(false);
-    setStep(2);
+    goToStep(2);
   };
 
   const setDraft = (update: (r: BookingRequest) => BookingRequest) =>
@@ -395,7 +411,7 @@ export function Booking() {
 
   const goDetails = () => {
     if (!windowValid) return;
-    setStep(3);
+    goToStep(3);
   };
 
   /** Step 3 -> 4, or show what is missing. */
@@ -407,14 +423,14 @@ export function Booking() {
       }, 50);
       return;
     }
-    setStep(4);
+    goToStep(4);
   };
 
   /** Step 4: make sure the backend has the latest request, then send the browser to checkout. */
   const pay = async () => {
     if (!draft || !effectiveWindow) return;
     if (!detailsReady) {
-      setStep(3);
+      showStep(3);
       setShowDetailErrors(true);
       return;
     }
@@ -450,7 +466,7 @@ export function Booking() {
       if (handleAuthLoss(err)) return;
       notify(err instanceof ApiRequestError ? err.message : t("payFail"), "warn");
       if (err instanceof ApiRequestError && err.code === "incomplete_details") {
-        setStep(3);
+        showStep(3);
         setShowDetailErrors(true);
       }
     }
@@ -465,7 +481,7 @@ export function Booking() {
       const depth = fresh?.slots.find((s) => s.slot === b.slot)?.queued ?? 0;
       notify(t("nCancelled", { slot: slotLabel(b.slot), depth }));
       setConfirmingCancel(false);
-      setStep(1);
+      showStep(1);
     } catch (err) {
       announced.current.delete(bookingId);
       if (!handleAuthLoss(err)) notify(err instanceof ApiRequestError ? err.message : t("cancelFail"), "warn");
@@ -533,7 +549,7 @@ export function Booking() {
               onCancel={() => mySlot.mine && void cancel(mySlot.mine.bookingId)}
               onAnother={() => {
                 setStartNew(true);
-                setStep(1);
+                showStep(1);
               }}
             />
           )}
@@ -544,7 +560,7 @@ export function Booking() {
               onAnother={() => {
                 setStartNew(true);
                 setAlertSub(null);
-                setStep(1);
+                showStep(1);
               }}
             />
           )}
@@ -558,7 +574,7 @@ export function Booking() {
               onAnother={() => {
                 setStartNew(true);
                 setWatching(false);
-                setStep(1);
+                showStep(1);
               }}
             />
           )}
@@ -605,7 +621,7 @@ export function Booking() {
                   onChange={(window) => setDraft((r) => ({ ...r, window }))}
                 />
               </div>
-              <StepButtons onBack={() => setStep(1)} onNext={goDetails} nextDisabled={!windowValid} />
+              <StepButtons onBack={() => goBackToStep(1)} onNext={goDetails} nextDisabled={!windowValid} />
             </>
           )}
 
@@ -644,7 +660,7 @@ export function Booking() {
                   {t("tickBox")}
                 </p>
               )}
-              <StepButtons onBack={() => setStep(2)} onNext={goConfirm} />
+              <StepButtons onBack={() => goBackToStep(2)} onNext={goConfirm} />
             </div>
           )}
 
@@ -786,7 +802,7 @@ export function Booking() {
                 </p>
               )}
               <StepButtons
-                onBack={() => setStep(3)}
+                onBack={() => goBackToStep(3)}
                 onNext={() => void pay()}
                 nextLabel={plans ? t(guest ? "payAccount" : plan === "autobook" ? "payAuto" : "payNotify", { price: formatPrice(plans.plans.find((p) => p.id === plan) ?? { amountCents: 0 }, t("perMonth")) }) : t("next")}
                 nextBusy={working}
@@ -796,7 +812,8 @@ export function Booking() {
           )}
 
           {user && <SupportBox system={system} startOpen={params.get("support") === "1"} />}
-          {user && <FeedbackBox key={user.id} startOpen={params.get("feedback") === "1"} />}
+          {!authLoading && !user && params.get("support") === "1" && <SupportSignIn />}
+          {!authLoading && <FeedbackBox key={user?.id ?? "guest"} signedIn={!!user} startOpen={params.get("feedback") === "1"} />}
         </div>
 
         {/* The summary beside the form, like a receipt that fills in as you go. */}
