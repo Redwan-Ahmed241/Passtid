@@ -124,6 +124,14 @@ export const SECTIONS: TextSection[] = [
   },
   { id: "signin-side", group: "Accounts", title: "Side panel", about: "“Why an account”, shown beside the sign-in form.", href: "/login", prefixes: ["c.auth."] },
   {
+    id: "feedback",
+    group: "Support",
+    title: "Customer feedback",
+    about: "The rating form on the booking page, and the feedback shown on the home page.",
+    href: "/#feedback",
+    keys: "fbWallTitle fbWallNote fbStars fbOpen fbTitle fbRating fbMessage fbName fbConsent fbSend fbUpdate fbThanks fbFail fbWaiting fbPublished fbHidden fbErrRating fbErrMessage fbErrName",
+  },
+  {
     id: "support",
     group: "Support",
     title: "Reporting a problem",

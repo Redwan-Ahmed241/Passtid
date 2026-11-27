@@ -22,6 +22,7 @@ import {
 } from "@/lib/types";
 import { isComplete } from "@/lib/applicants";
 import { isUniqueViolation, query, transaction } from "./db";
+import { adminFeedback } from "./feedback";
 import { ApiError } from "./errors";
 import { assertBookingId, blankRequest, cancelBooking, saveRequest } from "./store";
 import { site } from "@/lib/site";
@@ -292,7 +293,7 @@ export async function adminOverview(): Promise<AdminOverview> {
       bookings: bookings.filter((b) => b.user_id === u.id).map(toBooking),
     });
   }
-  return { customers, tickets: ticketRows.map(toTicket) };
+  return { customers, tickets: ticketRows.map(toTicket), feedback: await adminFeedback() };
 }
 
 export async function adminSaveRequest(userId: string, system: SystemId, request: BookingRequest): Promise<RequestResponse> {

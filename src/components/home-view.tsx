@@ -5,6 +5,7 @@ import { ArrowRight, Check } from "lucide-react";
 import { features } from "@/lib/features";
 import { useI18n } from "@/lib/i18n";
 import type { PlanId } from "@/lib/types";
+import { FeedbackWall } from "./feedback-wall";
 import { BottomCta, HeroActions } from "./home-cta";
 import { LogoMark } from "./brand";
 
@@ -61,6 +62,8 @@ export function HomeView({ prices, monthly }: { prices: Record<PlanId, string>; 
           ))}
         </div>
       </section>
+
+      <FeedbackWall />
 
       {/* FAQ */}
       <section id="faq" aria-labelledby="faq-h" className="mx-auto max-w-5xl scroll-mt-24 border-t border-line px-4 py-14 sm:px-6 lg:px-8">

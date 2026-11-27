@@ -17,6 +17,11 @@ import type {
   Ticket,
   TicketCategory,
   TicketStatus,
+  Feedback,
+  FeedbackInput,
+  FeedbackStatus,
+  MyFeedbackResponse,
+  PublicFeedback,
 } from "./types";
 
 /** Browser client for this app's own route handlers (src/app/api/v1). Requests carry the session cookie. */
@@ -108,6 +113,11 @@ export const api = {
     request<RequestResponse>(`/admin/requests/${encodeURIComponent(clientId)}/${system}`, { method: "PUT", body: JSON.stringify(body) }),
   adminUpdateBooking: (id: string, patch: AdminBookingPatch) =>
     request<Booking>(`/admin/bookings/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(patch) }),
+  publishedFeedback: () => request<{ feedback: PublicFeedback[] }>(`/feedback`),
+  myFeedback: () => request<MyFeedbackResponse>(`/feedback/mine`),
+  saveFeedback: (body: FeedbackInput) => request<Feedback>(`/feedback/mine`, { method: "PUT", body: JSON.stringify(body) }),
+  adminSetFeedbackStatus: (clientId: string, status: FeedbackStatus, seenAt: string) =>
+    request<Feedback>(`/admin/feedback/${encodeURIComponent(clientId)}`, { method: "PATCH", body: JSON.stringify({ status, seenAt }) }),
   adminSetTexts: (patch: Record<"en" | "sv", Record<string, string | null>>) =>
     request<TextOverrides>(`/admin/texts`, { method: "PUT", body: JSON.stringify(patch) }),
 };

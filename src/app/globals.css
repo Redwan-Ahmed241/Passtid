@@ -47,6 +47,8 @@
 
 @theme inline {
   --color-paper: var(--paper);
+  --color-yellow: var(--yellow);
+  --color-navy: var(--navy);
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
   --color-sunken: var(--sunken);
@@ -187,6 +189,25 @@
   }
   .field::-webkit-date-and-time-value {
     text-align: left;
+  }
+  /* The browser's own dropdown arrow sits against the border, so draw it with room around it. */
+  select.field {
+    -webkit-appearance: none;
+    appearance: none;
+    padding-right: 2.75rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233a4752' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.875rem center;
+    background-size: 1rem;
+    text-overflow: ellipsis;
+    cursor: pointer;
+  }
+  /* High-contrast mode drops background images, so let it draw its own arrow. */
+  @media (forced-colors: active) {
+    select.field {
+      appearance: auto;
+      background-image: none;
+    }
   }
   .field:hover {
     border-color: var(--line-strong);
