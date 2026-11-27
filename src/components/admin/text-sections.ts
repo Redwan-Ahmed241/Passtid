@@ -23,7 +23,7 @@ export const SECTIONS: TextSection[] = [
     title: "Top of the page",
     about: "The headline, the text under it and the first buttons visitors see.",
     href: "/",
-    prefixes: ["c.home.eyebrow", "c.home.heroTitle", "c.home.heroLead", "c.home.startBooking", "c.home.openBooking", "c.home.points."],
+    prefixes: ["c.home.heroTitle", "c.home.heroLead", "c.home.startBooking", "c.home.openBooking", "c.home.points."],
   },
   { id: "home-how", group: "Home page", title: "How it works", about: "The three steps.", href: "/#how", prefixes: ["c.home.howTitle", "c.home.steps."] },
   {
@@ -162,7 +162,6 @@ export function groupPaths(paths: string[]): { section: TextSection; paths: stri
 }
 
 const HOME: Record<string, string> = {
-  eyebrow: "Small line above the headline",
   heroTitle: "Main headline",
   heroLead: "Text under the headline",
   startBooking: "Button: start booking",
