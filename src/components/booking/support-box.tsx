@@ -1,10 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
 import { LifeBuoy, Loader2 } from "lucide-react";
 import { api, ApiRequestError } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import type { TranslationKey } from "@/lib/i18n/translations";
+import { site } from "@/lib/site";
 import { MAX_TICKET_MESSAGE, TICKET_CATEGORIES, type SystemId, type Ticket, type TicketCategory } from "@/lib/types";
 
 const CATEGORY_KEYS: Record<TicketCategory, TranslationKey> = {
@@ -13,6 +15,28 @@ const CATEGORY_KEYS: Record<TicketCategory, TranslationKey> = {
   account: "catAccount",
   other: "catOther",
 };
+
+/** Shown to a signed-out visitor who followed a "Support" link. */
+export function SupportSignIn() {
+  const { t } = useI18n();
+  const uid = useId();
+  const sectionRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    sectionRef.current?.scrollIntoView({ block: "start" });
+  }, []);
+  return (
+    <section ref={sectionRef} aria-labelledby={`${uid}-h`} className="mt-10 scroll-mt-24 border-t border-line pt-6">
+      <h2 id={`${uid}-h`} className="text-lg font-bold text-ink">{t("reportTitle")}</h2>
+      <p className="mt-1.5 max-w-[60ch] break-words text-ink-2">{t("spSignIn", { email: site.contactEmail })}</p>
+      <div className="mt-3 flex flex-wrap gap-3">
+        <Link href={`/login?next=${encodeURIComponent("/booking?support=1")}`} className="btn btn-primary">
+          {t("signIn")}
+        </Link>
+        <a href={`mailto:${site.contactEmail}`} className="btn btn-ghost">{site.contactEmail}</a>
+      </div>
+    </section>
+  );
+}
 
 /**
  * Lets a signed-in user report a problem. They get a token to quote, the administrator is

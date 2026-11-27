@@ -281,6 +281,9 @@ const en = {
   fbErrRating: "Choose a rating.",
   fbErrMessage: "Write at least 10 characters.",
   fbErrName: "Enter a name to show.",
+  fbSignIn: "Sign in with the account you paid with to leave feedback.",
+  spSignIn: "Sign in to send a report and see our answer, or email us at {email}.",
+  fbOnlyPaid: "Feedback is open to customers who have paid for a plan. This account has no payment yet.",
 } as const;
 
 export type TranslationKey = keyof typeof en;
@@ -555,6 +558,9 @@ const sv: Record<TranslationKey, string> = {
   fbErrRating: "Välj ett betyg.",
   fbErrMessage: "Skriv minst 10 tecken.",
   fbErrName: "Ange ett namn som får visas.",
+  fbSignIn: "Logga in med kontot du betalade med för att lämna ett omdöme.",
+  spSignIn: "Logga in för att skicka en rapport och se vårt svar, eller mejla oss på {email}.",
+  fbOnlyPaid: "Omdömen kan lämnas av kunder som har betalat för en plan. Det här kontot har ingen betalning än.",
 };
 
 export const translations: Record<Lang, Record<TranslationKey, string>> = { en, sv };

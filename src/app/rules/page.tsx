@@ -6,13 +6,16 @@ import { RulesView } from "@/components/rules-view";
 import { features } from "@/lib/features";
 import { site } from "@/lib/site";
 
-export const metadata: Metadata = {
-  title: "How slots are matched to your booking window",
-  description:
-    "How Passtid matches Swedish appointment slots in London to your booking window, what happens when a booking fails, and why the rules are the same for every service.",
-  alternates: { canonical: "/rules" },
-  openGraph: { ...baseOpenGraph, url: "/rules" },
-};
+// While the page is switched off it must not announce itself in the tab of the 404.
+export const metadata: Metadata = features.rules
+  ? {
+      title: "How slots are matched to your booking window",
+      description:
+        "How Passtid matches Swedish appointment slots in London to your booking window, what happens when a booking fails, and why the rules are the same for every service.",
+      alternates: { canonical: "/rules" },
+      openGraph: { ...baseOpenGraph, url: "/rules" },
+    }
+  : { title: "Page not found", robots: { index: false, follow: false } };
 
 export default function RulesPage() {
   // Built but hidden for now. Set NEXT_PUBLIC_SHOW_RULES=true and redeploy to show it.
