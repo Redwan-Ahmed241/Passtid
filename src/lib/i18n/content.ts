@@ -6,7 +6,6 @@ import type { Lang } from "./translations";
 
 const en = {
   home: {
-    eyebrow: "Swedish appointments · London",
     heroTitle: "Get your Swedish appointment in London.",
     heroLead: "Tell us the days you can attend. We watch the Swedish embassy's London calendar around the clock, then alert you or book the first slot that fits.",
     startBooking: "Start booking",
@@ -121,7 +120,6 @@ const en = {
     ctaButton: "Start booking",
   },
   auth: {
-    why: "Why an account",
     pitch: "One account keeps your booking in one place.",
     points: [
       "Choose Telegram alerts, or let us book the earliest slot that fits.",
@@ -135,7 +133,6 @@ export type Content = typeof en;
 
 const sv: Content = {
   home: {
-    eyebrow: "Svenska tider · London",
     heroTitle: "Få din svenska tid i London.",
     heroLead: "Berätta vilka dagar du kan komma. Vi bevakar svenska ambassadens kalender i London dygnet runt och aviserar dig eller bokar den första tiden som passar.",
     startBooking: "Starta bokning",
@@ -250,7 +247,6 @@ const sv: Content = {
     ctaButton: "Starta bokning",
   },
   auth: {
-    why: "Varför ett konto",
     pitch: "Ett konto samlar din bokning på ett ställe.",
     points: [
       "Välj aviseringar via Telegram, eller låt oss boka den första tiden som passar.",

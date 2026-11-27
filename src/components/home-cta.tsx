@@ -8,7 +8,7 @@ import { useMe } from "./auth/use-me";
 /** Primary call to action. Signed-in users go straight back into booking. */
 export function HeroActions() {
   const { user } = useMe();
-  const { c } = useI18n();
+  const { c, t } = useI18n();
   return (
     <div className="mt-8 flex flex-wrap gap-3">
       <Link href="/booking" className="btn btn-primary group h-12 px-6 text-base">
@@ -16,7 +16,7 @@ export function HeroActions() {
         <ArrowRight className="size-4 transition-transform duration-150 group-hover:translate-x-0.5" aria-hidden="true" />
       </Link>
       <Link href="#how" className="btn btn-ghost h-12 px-6 text-base">
-        {c.home.howTitle}
+        {t("navHow")}
       </Link>
     </div>
   );

@@ -16,8 +16,7 @@ export function HomeView({ prices, monthly }: { prices: Record<PlanId, string>; 
     <>
       {/* Hero */}
       <section className="mx-auto max-w-5xl px-4 pt-14 pb-16 sm:px-6 md:pt-20 lg:px-8">
-        <p className="label-mono">{h.eyebrow}</p>
-        <h1 className="mt-4 max-w-3xl text-[2.25rem] leading-[1.08] font-bold tracking-[-0.02em] text-ink sm:text-5xl lg:text-[3.5rem]">
+        <h1 className="max-w-3xl text-[2.25rem] leading-[1.08] font-bold tracking-[-0.02em] text-ink sm:text-5xl lg:text-[3.5rem]">
           {h.heroTitle}
         </h1>
         <p className="mt-5 max-w-2xl text-lg leading-relaxed text-ink-2">{h.heroLead}</p>
