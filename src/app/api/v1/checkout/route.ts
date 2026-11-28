@@ -1,5 +1,5 @@
 import { isPlanId, isSystemId, type CheckoutResponse } from "@/lib/types";
-import { getRequest } from "@/server/store";
+import { getRequest, listAlerts } from "@/server/store";
 import { SLOT_RE, errorJson, handle, json, requireUser, readJson } from "@/server/http";
 import { createCheckout } from "@/server/payments";
 
@@ -14,6 +14,10 @@ export async function POST(request: Request) {
 
     if (!(await getRequest(user.id, body.system, user.email)).complete) {
       return errorJson(422, "incomplete_details", "Complete the people and email details for this service before paying.");
+    }
+    // A second alerts subscription for the same service would bill twice for the same messages.
+    if (body.plan === "notify" && (await listAlerts(user.id)).some((a) => a.system === body.system)) {
+      return errorJson(409, "already_subscribed", "Telegram alerts are already on for this service.");
     }
     const origin = new URL(request.url).origin;
     const checkout = await createCheckout(

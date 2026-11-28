@@ -11,14 +11,26 @@ import type { User } from "@/lib/types";
 const EVENT = "tl-auth";
 let cache: Promise<User | null> | null = null;
 
-function fetchMe(): Promise<User | null> {
-  return api.me().then(
-    (u) => u,
-    (err: unknown) => {
-      if (err instanceof ApiRequestError && err.status !== 401) return null;
-      return null;
-    },
-  );
+/** The last answer the server actually gave. */
+let known: User | null = null;
+
+/**
+ * Only a 401 means "signed out". A server error or a lost connection says nothing, so it is tried
+ * once more and then the last answer stands: treating it as a sign-out would throw away the booking
+ * the person is filling in.
+ */
+async function fetchMe(retry = true): Promise<User | null> {
+  try {
+    return (known = await api.me());
+  } catch (err) {
+    if (err instanceof ApiRequestError && err.status === 401) return (known = null);
+    if (retry) {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      return fetchMe(false);
+    }
+    cache = null; // ask again next time instead of remembering a failure
+    return known;
+  }
 }
 
 export function loadMe(force = false): Promise<User | null> {
@@ -41,6 +53,7 @@ if (typeof window !== "undefined") {
 
 /** Call after a successful sign-in or sign-out so every listener refreshes. */
 export function announceAuthChange(user: User | null) {
+  known = user;
   cache = Promise.resolve(user);
   window.dispatchEvent(new Event(EVENT));
 }

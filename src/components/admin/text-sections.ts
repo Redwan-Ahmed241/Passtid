@@ -104,7 +104,7 @@ export const SECTIONS: TextSection[] = [
     group: "Booking",
     title: "Telegram updates",
     about: "Connecting Telegram and the optional phone number.",
-    keys: "alertsTitle alertsBody alertsNoBot openTelegram telegramAlso telegramScan emailAlways phoneOptional telegramPhoneHint savePhone phoneSaved phoneError",
+    keys: "alertsTitle alertsBody alertsNoBot alertsLinked alertsAddBooking alertsAlready summaryTitleAlerts reviewAlerts openTelegram telegramAlso telegramScan emailAlways phoneOptional telegramPhoneHint savePhone phoneSaved phoneError",
   },
   {
     id: "signin",

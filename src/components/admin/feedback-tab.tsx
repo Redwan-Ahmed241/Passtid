@@ -49,6 +49,19 @@ function FeedbackRow({ item, onReload }: { item: AdminFeedback; onReload: () => 
     }
   };
 
+  const [confirming, setConfirming] = useState(false);
+  const erase = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await api.adminDeleteFeedback(item.clientId);
+      await onReload();
+    } catch (err) {
+      setError(err instanceof ApiRequestError ? err.message : "Something went wrong. Try again.");
+      setBusy(false);
+    }
+  };
+
   const state = STATES[item.status];
   return (
     <li className="py-5">
@@ -73,6 +86,15 @@ function FeedbackRow({ item, onReload }: { item: AdminFeedback; onReload: () => 
             {item.status === "published" ? "Take off website" : "Hide"}
           </button>
         )}
+        <button
+          type="button"
+          className="btn btn-danger h-10 min-h-10 text-sm"
+          disabled={busy}
+          onClick={() => (confirming ? void erase() : setConfirming(true))}
+          onBlur={() => setConfirming(false)}
+        >
+          {confirming ? "Click again to delete for good" : "Delete (customer asked)"}
+        </button>
       </div>
     </li>
   );

@@ -1,5 +1,5 @@
 import { FEEDBACK_STATUSES } from "@/lib/types";
-import { adminSetFeedbackStatus } from "@/server/feedback";
+import { adminDeleteFeedback, adminSetFeedbackStatus } from "@/server/feedback";
 import { errorJson, handle, json, requireAdmin, readJson } from "@/server/http";
 
 type Ctx = { params: Promise<{ clientId: string }> };
@@ -15,5 +15,15 @@ export async function PATCH(request: Request, { params }: Ctx) {
       return errorJson(422, "invalid_status", "Send the new status and the version you reviewed.");
     }
     return json(await adminSetFeedbackStatus(clientId, status, body.seenAt));
+  });
+}
+
+/** Erase the feedback altogether. */
+export async function DELETE(request: Request, { params }: Ctx) {
+  const { clientId } = await params;
+  return handle(async () => {
+    requireAdmin(request);
+    await adminDeleteFeedback(clientId);
+    return json({ ok: true });
   });
 }

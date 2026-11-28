@@ -24,7 +24,8 @@ import { isComplete } from "@/lib/applicants";
 import { isUniqueViolation, query, transaction } from "./db";
 import { adminFeedback } from "./feedback";
 import { ApiError } from "./errors";
-import { assertBookingId, blankRequest, cancelBooking, saveRequest } from "./store";
+import { paidSessionPattern } from "./payments";
+import { assertBookingId, blankRequest, cancelBooking } from "./store";
 import { site } from "@/lib/site";
 
 /* ------------------------------------------------------------------ */
@@ -220,19 +221,22 @@ export async function adminSetTexts(patch: Record<"en" | "sv", Record<string, st
       if (!TEXT_KEY_RE.test(k)) throw new ApiError(422, "invalid_text_key", `Unknown text key “${k}”.`);
     }
   }
-  for (const lang of ["en", "sv"] as const) {
-    for (const [k, v] of Object.entries(patch[lang] ?? {})) {
-      if (v === null || v === "") {
-        await query("delete from site_texts where lang = $1 and key = $2", [lang, k]);
-      } else {
-        await query(
-          `insert into site_texts (lang, key, value) values ($1, $2, $3)
-           on conflict (lang, key) do update set value = excluded.value, updated_at = now()`,
-          [lang, k, String(v).slice(0, 5000)],
-        );
+  // One transaction: a save that fails part-way changes nothing.
+  await transaction(async (client) => {
+    for (const lang of ["en", "sv"] as const) {
+      for (const [k, v] of Object.entries(patch[lang] ?? {})) {
+        if (v === null || v === "") {
+          await client.query("delete from site_texts where lang = $1 and key = $2", [lang, k]);
+        } else {
+          await client.query(
+            `insert into site_texts (lang, key, value) values ($1, $2, $3)
+             on conflict (lang, key) do update set value = excluded.value, updated_at = now()`,
+            [lang, k, String(v).slice(0, 5000)],
+          );
+        }
       }
     }
-  }
+  });
   return getTexts();
 }
 
@@ -296,10 +300,21 @@ export async function adminOverview(): Promise<AdminOverview> {
   return { customers, tickets: ticketRows.map(toTicket), feedback: await adminFeedback() };
 }
 
-export async function adminSaveRequest(userId: string, system: SystemId, request: BookingRequest): Promise<RequestResponse> {
+/** `seenAt` is the version the administrator edited (null if nothing was saved), so newer details are kept. */
+export async function adminSaveRequest(userId: string, system: SystemId, request: BookingRequest, seenAt: string | null): Promise<RequestResponse> {
   const [exists] = await query<{ one: number }>("select 1 as one from users where id = $1", [userId]);
   if (!exists) throw new ApiError(404, "customer_not_found", "No such customer.");
-  return saveRequest(userId, system, request);
+  // One guarded statement, so a customer saving at the same moment cannot slip in between.
+  const [row] = await query<{ updated_at: Date }>(
+    seenAt === null
+      ? `insert into booking_requests (user_id, system, request) values ($1, $2, $3)
+         on conflict (user_id, system) do nothing returning updated_at`
+      : `update booking_requests set request = $3, updated_at = now()
+          where user_id = $1 and system = $2 and date_trunc('milliseconds', updated_at) = $4::timestamptz returning updated_at`,
+    seenAt === null ? [userId, system, JSON.stringify(request)] : [userId, system, JSON.stringify(request), seenAt],
+  );
+  if (!row) throw new ApiError(409, "request_changed", "The customer's details changed while you were editing. Refresh and try again.");
+  return { request, updatedAt: row.updated_at.toISOString(), complete: isComplete(system, request) };
 }
 
 /** The booking bot changed the row after the admin loaded it: refresh instead of overwriting. */
@@ -336,7 +351,12 @@ export async function adminUpdateBooking(id: string, patch: AdminBookingPatch): 
     }
   }
 
-  // Back to pending: the booking bot picks it up again.
+  // Back to pending: the booking bot picks it up again, so this needs the same live payment as queueing does.
+  const [paid] = await query(
+    "select 1 from payments where user_id = $1 and system = $2 and plan = 'autobook' and session_id like $3 limit 1",
+    [current.user_id, current.system, paidSessionPattern()],
+  );
+  if (!paid) throw new ApiError(402, "payment_required", "This customer has no paid automatic booking for this service, so it cannot be queued.");
   try {
     const [row] = await query<BookingRow>(
       `update bookings set status = 'pending', reference = null, reason = null, heartbeat = now(), updated_at = now()

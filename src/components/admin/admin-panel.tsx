@@ -287,6 +287,7 @@ function CustomerDetail({ customer, onReload }: { customer: AdminCustomer; onRel
             clientId={customer.clientId}
             system={system}
             saved={saved.request}
+            updatedAt={saved.updatedAt}
             complete={saved.complete}
             today={today}
             onReload={onReload}
@@ -301,7 +302,7 @@ const STATUSES: BookingStatus[] = ["pending", "booked", "released"];
 
 /** Said under the status choice, so nobody changes one without knowing what the bot will then do. */
 const STATUS_HELP: Record<BookingStatus, string> = {
-  pending: "The booking bot will try to book this time.",
+  pending: "The booking bot will try to book this time. Only possible if the customer has paid for automatic booking.",
   booked: "Enter the booking number you got from the embassy.",
   released: "The booking bot will stop working on this time.",
 };
@@ -394,6 +395,7 @@ function RequestEditor({
   clientId,
   system,
   saved,
+  updatedAt,
   complete,
   today,
   onReload,
@@ -401,12 +403,15 @@ function RequestEditor({
   clientId: string;
   system: SystemId;
   saved: BookingRequest;
+  updatedAt: string | null;
   complete: boolean;
   today: string;
   onReload: () => Promise<void>;
 }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<BookingRequest>(saved);
+  /** The version being edited. */
+  const [seenAt, setSeenAt] = useState(updatedAt);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -414,7 +419,7 @@ function RequestEditor({
     setBusy(true);
     setError(null);
     try {
-      await api.adminSaveRequest(clientId, system, draft);
+      await api.adminSaveRequest(clientId, system, draft, seenAt);
       await onReload();
       setOpen(false);
     } catch (err) {
@@ -441,6 +446,7 @@ function RequestEditor({
           aria-expanded={open}
           onClick={() => {
             setDraft(saved);
+            setSeenAt(updatedAt);
             setError(null);
             setOpen((o) => !o);
           }}

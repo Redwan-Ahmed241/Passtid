@@ -301,6 +301,12 @@ export interface AlertSubscription {
   system: SystemId;
   /** Deep link that connects this account to the Telegram bot, when the bot username is configured. */
   telegramUrl: string | null;
+  /** True once a Telegram chat is connected, so there is nothing left for the customer to do. */
+  linked?: boolean;
+}
+
+export interface AlertsResponse {
+  alerts: AlertSubscription[];
 }
 
 export interface ConfirmResponse {

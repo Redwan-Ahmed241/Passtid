@@ -71,7 +71,7 @@ const en: Record<LegalId, LegalDoc> = {
   },
   terms: {
     title: "Terms and conditions",
-    updated: "Last updated 27 October 2026",
+    updated: "Last updated 28 November 2026",
     intro: "By creating an account or paying for a plan you agree to these terms. Please read them together with our privacy policy.",
     sections: [
       {
@@ -96,7 +96,7 @@ const en: Record<LegalId, LegalDoc> = {
       {
         h: "Plans and payment",
         p: [
-          "The price of each plan is shown before you pay, and is charged once through Stripe. A plan covers the service you chose for the people and dates you entered.",
+          "The price of each plan is shown before you pay, and payment is taken through Stripe. Automatic booking is charged once. Telegram alerts are charged every month until cancelled; to cancel them, write to {email}. A plan covers the service you chose for the people and dates you entered.",
           "If we cannot provide the service you paid for, contact us at {email} and we will find a fair solution, including a refund where appropriate. This does not affect your legal rights as a consumer.",
         ],
       },
@@ -178,7 +178,7 @@ const sv: Record<LegalId, LegalDoc> = {
   },
   terms: {
     title: "Villkor",
-    updated: "Senast uppdaterad 27 oktober 2026",
+    updated: "Senast uppdaterad 28 november 2026",
     intro: "Genom att skapa ett konto eller betala för en tjänst godkänner du de här villkoren. Läs dem tillsammans med vår integritetspolicy.",
     sections: [
       {
@@ -203,7 +203,7 @@ const sv: Record<LegalId, LegalDoc> = {
       {
         h: "Tjänster och betalning",
         p: [
-          "Priset för varje tjänst visas innan du betalar och dras en gång via Stripe. Tjänsten gäller det du valt för de personer och datum du angett.",
+          "Priset för varje tjänst visas innan du betalar, och betalningen sker via Stripe. Automatisk bokning betalas en gång. Telegram-notiser betalas varje månad tills de sägs upp; vill du säga upp dem, skriv till {email}. Tjänsten gäller det du valt för de personer och datum du angett.",
           "Om vi inte kan leverera tjänsten du betalat för, kontakta oss på {email} så hittar vi en rimlig lösning, inklusive återbetalning när det är lämpligt. Det påverkar inte dina lagstadgade rättigheter som konsument.",
         ],
       },
