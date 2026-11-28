@@ -17,6 +17,7 @@ import type {
   Ticket,
   TicketCategory,
   TicketStatus,
+  AlertsResponse,
   Feedback,
   FeedbackInput,
   FeedbackStatus,
@@ -92,6 +93,7 @@ export const api = {
   plans: () => request<PlansResponse>(`/plans`),
   checkout: (system: SystemId, plan: PlanId, slot: string | null) =>
     request<CheckoutResponse>(`/checkout`, { method: "POST", body: JSON.stringify({ system, plan, slot }) }),
+  alerts: () => request<AlertsResponse>(`/alerts`),
   confirmCheckout: (sessionId: string) =>
     request<ConfirmResponse>(`/checkout/confirm`, { method: "POST", body: JSON.stringify({ sessionId }) }),
   booking: (id: string) => request<Booking>(`/bookings/${encodeURIComponent(id)}`),
@@ -109,13 +111,14 @@ export const api = {
   adminOverview: () => request<AdminOverview>(`/admin/overview`),
   adminUpdateTicket: (token: string, patch: { status: TicketStatus; reply: string | null }) =>
     request<Ticket>(`/admin/tickets/${encodeURIComponent(token)}`, { method: "PATCH", body: JSON.stringify(patch) }),
-  adminSaveRequest: (clientId: string, system: SystemId, body: BookingRequest) =>
-    request<RequestResponse>(`/admin/requests/${encodeURIComponent(clientId)}/${system}`, { method: "PUT", body: JSON.stringify(body) }),
+  adminSaveRequest: (clientId: string, system: SystemId, body: BookingRequest, seenAt: string | null) =>
+    request<RequestResponse>(`/admin/requests/${encodeURIComponent(clientId)}/${system}`, { method: "PUT", body: JSON.stringify({ ...body, seenAt }) }),
   adminUpdateBooking: (id: string, patch: AdminBookingPatch) =>
     request<Booking>(`/admin/bookings/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(patch) }),
   publishedFeedback: () => request<{ feedback: PublicFeedback[] }>(`/feedback`),
   myFeedback: () => request<MyFeedbackResponse>(`/feedback/mine`),
   saveFeedback: (body: FeedbackInput) => request<Feedback>(`/feedback/mine`, { method: "PUT", body: JSON.stringify(body) }),
+  adminDeleteFeedback: (clientId: string) => request<{ ok: true }>(`/admin/feedback/${encodeURIComponent(clientId)}`, { method: "DELETE" }),
   adminSetFeedbackStatus: (clientId: string, status: FeedbackStatus, seenAt: string) =>
     request<Feedback>(`/admin/feedback/${encodeURIComponent(clientId)}`, { method: "PATCH", body: JSON.stringify({ status, seenAt }) }),
   adminSetTexts: (patch: Record<"en" | "sv", Record<string, string | null>>) =>

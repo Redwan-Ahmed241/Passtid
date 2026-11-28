@@ -67,6 +67,12 @@ export async function adminFeedback(): Promise<AdminFeedback[]> {
   return rows.map((r) => ({ ...toFeedback(r), clientId: r.user_id, email: r.email }));
 }
 
+/** Erase one customer's feedback, for when they ask for it to be deleted. */
+export async function adminDeleteFeedback(userId: string): Promise<void> {
+  const rows = await query("delete from feedback where user_id = $1 returning user_id", [userId]);
+  if (!rows.length) throw new ApiError(404, "feedback_not_found", "No such feedback.");
+}
+
 /** `seenAt` is the version the administrator read, so words changed since then are never published unread. */
 export async function adminSetFeedbackStatus(userId: string, status: FeedbackStatus, seenAt: string): Promise<Feedback> {
   const [row] = await query<Row>(

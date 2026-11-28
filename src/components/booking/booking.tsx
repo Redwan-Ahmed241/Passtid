@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { choosePlan, usePlanChoice } from "./plan-choice";
 import { goBackToStep, goToStep, showStep, stepFromUrl, type Step } from "./steps";
 import { AlertTriangle, ArrowRight, BellRing, Bot, Check, CreditCard, Eye, EyeOff, Info, Loader2 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
@@ -73,11 +74,17 @@ function BookingFlow() {
   const [saved, setSaved] = useState<Partial<Record<SystemId, BookingRequest>>>({});
   const [slotsBy, setSlotsBy] = useState<Partial<Record<SystemId, SlotsResponse>>>({});
   const [loadError, setLoadError] = useState<string | null>(null);
+  /** Kept apart from loadError, which every successful slot refresh clears. */
+  const [requestError, setRequestError] = useState<string | null>(null);
   const [working, setWorking] = useState(false);
   const [plans, setPlans] = useState<PlansResponse | null>(null);
-  const [plan, setPlan] = useState<PlanId>(params.get("plan") === "notify" ? "notify" : "autobook");
-  const [alertSub, setAlertSub] = useState<AlertSubscription | null>(null);
+  const picked = usePlanChoice(params.get("plan"));
+  const plan: PlanId = picked ?? "autobook";
+  /** Alerts this customer already has, loaded with the page and added to after paying. */
+  const [alerts, setAlerts] = useState<AlertSubscription[]>([]);
   const [watching, setWatching] = useState(false);
+  /** Payments confirmed on this visit; the feedback form re-checks who may use it after each. */
+  const [purchases, setPurchases] = useState(0);
   const [telegramUrl, setTelegramUrl] = useState<string | null>(null);
   // null = follow the contact email from the details step; a string = the customer chose another one.
   const [accountEmailInput, setAccountEmailInput] = useState<string | null>(null);
@@ -133,12 +140,14 @@ function BookingFlow() {
     requestedFor.current.add(system);
     api.getRequest(system).then(
       (r) => {
-        setDrafts((d) => ({ ...d, [system]: r.request }));
+        setRequestError(null);
+        // Someone who just signed up part-way keeps what they typed; it is saved over the empty copy.
+        setDrafts((d) => (d[system] ? d : { ...d, [system]: r.request }));
         setSaved((s) => ({ ...s, [system]: r.request }));
       },
       (err: unknown) => {
         requestedFor.current.delete(system);
-        if (!handleAuthLoss(err)) setLoadError(t("loadReqFail"));
+        if (!handleAuthLoss(err)) setRequestError(t("loadReqFail"));
       },
     );
   }, [system, user, handleAuthLoss, t]);
@@ -264,6 +273,21 @@ function BookingFlow() {
     });
   }, [plans, handleAuthLoss, notify, t]);
 
+  // Alerts bought earlier are still on after a reload or on another device.
+  useEffect(() => {
+    if (!user) return;
+    let alive = true;
+    api.alerts().then(
+      (r) => {
+        if (alive) setAlerts((now) => [...now, ...r.alerts.filter((a) => !now.some((x) => x.system === a.system))]);
+      },
+      (err: unknown) => void handleAuthLoss(err),
+    );
+    return () => {
+      alive = false;
+    };
+  }, [user, handleAuthLoss]);
+
   // Back from Stripe: verify the payment, then show what was bought. Runs once per checkout session.
   const checkoutState = params.get("checkout");
   const sessionId = params.get("session_id");
@@ -273,6 +297,7 @@ function BookingFlow() {
       const q = new URLSearchParams(params.toString());
       q.delete("checkout");
       q.delete("session_id");
+      q.delete("plan");
       const next = checkoutState === "cancel" ? 4 : backTo;
       if (next) q.set("step", String(next));
       const qs = q.toString();
@@ -289,7 +314,9 @@ function BookingFlow() {
     api.confirmCheckout(sessionId).then(
       async (res) => {
         if (res.alert) {
-          setAlertSub(res.alert);
+          const bought = res.alert;
+          setAlerts((now) => [bought, ...now.filter((a) => a.system !== bought.system)]);
+          choosePlan("notify");
           setStartNew(false);
         }
         if (res.watching) {
@@ -300,6 +327,7 @@ function BookingFlow() {
           setStartNew(false);
           await loadSlots(res.system);
         }
+        setPurchases((n) => n + 1);
         notify(t("payConfirmed"));
         clean();
       },
@@ -366,7 +394,9 @@ function BookingFlow() {
     };
   }, [data]);
   const showStatus = !!mySlot && !startNew;
-  const showAlert = !showStatus && !!alertSub && alertSub.system === system && !startNew;
+  const alertSub = alerts.find((a) => a.system === system) ?? null;
+  // The alerts screen is the page for someone who has alerts, unless they asked for automatic booking.
+  const showAlert = !showStatus && !!alertSub && picked !== "autobook" && !startNew && step === 1;
   const showWatching = !showStatus && !showAlert && watching && !startNew;
   const autobook = !!mySlot?.mine?.autobook || showWatching;
 
@@ -518,19 +548,23 @@ function BookingFlow() {
             </ol>
           )}
 
-          {loadError && !data && step > 1 && (
+          {/* On every step: a failed load must never leave the page empty. */}
+          {(loadError || requestError) && !ready && (
             <div role="alert" className="border-l-4 border-hot py-1 pl-4">
               <p className="flex items-center gap-2 font-semibold text-hot">
                 <AlertTriangle className="size-4" aria-hidden="true" /> {t("cantReach")}
               </p>
-              <p className="mt-1 text-sm text-ink-2">{loadError}</p>
-              <button type="button" className="btn btn-ghost mt-3" onClick={() => void loadSlots(system)}>
+              <p className="mt-1 text-sm text-ink-2">{requestError ?? loadError}</p>
+              <button type="button" className="btn btn-ghost mt-3" onClick={() => window.location.reload()}>
                 {t("tryAgain")}
               </button>
             </div>
           )}
 
-          {!ready && !loadError && <SlotListSkeleton />}
+          {!ready && !loadError && !requestError && <SlotListSkeleton />}
+
+          {/* Alerts stay visible beside a booking or the form, so neither hides the other. */}
+          {ready && alertSub && !showAlert && <AlertNotice alert={alertSub} />}
 
           {ready && showStatus && mySlot && draft && (
             <StatusCard
@@ -558,8 +592,8 @@ function BookingFlow() {
             <AlertCard
               alert={alertSub}
               onAnother={() => {
+                choosePlan("autobook");
                 setStartNew(true);
-                setAlertSub(null);
                 showStep(1);
               }}
             />
@@ -666,7 +700,7 @@ function BookingFlow() {
 
           {inFlow && step === 4 && draft && (
             <>
-              <h1 className={heading}>{t("reviewBooking")}</h1>
+              <h1 className={heading}>{t(plan === "notify" ? "reviewAlerts" : "reviewBooking")}</h1>
               {/* On wide screens the summary beside the form already shows this. */}
               <dl className="mt-4 divide-y divide-line text-sm lg:hidden">
                 <Row label={t("rowService")} value={serviceName} />
@@ -686,7 +720,7 @@ function BookingFlow() {
                       type="button"
                       role="radio"
                       aria-checked={on}
-                      onClick={() => setPlan(id)}
+                      onClick={() => choosePlan(id)}
                       className="flex w-full min-w-0 items-start gap-3 py-4 text-left"
                     >
                       <span
@@ -787,13 +821,16 @@ function BookingFlow() {
                   <p className="mt-2 text-sm text-ink-2">
                     {t("haveAccount")}{" "}
                     <Link
-                      href={`/login?next=${encodeURIComponent(`/booking?system=${system}`)}`}
+                      href={`/login?next=${encodeURIComponent(`/booking?system=${system}&plan=${plan}`)}`}
                       className="inline-flex min-h-11 items-center font-semibold text-accent hover:text-accent-ink"
                     >
                       {t("signIn")}
                     </Link>
                   </p>
                 </div>
+              )}
+              {plan === "notify" && alertSub && (
+                <p role="status" className="mt-3 text-sm font-medium text-ink-2">{t("alertsAlready")}</p>
               )}
               {plans && !plans.demo && (
                 <p className="mt-3 flex items-start gap-1.5 text-xs text-muted">
@@ -806,21 +843,21 @@ function BookingFlow() {
                 onNext={() => void pay()}
                 nextLabel={plans ? t(guest ? "payAccount" : plan === "autobook" ? "payAuto" : "payNotify", { price: formatPrice(plans.plans.find((p) => p.id === plan) ?? { amountCents: 0 }, t("perMonth")) }) : t("next")}
                 nextBusy={working}
-                nextDisabled={working || !plans}
+                nextDisabled={working || !plans || (plan === "notify" && !!alertSub)}
               />
             </>
           )}
 
           {user && <SupportBox system={system} startOpen={params.get("support") === "1"} />}
           {!authLoading && !user && params.get("support") === "1" && <SupportSignIn />}
-          {!authLoading && <FeedbackBox key={user?.id ?? "guest"} signedIn={!!user} startOpen={params.get("feedback") === "1"} />}
+          {!authLoading && <FeedbackBox key={`${user?.id ?? "guest"}:${purchases}`} signedIn={!!user} startOpen={params.get("feedback") === "1"} />}
         </div>
 
         {/* The summary beside the form, like a receipt that fills in as you go. */}
         {inFlow && draft && (
-          <aside aria-label={t("summaryTitle")} className="hidden lg:block">
+          <aside aria-label={t(plan === "notify" ? "summaryTitleAlerts" : "summaryTitle")} className="hidden lg:block">
             <div className="sticky top-24 rounded-2xl border border-line bg-surface p-6">
-              <h2 className="text-lg font-bold text-ink">{t("summaryTitle")}</h2>
+              <h2 className="text-lg font-bold text-ink">{t(plan === "notify" ? "summaryTitleAlerts" : "summaryTitle")}</h2>
               <dl className="mt-4 space-y-4 text-[0.9375rem]">
                 <SummaryItem label={t("rowService")} value={serviceName} />
                 <SummaryItem label={t("rowDates")} value={describeWindow(draft.window, lang)} />
@@ -1132,7 +1169,23 @@ function WatchingCard({
   );
 }
 
-/** Shown after the notification plan is paid. */
+/** One line saying alerts are on, with the way to connect Telegram if that is still to do. */
+function AlertNotice({ alert }: { alert: AlertSubscription }) {
+  const { t } = useI18n();
+  return (
+    <div className="mb-6 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-line bg-surface px-4 py-3 text-sm">
+      <BellRing className="size-4 flex-none text-accent" aria-hidden="true" />
+      <span className="font-semibold text-ink">{t("alertsTitle")}</span>
+      {!alert.linked && alert.telegramUrl && (
+        <a href={alert.telegramUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center font-semibold text-accent underline underline-offset-2">
+          {t("openTelegram")}
+        </a>
+      )}
+    </div>
+  );
+}
+
+/** The page for a customer with Telegram alerts. */
 function AlertCard({ alert, onAnother }: { alert: AlertSubscription; onAnother: () => void }) {
   const { t } = useI18n();
   return (
@@ -1141,11 +1194,13 @@ function AlertCard({ alert, onAnother }: { alert: AlertSubscription; onAnother: 
         <BellRing className="size-7" />
       </span>
       <h1 className="mt-4 text-2xl font-semibold text-ink">{t("alertsTitle")}</h1>
-      <p className="mt-2 text-sm text-muted">{alert.telegramUrl ? t("alertsBody") : t("alertsNoBot")}</p>
-      {alert.telegramUrl && <TelegramConnect url={alert.telegramUrl} label={t("openTelegram")} />}
+      <p className="mt-2 text-sm text-muted">
+        {t(alert.linked ? "alertsLinked" : alert.telegramUrl ? "alertsBody" : "alertsNoBot")}
+      </p>
+      {!alert.linked && alert.telegramUrl && <TelegramConnect url={alert.telegramUrl} label={t("openTelegram")} />}
       <EmbassyNotice />
       <button type="button" className="btn btn-ghost mt-5 w-full border-accent-line text-accent-line" onClick={onAnother}>
-        {t("bookAnother")}
+        {t("alertsAddBooking")}
       </button>
     </div>
   );

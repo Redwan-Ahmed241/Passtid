@@ -74,7 +74,8 @@ const PRODUCT_NAME: Record<PlanId, string> = {
 /** Start a payment and return the URL to send the browser to. */
 export async function createCheckout(intent: CheckoutIntent, origin: string): Promise<{ url: string; demo: boolean }> {
   const plan = planFor(intent.plan);
-  const back = `${origin}/booking?system=${intent.system}`;
+  // The plan travels with the customer, so coming back never switches them to the other one.
+  const back = `${origin}/booking?system=${intent.system}&plan=${intent.plan}`;
 
   if (isDemoPayments()) {
     const id = `${DEMO_PREFIX}${randomUUID()}`;

@@ -267,6 +267,24 @@ interface PaidInfo {
   plan: PlanId;
 }
 
+/** The bot link that connects an account to its alerts, when the bot username is configured. */
+function botLink(code: string): string | null {
+  const bot = process.env.TELEGRAM_BOT_USERNAME?.replace(/^@/, "");
+  return bot ? `https://t.me/${bot}?start=${code}` : null;
+}
+
+/** The caller's switched-on alert subscriptions, newest first, one per service. */
+export async function listAlerts(userId: string): Promise<AlertSubscription[]> {
+  const rows = await query<{ system: SystemId; telegram_code: string; linked: boolean }>(
+    `select distinct on (system) system, telegram_code, telegram_chat_id is not null as linked
+       from alert_subscriptions
+      where user_id = $1 and active
+      order by system, created_at desc`,
+    [userId],
+  );
+  return rows.map((r) => ({ id: r.telegram_code, system: r.system, telegramUrl: botLink(r.telegram_code), linked: r.linked }));
+}
+
 /**
  * Turn a verified payment into what was bought. Idempotent per checkout session, and safe when the
  * browser return and Stripe's webhook arrive at the same moment.
@@ -292,12 +310,7 @@ export function fulfilPayment(paid: PaidInfo, userId: string): Promise<ConfirmRe
          values ($1, $2, $3, $4, (select telegram_chat_id from users where id = $1))`,
         [userId, paid.system, code, paid.subscriptionId ?? null],
       );
-      const bot = process.env.TELEGRAM_BOT_USERNAME?.replace(/^@/, "");
-      const alert: AlertSubscription = {
-        id: code,
-        system: paid.system,
-        telegramUrl: bot ? `https://t.me/${bot}?start=${code}` : null,
-      };
+      const alert: AlertSubscription = { id: code, system: paid.system, telegramUrl: botLink(code) };
       result = { plan: "notify", system: paid.system, booking: null, alert, watching: false };
     } else {
       result = { plan: "autobook", system: paid.system, booking: null, alert: null, watching: true };
